@@ -9,7 +9,7 @@ export default function Welcome({ username, role }: HeaderProps) {
     return (
         <div>
             <div className="text-start mb-6">
-                <h3 className="text-2xl text-black">เดินทางปลอดภัยนะ ! hehehehe</h3>
+                <h3 className="text-2xl">เดินทางปลอดภัยนะ ! hehehehe</h3>
                 <p className="text-xl">{username}</p>
             </div>
 

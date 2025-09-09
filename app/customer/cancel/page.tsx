@@ -2,7 +2,7 @@
 
 function Page_choose_new_driver() {
     return (
-        <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
+        <div className="min-h-screen w-full bg-theme-customer flex flex-col items-center">
             <ChooseNewDriver_Header />
             <Profile_driver />
             <Profile_driver />
