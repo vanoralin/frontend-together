@@ -8,3 +8,20 @@
   --color-theme-second-orange: #E6A88A;
   --color-theme-black: #191919;
 }
+
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  z-index: 0 !important;
+}
+
+/* globals.css */
+.leaflet-control-zoom {
+  top: 120 !important;
+
+}
