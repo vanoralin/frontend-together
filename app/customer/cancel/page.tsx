@@ -1,3 +1,5 @@
+// เดี๋ยวมาแก้เป็นโชว์คนขับที่ถูกสุ่มมา
+
 "use client";
 
 function Page_choose_new_driver() {
@@ -30,7 +32,7 @@ function Profile_driver() {
     return (
         <div className="h-[105px] w-[363px] bg-white rounded-[30px] shadow-md mt-7 flex items-center px-4">
             <img
-                src="/user.png"
+                src="/user.svg"
                 alt="icon"
                 className="h-16 w-16 rounded-full object-cover"
             />
@@ -39,7 +41,7 @@ function Profile_driver() {
                 <p className="text-base">
                     โรส แมรี่
                     <img
-                        src="/female.png"
+                        src="/female.svg"
                         alt="icon"
                         className="h-4 w-4 inline-block ml-2 mb-1"
                     />
