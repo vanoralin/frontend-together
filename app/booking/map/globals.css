@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-theme-customer: #C5DEDA;
+  --color-theme-driver: #C5D4E8;
+  --color-theme-orange: #B55C32;
+  --color-theme-gray: #8B8B8B;
+  --color-theme-second-orange: #E6A88A;
+  --color-theme-black: #191919;
+}
+
+body {
+  font-family: var(--font-playpen), sans-serif;
+}
