@@ -211,7 +211,7 @@ function Popup_detail({
   onClose?: () => void;
 }) {
   return (
-    <div className="w-[390px] h-[702px] bg-[#EFEFEF] rounded-t-[50px] border-b-[5px] border-[#D9D9D9] flex flex-col items-center overflow-y-auto relative">
+    <div className="w-[390px] h-[700px] bg-[#EFEFEF] rounded-t-[50px] border-b-[5px] border-[#D9D9D9] flex flex-col items-center overflow-y-auto relative">
       {/* ปุ่ม Close อยู่ใน popup เอง */}
       <button
         type="button"
@@ -250,7 +250,7 @@ function Profile_driver() {
   return (
     <div className="h-[105px] w-[363px] bg-white rounded-[30px] shadow-md mt-6 flex items-center px-4">
       <img
-        src="/user.svg"
+        src="/profile_wonyoung.jpg"
         alt="icon"
         className="h-16 w-16 rounded-full object-cover mb-3.5"
       />

@@ -1,7 +1,8 @@
 "use client";
 
-import RoleBar from "@/app/role_bar";
-
+import RoleBar from "@/app/components/user_components";
+import { BackButton } from "@/app/components/share_component";
+import Link from "next/link";
 type Gender = "male" | "female";
 
 interface HeaderProps {
@@ -13,6 +14,7 @@ interface HeaderProps {
 function Background() {
   return (
     <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
+      <Header_profile />
       <Block_profileuser username="เตา อั่งโล่" role={1} gender="female"/>
       <Block_listitem_profile coin={100} />
       <Block_logout />
@@ -25,15 +27,24 @@ const genderIconMap: Record<Gender, string> = {
   female: "/female.svg",
 };
 
+function Header_profile() {
+  return (
+    <div className="flex flex-col items-center mt-8">
+      <BackButton />
+      <p className="text-[32px] font-bold text-shadow-md">โปรไฟล์</p>
+    </div>
+  );
+}
+
 function Block_profileuser({ username, role, gender = "male"}: HeaderProps) {
   return (
-    <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-20 flex flex-col justify-center">
+    <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
       <div className="flex items-center">
         {/* Left: user avatar */}
         <img
           src="/user.svg"
           alt="user icon"
-          className="h-[132px] w-[132px] rounded-full object-cover ml-2"
+          className="h-[132px] w-[132px] rsounded-full object-cover ml-2"
         />
 
         {/* Middle */}
@@ -71,6 +82,7 @@ interface ListItemProps {
 function Block_listitem_profile({ coin }: ListItemProps) {
   return (
     <div>
+      <Link href="/customer/wallet">
       <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center px-4">
         <p className="text-2xl">กระเป๋าเงิน</p>
         <div className="ml-10 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
@@ -79,7 +91,7 @@ function Block_listitem_profile({ coin }: ListItemProps) {
         </div>
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
       </div>
-
+      </Link>
       <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
         <p className="text-2xl">ทริปขาประจำ</p>
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
@@ -101,11 +113,11 @@ function Block_listitem_profile({ coin }: ListItemProps) {
 
 function Block_logout() {
   return (
-    <div className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-12 flex items-center justify-center px-6">
+    <div className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-3 flex items-center justify-center px-6">
       <p className="text-center text-red-600 text-2xl">ออกจากระบบ</p>
     </div>
   );
 }
 
 export default Background;
-export { Block_listitem_profile, Block_logout, Block_profileuser };
+export { Header_profile , Block_listitem_profile, Block_logout, Block_profileuser };

@@ -1,5 +1,6 @@
 // ยังไม่เสร็จ
 "use client";
+import { BackButton } from "@/app/components/share_component";
 
 function Background() {
     return (
@@ -13,6 +14,7 @@ function Background() {
 function Header_topup(){
     return (
         <div className="flex flex-col items-center mt-8">
+            <BackButton />
             <p className="text-[32px] font-bold text-shadow-md">เติมเงิน</p>
         </div>
     );
