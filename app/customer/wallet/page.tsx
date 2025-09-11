@@ -11,7 +11,7 @@ interface ProfileWalletProps {
 }
 
 interface HistoryBlockProps {
-  type: "topup" | "withdraw";
+  type: "topup" | "withdraw" | "paid";
   date: string;            // "YYYY-MM-DD HH:mm"
   success: "success" | "cancel";
   amount: number;
@@ -20,15 +20,15 @@ interface HistoryBlockProps {
 function Background() {
 const historyData: HistoryBlockProps[] = [
     { type: "topup", date: "2024-08-24 22:01", success: "success", amount: 50 },
-    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
-    { type: "topup", date: "2024-08-15 09:15", success: "success", amount: 100 },
+    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
+    { type: "topup", date: "2024-08-15 09:15", success: "cancel", amount: 100 },
     { type: "withdraw", date: "2024-08-10 18:45", success: "success", amount: 30 },
-    { type: "topup", date: "2024-08-05 12:00", success: "success", amount: 200 },
+    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
     { type: "withdraw", date: "2024-07-30 16:20", success: "success", amount: 10 },
     { type: "topup", date: "2024-07-25 08:10", success: "cancel", amount: 150 },
     { type: "withdraw", date: "2024-07-20 19:55", success: "success", amount: 40 },
-    { type: "topup", date: "2024-07-15 11:30", success: "success", amount: 80 },
-    { type: "withdraw", date: "2024-07-10 21:05", success: "cancel", amount: 25 },
+    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
+    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
 ];
 
   return (
@@ -110,7 +110,7 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
         <div className="flex flex-col">
           {history.map((item, idx) => {
             const isSuccess = item.success === "success";
-            const labelType = item.type === "topup" ? "เติมเงิน" : "ถอนเงิน";
+            const labelType = item.type === "topup" ? "เติมเงิน" : item.type === "withdraw" ? "ถอนเงิน" : "ชำระเงิน";
             const labelStatus = isSuccess ? "สำเร็จ" : "ยกเลิก";
 
             return (
@@ -121,7 +121,7 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
                 {/* แถวบน: ชื่อรายการซ้าย / จำนวนเงินขวา */}
                 <div className="flex items-start justify-between">
                   <p className="text-xl font-semibold">{labelType}</p>
-                  <p className="text-xl font-bold">{item.type === "withdraw" ? "-" : ""}฿{item.amount.toFixed(2)}</p>
+                  <p className="text-xl font-bold">{(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}</p>
                 </div>
 
                 {/* แถวล่าง: สถานะ (สี) | วันที่ (เทา) */}
