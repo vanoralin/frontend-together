@@ -4,8 +4,8 @@ interface HeaderProps {
 
 export default function RoleBar({ role }: HeaderProps) {
     return (
-        <div>
-            <div className="text-start w-35 border-2 p-2 pl-4 rounded-3xl border-theme-orange flex-start">
+        <div className="flex">
+            <div className="border-2 w-35 p-2 pl-4 rounded-3xl border-theme-orange flex-start">
                 {role === 0 && (
                     <h3 className="text-lg">
                         <img src="/role_customer.svg" alt="Passenger" className="inline-block w-6 h-6 mr-2" />
@@ -18,8 +18,9 @@ export default function RoleBar({ role }: HeaderProps) {
                         คนขับ
                     </h3>
                 )}
+                
             </div>
-
+<img src="/role_swap.svg" alt="" />
 
         </div>
     );
