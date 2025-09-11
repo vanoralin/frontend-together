@@ -250,7 +250,7 @@ function Profile_driver() {
   return (
     <div className="h-[105px] w-[363px] bg-white rounded-[30px] shadow-md mt-6 flex items-center px-4">
       <img
-        src="/profile_wonyoung.jpg"
+        src="/user.svg"
         alt="icon"
         className="h-16 w-16 rounded-full object-cover mb-3.5"
       />

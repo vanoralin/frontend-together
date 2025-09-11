@@ -96,11 +96,12 @@ function Block_listitem_profile({ coin }: ListItemProps) {
         <p className="text-2xl">ทริปขาประจำ</p>
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
       </div>
-
+    <Link href="/customer/history_page">
       <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
         <p className="text-2xl">ประวัติการเดินทาง</p>
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
       </div>
+    </Link>
 
       <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center px-4">
         <p className="text-2xl">แจ้งปัญหา</p>
