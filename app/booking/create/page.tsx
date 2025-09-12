@@ -30,7 +30,7 @@ export default function BookingPage() {
         {/* First Option */}
         <button
           className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
-          onClick={() => router.push("/booking/map")} 
+          onClick={() => router.push("/booking/map")}
         >
           <div className="text-left">
             <h2 className="text-lg font-semibold text-[#191919] mb-1">
@@ -54,7 +54,10 @@ export default function BookingPage() {
         </button>
 
         {/* Second Option */}
-        <button className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md">
+        <button
+          className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
+          onClick={() => router.push("/booking/createTrip")}
+        >
           <div className="text-left">
             <h2 className="text-lg font-semibold text-[#191919] mb-1">
               จองทริปแบบประจำ

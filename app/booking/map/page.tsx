@@ -106,7 +106,7 @@ export default function RideBookingPage() {
       {/* Next Step Button */}
       <div className="px-4 pb-8">
         <button
-          className="w-full h-12 bg-[#e6a88a] hover:bg-[#e6a88a] text-black font-medium text-lg rounded-2xl border-2 border-[#B55C32]"
+          className="w-full h-12 bg-[#e6a88a] hover:bg-[#e6a88a] text-black text-lg rounded-2xl border-2 border-[#B55C32]"
           onClick={() => router.push("/booking/mapdetail")}
         >
           ขั้นตอนถัดไป
