@@ -22,9 +22,9 @@ function Background() {
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
   return (
-    <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
+    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_profile />
-      <Block_profileuser username="เตา อั่งโล่" role={1} gender="female" />
+      <Block_profileuser username="เตา อั่งโล่" role={0} gender="female" />
       <Block_listitem_profile coin={100} />
       <Block_logout onClick={openLogout} />
 
@@ -51,7 +51,7 @@ function Header_profile() {
   return (
     <div className="flex flex-col items-center mt-8">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-md">โปรไฟล์</p>
+      <p className="text-[32px] font-bold text-shadow-lg">โปรไฟล์</p>
     </div>
   );
 }

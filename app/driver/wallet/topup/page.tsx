@@ -34,7 +34,7 @@ function Background() {
   const [amountInput, setAmountInput] = React.useState<string>("");
 
   return (
-    <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center pb-[120px]">
+    <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center pb-[120px]">
       <Header_topup />
       <Detail amountInput={amountInput} setAmountInput={setAmountInput} />
       <Goto_payment amountInput={amountInput} />
@@ -168,7 +168,7 @@ function Goto_payment({
         </div>
 
         <Link
-          href={canProceed ? "/customer/wallet/topup/qr" : "#"}
+          href={canProceed ? "/driver/wallet/topup/qr" : "#"}
           aria-disabled={!canProceed}
           className={canProceed ? "" : "pointer-events-none"}
         >
