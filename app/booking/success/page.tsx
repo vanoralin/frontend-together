@@ -46,7 +46,7 @@ export default function BookingSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-[390px] mx-auto">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 max-w-[390px] mx-auto">
       {/* Header */}
       <div className="bg-white shadow-sm p-4">
         <h1 className="text-lg font-semibold text-center text-gray-900">การจองสำเร็จ</h1>

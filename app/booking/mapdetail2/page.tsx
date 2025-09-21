@@ -29,7 +29,7 @@ const Check = (props: React.SVGProps<SVGSVGElement>) => (
 function TripBookingHeader() {
   const router = useRouter()
   return (
-    <div className="flex items-center p-4 bg-[#c5deda] font-[var(--font-playpen)]">
+    <div className="flex items-center justify-center p-4 bg-[#c5deda] font-[var(--font-playpen)]">
       {/* Back Button */}
       <button
         className="w-12 h-12 bg-[#191919] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"

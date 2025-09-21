@@ -50,18 +50,22 @@ const CheckIcon = () => (
 function TripBookingHeader() {
   const router = useRouter()
   return (
-    <div className="flex items-center p-4 bg-[#c5deda] font-[var(--font-playpen)]">
+    <div className="w-[390px] bg-[#c5deda] px-6 py-4 mx-auto overflow-hidden">
+      <div className="flex items-center relative">
       {/* Back Button */}
-      <button
-        className="w-12 h-12 bg-[#191919] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
-        onClick={() => router.push("/booking/map")}
-      >
-        <img src="/arrow.png" alt="Back" className="w-6 h-6 filter invert" />
-      </button>
+      <div className="mb-8">
+        <button
+          className="w-12 h-12 bg-[#191919] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
+          onClick={() => router.push("/booking/map")}
+        >
+          <img src="/arrow.png" alt="Back" className="w-6 h-6 filter invert" />
+        </button>
+      </div>
       <div className="flex-1 text-center -ml-10">
         <h1 className="text-lg font-medium text-black">การจองทริปใหม่ หน้า 2/3</h1>
         <p className="text-lg font-bold text-black">รายละเอียดการเดินทาง</p>
       </div>
+    </div>
     </div>
   )
 }
@@ -261,7 +265,7 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="bg-[#c5deda] flex flex-col max-w-sm mx-auto rounded-3xl overflow-hidden min-h-[844px]">
+    <div className="bg-[#c5deda] flex items-center justify-center flex-col max-w-sm mx-auto rounded-3xl overflow-hidden min-h-[844px]">
       <TripBookingHeader />
 
       {/* Location Input Fields */}
@@ -319,7 +323,7 @@ export default function BookingPage() {
       </div>
 
       {/* Booking Details Card */}
-      <div className="flex-1 px-4 py-1">
+      <div className="w-full px-4 pb-8">
         <div className="relative bg-white rounded-[1.35rem] p-7 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
           {/* Date */}
           <div className="flex items-center gap-3 mb-6">
@@ -620,7 +624,7 @@ export default function BookingPage() {
       </div>
 
       {/* Fare Card */}
-      <div className="flex-1 px-4 py-4">
+      <div className="w-full px-4 pb-8">
         <div className="relative bg-white rounded-[1.35rem] p-4 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
           <div className="flex justify-between items-start">
             {/* ซ้าย */}
@@ -653,7 +657,7 @@ export default function BookingPage() {
       </div>
 
       {/* Next Step Button */}
-      <div className="px-4 pb-8">
+      <div className="w-full px-4 pb-8">
         <button
           className="w-full h-12 bg-[#e6a88a] hover:bg-[#e6a88a] text-black text-lg rounded-2xl border-2 border-[#B55C32]"
           onClick={handleNextStep}

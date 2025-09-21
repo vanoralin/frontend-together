@@ -6,7 +6,7 @@ export default function BookingPage() {
   const router = useRouter()
 
   return (
-    <div className="w-[390px] h-[844px] bg-[#ffffff] px-6 py-6 mx-auto overflow-hidden">
+    <div className="w-[390px] h-[844px] bg-[#ffffff] px-6 py-6 mx-auto overflow-hidden ">
       {/* Back Button */}
       <div className="mb-8">
         <button
