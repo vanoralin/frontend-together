@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BackButton } from "@/app/components/share_component";
+
 
 /** -------- Types & Demo Data -------- */
 interface HistoryItem {
@@ -92,7 +94,8 @@ function Header_history({ onClose }: { onClose?: () => void }) {
       }}
       aria-label={clickable ? "ปิดหน้าต่าง" : undefined}
     >
-      <h1 className="text-[32px] font-bold text-shadow-md">ประวัติการเดินทาง</h1>
+      <BackButton />
+      <h1 className="text-[32px] font-bold text-shadow-lg">ประวัติการเดินทาง</h1>
     </div>
   );
 }

@@ -33,8 +33,7 @@ const historyData: HistoryBlockProps[] = [
 ];
 
   return (
-    <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
-      
+    <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
       <Header_wallet />
       <Profile_wallet username="เตา อั่งโล่" gender="female" coin={50} />
       <Topup />
@@ -72,10 +71,15 @@ function Profile_wallet({ username, gender, coin }: ProfileWalletProps) {
 
 function Topup() {
   return (
-    <div>
-        <Link href="/customer/wallet/topup">
-            <div className="h-[51px] w-[366px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
+    <div className="flex gap-10">
+        <Link href="/driver/wallet/topup">
+            <div className="h-[51px] w-[155px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
                 <p className="text-center text-2xl font-medium">เติมเงิน</p>
+            </div>
+        </Link>
+        <Link href="/driver/wallet/withdraw">
+            <div className="h-[51px] w-[155px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
+                <p className="text-center text-2xl font-medium">ถอนเงิน</p>
             </div>
         </Link>
     </div>

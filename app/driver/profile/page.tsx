@@ -12,7 +12,7 @@ interface HeaderProps {
   username: string;
   role: number;
   gender?: Gender;
-  email: string;
+  email?: string;
 }
 
 function Background() {
@@ -23,10 +23,11 @@ function Background() {
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
   return (
-    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
+    <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center overflow-y-scroll">
       <Header_profile />
-      <Block_profileuser username="เตา อั่งโล่" role={0} gender="female" email="6xxxxxxx@kmitl.ac.th" />
-      <Block_listitem_profile coin={100} />
+      <Block_profileuser username="โรส แมรี่" role={1} gender="female"  email="66010001@kmtil.ac.th"/>
+      <Block_Driver_info />
+      <Block_listitem_profile coin={900} />
       <Block_logout onClick={openLogout} />
 
       {isLogoutOpen && (
@@ -57,7 +58,7 @@ function Header_profile() {
   );
 }
 
-function Block_profileuser({ username, role, gender = "male", email }: HeaderProps) {
+function Block_profileuser({ username, role, gender = "male",email }: HeaderProps) {
   return (
     <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
       <div className="flex items-center">
@@ -86,6 +87,19 @@ function Block_profileuser({ username, role, gender = "male", email }: HeaderPro
   );
 }
 
+function Block_Driver_info() {
+    return (
+    <div>
+      <Link href="/driver/driver_info">
+      <div className="h-[82px] w-[366px] bg-white rounded-[20px] shadow-md mt-5 flex items-center px-4">
+        <p className="text-2xl">ข้อมูลคนขับ,ยานพาหนะ</p>
+        <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+      </div>
+      </Link>
+    </div>
+  );
+}
+
 interface ListItemProps {
   coin: number;
 }
@@ -93,7 +107,7 @@ interface ListItemProps {
 function Block_listitem_profile({ coin }: ListItemProps) {
   return (
     <div>
-      <Link href="/customer/wallet">
+      <Link href="/driver/wallet">
         <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center px-4">
           <p className="text-2xl">กระเป๋าเงิน</p>
           <div className="ml-10 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
@@ -107,7 +121,7 @@ function Block_listitem_profile({ coin }: ListItemProps) {
         <p className="text-2xl">ทริปขาประจำ</p>
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
       </div>
-      <Link href="/customer/history_page">
+      <Link href="/driver/history_page">
         <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
           <p className="text-2xl">ประวัติการเดินทาง</p>
           <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
@@ -183,4 +197,4 @@ function Popup_logout({
 }
 
 export default Background;
-export { Header_profile, Block_listitem_profile, Block_logout, Block_profileuser, Popup_logout };
+export { Header_profile, Block_listitem_profile, Block_logout, Block_profileuser, Popup_logout, Block_Driver_info };
