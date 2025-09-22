@@ -1,36 +1,27 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-// --- Custom SVG icons ---
-const CalendarIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
-  </svg>
-)
-
-const ClockIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L12 13V7H12.5V12.2L17,14.7L16.2,16.2Z" />
-  </svg>
-)
-
+// Custom SVG components
 const UserIcon = () => (
   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
   </svg>
 )
 
-const ChevronUpIcon = () => (
-  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41-1.41z" />
-  </svg>
-)
-
-const ChevronDownIcon = () => (
-  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+const Check = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+    {...props} // ส่ง props ต่อ
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
   </svg>
 )
 
@@ -38,7 +29,7 @@ const ChevronDownIcon = () => (
 function TripBookingHeader() {
   const router = useRouter()
   return (
-    <div className="flex items-center p-4 bg-[#c5deda] font-[var(--font-playpen)]">
+    <div className="flex items-center justify-center p-4 bg-[#c5deda] font-[var(--font-playpen)]">
       {/* Back Button */}
       <button
         className="w-12 h-12 bg-[#191919] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
@@ -48,53 +39,56 @@ function TripBookingHeader() {
       </button>
       <div className="flex-1 text-center -ml-10">
         <h1 className="text-lg font-medium text-black">การจองทริปใหม่ หน้า 3/3</h1>
-        <p className="text-lg font-bold text-black">เลือกจุดรับส่ง</p>
+        <p className="text-lg font-bold text-black">ยืนยันการจอง</p>
       </div>
     </div>
   )
 }
 
-// --- Main Page ---
-export default function RideBookingPage() {
+export default function BookingConfirmationPage() {
   const router = useRouter()
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [isConfirmed, setIsConfirmed] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
-  const [pickup, setPickup] = useState("")
-  const [dropoff, setDropoff] = useState("")
-  const [passengerCount, setPassengerCount] = useState(2)
-  const [selectedVehicle, setSelectedVehicle] = useState("รถยนต์")
-  const [selectedDate, setSelectedDate] = useState("27/07/2568")
-  const [selectedStartTime, setSelectedStartTime] = useState("12:00")
-  const [selectedEndTime, setSelectedEndTime] = useState("12:20")
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [tripData, setTripData] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("tripData")
+      return saved
+        ? JSON.parse(saved)
+        : {
+            pickup: "",
+            dropoff: "",
+            selectedDate: "27/07/2568",
+            selectedStartTime: "12:00",
+            selectedEndTime: "12:20",
+            passengerCount: 2,
+            selectedVehicle: "รถยนต์",
+          }
+    }
+    return {
+      pickup: "",
+      dropoff: "",
+      selectedDate: "27/07/2568",
+      selectedStartTime: "12:00",
+      selectedEndTime: "12:20",
+      passengerCount: 2,
+      selectedVehicle: "รถยนต์",
+    }
+  })
 
-  const timeOptions = [
-    "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
-    "12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30",
-    "16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30",
-  ]
-
-  const handlePassengerIncrement = () => passengerCount < 6 && setPassengerCount(passengerCount + 1)
-  const handlePassengerDecrement = () => passengerCount > 1 && setPassengerCount(passengerCount - 1)
-  const handleVehicleSelect = (vehicle: string) => setSelectedVehicle(vehicle)
-
-  const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const date = new Date(event.target.value)
-    const thaiYear = date.getFullYear() + 543
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    setSelectedDate(`${day}/${month}/${thaiYear}`)
-    setShowDatePicker(false)
-  }
-
-  const handleStartTimeSelect = (time: string) => setSelectedStartTime(time)
-  const handleEndTimeSelect = (time: string) => setSelectedEndTime(time)
+  const [pickup, setPickup] = useState(tripData.pickup)
+  const [dropoff, setDropoff] = useState(tripData.dropoff)
 
   return (
     <div className="bg-[#c5deda] flex flex-col max-w-sm mx-auto rounded-3xl overflow-hidden min-h-[844px]">
       <TripBookingHeader />
 
+      {/* Subtitle */}
+      <p className="text-[#B55C32] text-center mb-1 text-lg">กรุณาตรวจสอบรายการเดินทาง</p>
+
       {/* Location Input Fields */}
-      <div className="flex-1 px-4 py-3">
+      <div className="flex-1 px-4 py-1">
         <div className="relative bg-white rounded-[1.35rem] p-4 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
           <div className="absolute left-7 top-10 h-[38px] w-[2px] bg-black"></div>
 
@@ -147,157 +141,94 @@ export default function RideBookingPage() {
         </div>
       </div>
 
-      {/* Booking Details Card */}
-      <div className="flex-1 px-4 py-3">
-      <div className="relative bg-white rounded-[1.35rem] p-4 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
-        {/* Date */}
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-[#191919] text-lg">วันที่</span>
-          <span className="text-[#191919] text-lg font-medium">{selectedDate}</span>
-          <button onClick={() => setShowDatePicker(!showDatePicker)}>
-            <CalendarIcon />
-          </button>
-        </div>
-
-        {showDatePicker && (
-          <div className="mb-6">
-            <input
-              type="date"
-              onChange={handleDateChange}
-              className="w-full p-3 border border-[#d9d9d9] rounded-lg text-[#191919] focus:outline-none focus:border-[#b55c32]"
-            />
-          </div>
-        )}
-
-        {/* Available Time */}
-        <div className="mb-6">
-          <p className="text-[#191919] text-lg mb-4">เวลา ที่สามารถจองได้</p>
-          <div className="flex justify-between items-center mb-6">
-            {/* Start Time */}
-            <div className="text-center">
-              <p className="text-[#8b8b8b] text-sm mb-2">ตั้งแต่</p>
-              <div className="relative">
-                <button
-                  onClick={() => document.getElementById("start-time-select")?.focus()}
-                  className="flex items-center gap-2 hover:bg-gray-50 p-2 rounded transition-colors"
-                >
-                  <span className="text-[#191919] text-xl font-medium">{selectedStartTime}</span>
-                  <ClockIcon />
-                </button>
-                <select
-                  id="start-time-select"
-                  value={selectedStartTime}
-                  onChange={(e) => handleStartTimeSelect(e.target.value)}
-                  className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                >
-                  {timeOptions.map((time) => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* End Time */}
-            <div className="text-center">
-              <p className="text-[#8b8b8b] text-sm mb-2">ถึง</p>
-              <div className="relative">
-                <button
-                  onClick={() => document.getElementById("end-time-select")?.focus()}
-                  className="flex items-center gap-2 hover:bg-gray-50 p-2 rounded transition-colors"
-                >
-                  <span className="text-[#191919] text-xl font-medium">{selectedEndTime}</span>
-                  <ClockIcon />
-                </button>
-                <select
-                  id="end-time-select"
-                  value={selectedEndTime}
-                  onChange={(e) => handleEndTimeSelect(e.target.value)}
-                  className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                >
-                  {timeOptions.map((time) => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
-                </select>
-              </div>
+      {/* Date and Time Card */}
+      <div className="flex-1 px-4 py-1">
+        <div className="bg-white rounded-[1.35rem] p-6 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
+          {/* วันที่ */}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-gray-900 font-medium text-sm">วันที่</span>
+            <div className="bg-gray-100 rounded-full px-3 py-2">
+              <span className="text-gray-900 text-sm">{tripData.selectedDate}</span>
             </div>
           </div>
-        </div>
-
-        {/* Passenger Count */}
-        <div className="flex justify-between items-center mb-6">
+          {/* เวลา */}
           <div>
-            <p className="text-[#191919] text-lg font-medium mb-1">จำนวนคนนั่ง</p>
-            <p className="text-[#8b8b8b] text-sm">หากต้องการนั่งสำหรับขนาดใหญ่</p>
-            <p className="text-[#8b8b8b] text-sm">กรุณาเพิ่มจำนวนคนอีก 1</p>
-          </div>
-          <div className="flex items-center bg-white border-2 border-[#191919] rounded-full px-4 py-2">
-            <UserIcon />
-            <span className="text-[#191919] text-lg font-medium mx-3">{passengerCount}</span>
-            <div className="flex flex-col">
-              <button onClick={handlePassengerIncrement} className="hover:bg-gray-100 rounded p-1 transition-colors">
-                <ChevronUpIcon />
-              </button>
-              <button onClick={handlePassengerDecrement} className="hover:bg-gray-100 rounded p-1 transition-colors">
-                <ChevronDownIcon />
-              </button>
+            <p className="text-gray-900 font-medium mb-4 text-sm">เวลา ที่สามารถรอรับได้</p>
+            <div className="flex items-center justify-center gap-8">
+              <div className="text-center">
+                <p className="text-gray-600 text-xs mb-1">ตั้งแต่</p>
+                <div className="bg-gray-100 rounded-full px-3 py-2">
+                  <span className="text-gray-900 font-medium text-sm">{tripData.selectedStartTime}</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-gray-600 text-xs mb-1">ถึง</p>
+                <div className="bg-gray-100 rounded-full px-3 py-2">
+                  <span className="text-gray-900 font-medium text-sm">{tripData.selectedEndTime}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Vehicle Type Selection */}
-        <div>
-          <p className="text-[#191919] text-lg font-medium mb-4">เลือกประเภทยานพาหนะ</p>
-          <div className="space-y-3">
-            {["จักรยานยนต์","รถยนต์","รถยนต์ขนาดใหญ่"].map((vehicle) => (
-              <button
-                key={vehicle}
-                onClick={() => handleVehicleSelect(vehicle)}
-                className="w-full flex items-center justify-between hover:bg-gray-50 p-2 rounded transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-5 h-5 rounded-full ${selectedVehicle === vehicle ? "bg-[#b55c32] flex items-center justify-center" : "bg-[#d9d9d9]"}`}>
-                    {selectedVehicle === vehicle && <div className="w-2 h-2 rounded-full bg-white"></div>}
-                  </div>
-                  <span className={`text-lg ${selectedVehicle === vehicle ? "text-[#191919]" : "text-[#8b8b8b]"}`}>
-                    {vehicle}
-                  </span>
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex-1">
+              <p className="text-gray-900 font-medium mb-1 text-sm">จำนวนคนนั่ง</p>
+              <p className="text-gray-500 text-xs">หากต้องการขนสัมภาระขนาดใหญ่</p>
+              <p className="text-gray-500 text-xs">กรุณาเพิ่มจำนวนคนอีก 1</p>
+            </div>
+            <div className="bg-white text-black rounded-full px-5 py-2 flex items-center gap-2 border-2 border-[#191919]">
+              <UserIcon />
+              <span className="font-medium">{tripData.passengerCount}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-gray-900 font-medium mb-3 text-sm mt-4">เลือกประเภทยานพาหนะ</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 bg-amber-600 rounded-full flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[#8b8b8b] text-lg">
-                    {vehicle === "จักรยานยนต์" ? "1" : vehicle === "รถยนต์" ? "1-4" : "1-6"}
-                  </span>
-                  <UserIcon />
-                </div>
-              </button>
-            ))}
+                <span className="text-gray-900 font-medium text-sm">{tripData.selectedVehicle}</span>
+              </div>
+              <div className="flex items-center gap-1 text-black">
+                <span className="text-sm">1-4</span>
+                <UserIcon />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Fare Card */}
-      <div className="flex-1 px-4 py-3">
-      <div className="relative bg-white rounded-[1.35rem] p-4 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/coin-OUznJyh5R9daRMCJS7DeYOrevKOvTX.png"
-                alt="coin"
-                className="w-12 h-12"
-              />
-              <span className="text-[#191919] text-2xl font-medium">32 บาท</span>
-            </div>
-            <div className="text-right">
+      <div className="flex-1 px-4 py-2">
+        <div className="relative bg-white rounded-[1.35rem] p-4 shadow-[0_7px_6px_rgba(0,0,0,0.5)]">
+          <div className="flex justify-between items-start">
+            {/* ซ้าย */}
+            <span className="text-[#191919] text-lg">ค่าเดินทาง</span>
+
+            {/* ขวา */}
+            <div className="flex flex-col items-end gap-1">
               <p className="text-[#8b8b8b] text-sm">ยอดในกระเป๋าเงิน</p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <img
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/coin-OUznJyh5R9daRMCJS7DeYOrevKOvTX.png"
                   alt="coin"
-                  className="w-6 h-6"
+                  className="w-5 h-5"
                 />
-                <span className="text-[#8b8b8b] text-lg">100 บาท</span>
+                <span className="text-[#8b8b8b] text-base">100 บาท</span>
               </div>
             </div>
+          </div>
+
+          {/* ค่าเดินทางจริง */}
+          <div className="flex items-center gap-3 mt-0.1">
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/coin-OUznJyh5R9daRMCJS7DeYOrevKOvTX.png"
+              alt="coin"
+              className="w-10 h-10"
+            />
+            <span className="text-[#191919] text-xl">32 บาท</span>
           </div>
         </div>
       </div>
@@ -306,11 +237,59 @@ export default function RideBookingPage() {
       <div className="px-4 pb-8">
         <button
           className="w-full h-12 bg-[#e6a88a] hover:bg-[#e6a88a] text-black font-medium text-lg rounded-2xl border-2 border-[#B55C32]"
-          onClick={() => router.push("/booking/mapdetail2")}
+          onClick={() => setShowConfirmModal(true)}
         >
-          ขั้นตอนถัดไป
+          ยืนยันและจ่ายค่าเดินทาง
         </button>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 mx-4 max-w-sm w-full shadow-2xl">
+            <div className="text-center mb-8">
+              <div className="w-full max-w-[180px] bg-white rounded-2xl p-4 mb-6 border-2 border-gray-400 shadow-md mx-auto">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-xl text-black">ค่าเดินทาง</span>
+                </div>
+                <div className="flex items-center justify-center gap-4">
+                    <img
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/coin-OUznJyh5R9daRMCJS7DeYOrevKOvTX.png"
+                      alt="coin"
+                      className="w-10 h-10"
+                    />
+                  <span className="text-2xl text-black">32 บาท</span>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-lg font-semibold text-black mb-2 leading-tight">เมื่อจองแล้วจะไม่สามารถแก้ไขได้</p>
+                <p className="text-lg font-semibold text-black mb-6 leading-tight">และเงินในกระเป๋าจะถูกหักทันที</p>
+              </div>
+
+              <p className="text-base text-gray-700 font-medium">แน่ใจหรือไม่ว่าต้องการทำรายการจองนี้</p>
+            </div>
+
+            <div className="flex gap-6">
+              <button
+                className="flex-1 py-4 px-8 bg-white text-black rounded-full text-lg border-2 border-gray-400 transition-colors shadow-md"
+                onClick={() => setShowConfirmModal(false)}
+              >
+                ยกเลิก
+              </button>
+              <button
+                className="flex-1 py-4 px-8 bg-[#e6a88a] text-black rounded-full text-lg border-2 border-[#B55C32] transition-colors shadow-md"
+                onClick={() => {
+                  setShowConfirmModal(false)
+                  router.push("/booking/success1")
+                }}
+              >
+                ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
