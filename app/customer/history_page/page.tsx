@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-
-
 /** -------- Types & Demo Data -------- */
 interface HistoryItem {
   from: string;
