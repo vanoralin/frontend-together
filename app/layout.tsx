@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Mitr } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const mitr = Mitr({
+  subsets: ["thai", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -25,19 +20,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} text-[color:var(--color-theme-black)] h-screen w-screen bg-black flex items-center justify-center`}
+        className={`${mitr.className} text-[color:var(--color-theme-black)] h-screen w-screen bg-black flex items-center justify-center`}
       >
         {/* จอ mockup มือถือ */}
         <div className="relative aspect-[1170/2532] h-full w-[390px] bg-white rounded-xl shadow-lg">
           {/* phone bar */}
           <div className="absolute top-0 left-0 w-full z-50">
-            <img src="/phone_bar.svg" alt="Phone bar" className="w-full h-auto" />
+            <img
+              src="/phone_bar.svg"
+              alt="Phone bar"
+              className="w-full h-auto"
+            />
           </div>
 
-          {/* เนื้อหาหลัก <div className="pt-10 h-full overflow-y-auto">*/}
-
+          {/* เนื้อหาหลัก */}
           {children}
-
         </div>
       </body>
     </html>
