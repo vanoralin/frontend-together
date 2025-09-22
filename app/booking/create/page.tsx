@@ -6,7 +6,7 @@ export default function BookingPage() {
   const router = useRouter()
 
   return (
-    <div className="w-[390px] h-[844px] bg-[#ffffff] px-6 py-6 mx-auto overflow-hidden">
+    <div className="w-[390px] h-[844px] bg-[#ffffff] px-6 py-6 mx-auto overflow-hidden ">
       {/* Back Button */}
       <div className="mb-8">
         <button
@@ -30,7 +30,7 @@ export default function BookingPage() {
         {/* First Option */}
         <button
           className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
-          onClick={() => router.push("/booking/map")} 
+          onClick={() => router.push("/booking/map")}
         >
           <div className="text-left">
             <h2 className="text-lg font-semibold text-[#191919] mb-1">
@@ -54,7 +54,10 @@ export default function BookingPage() {
         </button>
 
         {/* Second Option */}
-        <button className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md">
+        <button
+          className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
+          onClick={() => router.push("/booking/createTrip")}
+        >
           <div className="text-left">
             <h2 className="text-lg font-semibold text-[#191919] mb-1">
               จองทริปแบบประจำ
