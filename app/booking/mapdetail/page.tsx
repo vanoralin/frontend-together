@@ -402,7 +402,7 @@ export default function RideBookingPage() {
             </div>
           </div>
         </div>
-        
+
         {/* Passenger Count */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -494,3 +494,4 @@ export default function RideBookingPage() {
     </div>
   )
 }
+

@@ -1,16 +1,30 @@
 "use client";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import React, { useState } from "react";
+
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function LoginPage() {
+  // fixed sizes: title 64, everything else 16px
   const titleSize = 64;
   const baseSize = "16px";
 
+  // 1. เพิ่ม state สำหรับ input และ error messages
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+
+  useEffect(() => {
+    const id = "google-font-mitr";
+    if (!document.getElementById(id)) {
+      const link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      link.href =
+        "https://fonts.googleapis.com/css2?family=Mitr:wght@300;400;500;700&display=swap";
+      document.head.appendChild(link);
+    }
+  }, []);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -45,8 +59,10 @@ export default function LoginPage() {
           height: 844,
           backgroundColor: "#EAFCFC",
           boxShadow: "rgba(0,0,0,0.1)",
+          fontFamily: "'Mitr', sans-serif",
         }}
       >
+        {/* content area with controlled padding to fit 390x844 */}
         <div
           className="px-6 pt-12 pb-6 flex flex-col items-center relative z-10"
           style={{ height: "100%", boxSizing: "border-box" }}

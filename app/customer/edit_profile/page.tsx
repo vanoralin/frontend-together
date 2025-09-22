@@ -10,8 +10,20 @@ export default function RegisterPage() {
   const buttonSize = 24;
 
   const [preview, setPreview] = useState<string | null>(null);
-  const [gender, setGender] = useState<"male" | "female" | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Load Mitr font
+  useEffect(() => {
+    const id = "google-font-mitr";
+    if (!document.getElementById(id)) {
+      const link = document.createElement("link");
+      link.id = id;
+      link.rel = "stylesheet";
+      link.href =
+        "https://fonts.googleapis.com/css2?family=Mitr:wght@300;400;500;700&display=swap";
+      document.head.appendChild(link);
+    }
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,9 +58,8 @@ export default function RegisterPage() {
           style={{ height: "100%", boxSizing: "border-box" }}
         >
           <div className="w-full flex items-center">
-            <Link href="/customer/login" className="text-[#191919] mr-2">
-              {" "}
-              {/*ก้pathไปที่หน้า profile ตรงนี้*/}←
+            <Link href="/customer/login" className="text-[#191919] mr-2"> {/*ก้pathไปที่หน้า profile ตรงนี้*/}
+              ←
             </Link>
             <h1
               className="text-[#191919] font-medium"
@@ -59,7 +70,7 @@ export default function RegisterPage() {
                 className="block font-normal"
                 style={{ fontSize: titleSmallSize }}
               >
-                ข้อมูลผู้ใช้
+               ข้อมูลผู้ใช้
               </span>
             </h1>
           </div>
@@ -262,7 +273,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="w-28">
+              <div className="w-20">
                 <label
                   className="block text-[#191919] mb-2"
                   style={{ fontSize: baseSize }}
@@ -270,26 +281,10 @@ export default function RegisterPage() {
                   เพศ
                 </label>
                 <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setGender("male")}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center border transition ${
-                      gender === "male"
-                        ? "bg-[#77C4E5] border-[2px] border-black text-black shadow-md font-bold"
-                        : "bg-white border-[2px] border-[#D9D9D9] text-[#8B8B8B] shadow-md"
-                    }`}
-                  >
+                  <button className="w-12 h-12 bg-[#E6A88A] rounded-full flex items-center justify-center">
                     ♂
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setGender("female")}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center border transition ${
-                      gender === "female"
-                        ? "bg-[#FFA6E0] border-[2px] border-black text-black shadow-md"
-                        : "bg-white border-[2px] border-[#D9D9D9] text-[#8B8B8B] shadow-md"
-                    }`}
-                  >
+                  <button className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center">
                     ♀
                   </button>
                 </div>
