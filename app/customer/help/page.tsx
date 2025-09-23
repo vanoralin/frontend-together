@@ -5,14 +5,15 @@ import Link from "next/link";
 
 export default function ReportProblemPage() {
   const [message, setMessage] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
 
   const handleSubmit = () => {
     console.log("Report message:", message);
-    // TODO: Handle form submission here
+    setShowPopup(true); // เปิด popup
   };
 
   return (
-    <div className="min-h-screen bg-[#C5DEDA] flex flex-col">
+    <div className="relative min-h-screen bg-[#C5DEDA] flex flex-col">
       {/* Header */}
       <div className="relative flex items-center justify-center h-[60px] border-b border-gray-300">
         {/* Back Button */}
@@ -30,7 +31,7 @@ export default function ReportProblemPage() {
       {/* Main Content */}
       <div className="flex flex-col items-center px-6 pt-8 flex-1">
         {/* Greeting */}
-        <h2 className="text-2xl font-bold text-black mb-4 text-center leading-snug">
+        <h2 className="text-2xl text-black mb-4 text-center leading-snug">
           สวัสดี คุณ เตา อั่งโล่ <br />
           เราพร้อมช่วยเหลือคุณ!
         </h2>
@@ -72,6 +73,24 @@ export default function ReportProblemPage() {
           ยืนยัน
         </button>
       </div>
+
+      {/* Popup Modal */}
+      {showPopup && (
+        <div className="absolute inset-0  flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-72 text-center">
+            <h2 className="text-lg font-bold text-[#B55C32] mb-3">
+              ส่งแล้ว ✅
+            </h2>
+            <p className="text-gray-700 mb-5">ระบบได้รับข้อความของคุณแล้ว</p>
+            <button
+              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black font-semibold rounded-xl transition-colors"
+              onClick={() => setShowPopup(false)}
+            >
+              ปิด
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
