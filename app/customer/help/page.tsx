@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-s
 export default function ReportProblemPage() {
   const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
