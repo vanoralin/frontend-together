@@ -12,21 +12,14 @@ export default function Home() {
 
         <div className="bg-theme-customer h-full">
             <Header username="โมโมโกะ" role={0} />
-            <div className="px-4 mt-4">
+            <div className="p-4 mt-4">
                 <Link href="./customer/tripmap">
                     <TripTodayCard />
                 </Link>
 
             </div>
            
-
-
-
-
             <h1 className="text-2xl">ดูรายการทริป</h1>
-
-
-
 
             {/* Trip List */}
             <div className="px-4 mt-6">
