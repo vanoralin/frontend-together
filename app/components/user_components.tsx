@@ -20,7 +20,7 @@ export default function RoleBar({ role }: HeaderProps) {
                 )}
                 
             </div>
-<img src="role_swap.svg" alt="" />
+<img src="/role_swap.svg" alt="" />
 
         </div>
     );

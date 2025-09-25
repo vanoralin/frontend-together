@@ -19,9 +19,7 @@ function Page_choose_new_driver() {
 function ChooseNewDriver_Header() {
     return (
         <div className="flex flex-col items-center font-playpen">
-            <h1 className="text-2xl font-bold mt-10">เลือกคนขับคนใหม่</h1>
-            <p className="mt-6">หากไม่เลือกภายใน 5 นาที</p>
-            <p>ระบบจะทำการสุ่มคนขับคนใหม่ให้</p>
+            <h1 className="text-2xl font-bold mt-10">คนขับคนใหม่ของคุณ</h1>  
         </div>
     );
 }
