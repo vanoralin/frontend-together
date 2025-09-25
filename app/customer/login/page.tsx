@@ -1,5 +1,4 @@
 "use client";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import React, { useState } from "react";
 import Link from "next/link";
 

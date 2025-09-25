@@ -31,13 +31,13 @@ export default function RegisterPage() {
   }, [preview]);
 
   return (
-    <div className="min-h-screen w-full bg-theme-customer flex items-center justify-center">
+    <div className="min-h-screen w-full bg-[#C5D4E8] flex items-center justify-center">
       <div
         className="relative overflow-hidden"
         style={{
           width: 390,
           height: 844,
-          backgroundColor: "#C5DEDA",
+          backgroundColor: "#C5D4E8",
           boxShadow: "rgba(0,0,0,0.1)",
           fontFamily: "'Mitr', sans-serif",
         }}

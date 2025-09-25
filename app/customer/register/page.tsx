@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 
 export default function RegisterPage() {
@@ -46,11 +47,9 @@ export default function RegisterPage() {
           style={{ height: "100%", boxSizing: "border-box" }}
         >
           <div className="w-full flex items-center">
-            <Link href="/customer/login" className="text-[#191919] mr-2">
-              ←
-            </Link>
+            <BackButton href="/customer/login" className="mr-2" />
             <h1
-              className="text-[#191919] font-medium"
+              className="px-[50px] py-[5px] text-[#191919] font-medium"
               style={{ fontSize: titleSize, lineHeight: 1.3 }}
             >
               ลงทะเบียน
