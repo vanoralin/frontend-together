@@ -4,9 +4,6 @@ import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-
-
-// custom icon
 const customIcon = new L.Icon({
   iconUrl: "/icon_pin_map.svg",
   iconSize: [38, 38],
@@ -14,20 +11,20 @@ const customIcon = new L.Icon({
   popupAnchor: [0, -38],
 });
 
-// ข้อมูล pin
 const locations = [
+  //ดึงข้อมูลจริงมาใช้
   { id: 1, name: "หน้าตึก ECC", position: [13.729225415175016, 100.77557451289746] },
   { id: 2, name: "ตึกโหล", position: [13.72750903143394, 100.77244430550411] },
 ];
 
 export default function MapComponent() {
-  const initialPosition = locations[0].position; // ใช้ pin แรกเป็นจุดเริ่มต้น
-  const initialZoom = 15; // zoom ใกล้ๆ pin
+  const initialPosition = locations[0].position; //ใช้ pin แรกเป็นจุดเริ่มต้น
+  const initialZoom = 15; //zoom ใกล้ๆ pin
   return (
     <div className="w-full h-full rounded-2xl z-0 overflow-hidden shadow-lg">
 
       <MapContainer
-        center={initialPosition} // เริ่มที่ pin แรก
+        center={initialPosition}
         zoom={initialZoom}
         scrollWheelZoom={true}
         className="w-full h-full"
