@@ -25,7 +25,7 @@ export default function RootLayout({
         className={`${mitr.className} text-[color:var(--color-theme-black)] h-screen w-screen bg-black flex items-center justify-center`}
       >
         {/* จอ mockup มือถือ */}
-        <div className="relative aspect-[1170/2532] h-full w-[390px] bg-white rounded-xl shadow-lg">
+        <div className="relative aspect-[1170/2532] h-full w-[390px] bg-white shadow-lg">
           {/* phone bar */}
           <div className="absolute top-0 left-0 w-full z-50">
             <img
@@ -36,7 +36,7 @@ export default function RootLayout({
           </div>
 
           {/* เนื้อหาหลัก */}
-          <div className="pt-10 h-full overflow-y-auto">{children}</div>
+          <div className="h-full overflow-y-auto">{children}</div>
         </div>
       </body>
     </html>
