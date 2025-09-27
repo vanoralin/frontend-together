@@ -13,11 +13,12 @@ type DetailProps = {
 };
 
 function Background() {
+  const amountInput = localStorage.getItem("topupAmount");
   return (
     <div className="bg-[#C5DEDA] min-h-screen relative w-full flex flex-col items-center pb-[140px]">
       <Header />
       <QRCode />
-      <Detail amount={100} onExpire={() => alert("Expired")} />
+      <Detail amount={Number(amountInput)} onExpire={() => alert("Expired")} />
       <Goto_payment />
     </div>
   );
@@ -28,7 +29,7 @@ function Header() {
     
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-8">QR Code</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">QR Code</p>
     </div>
   );
 }
@@ -98,7 +99,10 @@ function Goto_payment() {
     <div className="absolute w-full bottom-0">
       <div className="h-[120px] w-full bg-white rounded-t-2xl shadow-md flex justify-center items-center">
         <Link href="/customer/wallet">
-        <div className="relative h-15 w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center mt-7">
+        <div className="relative h-15 w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center mt-7"
+            onClick={() => {
+              localStorage.setItem("topupAmount", "0");
+            }}>
           <p className="text-center text-2xl font-medium">บันทึก QR Code</p>
         </div>
         </Link>

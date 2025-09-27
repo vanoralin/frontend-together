@@ -5,7 +5,7 @@ import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import Navbar from "../components/navbar";
 type Gender = "male" | "female";
 
 interface HeaderProps {
@@ -39,6 +39,7 @@ function Background() {
           }}
         />
       )}
+      <Navbar />
     </div>
   );
 }
@@ -50,9 +51,9 @@ const genderIconMap: Record<Gender, string> = {
 
 function Header_profile() {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center ">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-8">โปรไฟล์</p>
+      <p className="text-[32px] text-center font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );
 }
@@ -76,12 +77,12 @@ function Block_profileuser({ username, role, gender = "male",email }: HeaderProp
               className="h-7 w-7 ml-1"
             />
           </div>
-          <div className="flex items-center mb-1 w-40 h-13">
+          <div className="flex items-center mb-1 w-45 h-13">
             <RoleBar role={role} />
           </div>
           <p className="text-base">{email}</p>
         </div>
-        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-5" />
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-1" />
       </div>   
     </div>
     </Link>
@@ -133,7 +134,7 @@ function Block_logout({ onClick }: { onClick?: () => void }) {
       role="button"
       tabIndex={0}
       onClick={onClick}
-      className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-3 flex items-center justify-center px-6 cursor-pointer hover:shadow-lg transition"
+      className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-20 flex items-center justify-center px-6 cursor-pointer hover:shadow-lg transition"
     >
       <p className="text-center text-red-600 text-xl">ออกจากระบบ</p>
     </div>

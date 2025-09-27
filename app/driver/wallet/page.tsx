@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BackButton } from "@/app/components/share_component";
+import Navbar from "../components/navbar";
 
 type Gender = "male" | "female";
 
@@ -38,6 +39,8 @@ const historyData: HistoryBlockProps[] = [
       <Profile_wallet username="เตา อั่งโล่" gender="female" coin={50} />
       <Topup />
       <History history={historyData} />
+      <div className="mb-10"></div>
+      <Navbar />
     </div>
   );
 }
@@ -46,7 +49,7 @@ function Header_wallet() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-8">กระเป๋าเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">กระเป๋าเงิน</p>
     </div>
   );
 }
@@ -142,6 +145,7 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
               </div>
             );
           })}
+          <div className="mb-15"></div>
         </div>
       )}
     </div>

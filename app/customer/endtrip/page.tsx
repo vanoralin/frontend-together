@@ -23,12 +23,12 @@ function Header() {
     <div className="flex flex-row">
         <BackButton />
         {/* ฝั่งซ้าย: ข้อความ */}
-        <p className="text-[42px] font-bold text-shadow-lg items-center mt-15 ml-6">
+        <p className="text-[42px] font-bold text-shadow-lg items-center mt-20 ml-6">
             การเดินทาง<br />เสร็จสิ้น
         </p>
 
         {/* ฝั่งขวา: รูป */}
-        <div className="flex items-center ml-auto mr-8 mt-15">
+        <div className="flex items-center ml-auto mr-8 mt-20">
             <img
             src="/holdphone.png"
             alt="การเดินทางเสร็จสิ้น"

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BackButton } from "@/app/components/share_component";
+import Navbar from "../components/navbar";
 
 /** -------- Types & Demo Data -------- */
 interface Review {
@@ -131,6 +132,7 @@ function Background() {
   return (
     <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
       <Header_history onClose={open ? closePopup : undefined} />
+      <div className="mt-5"></div>
       {historyItems.map((item, idx) => (
         <Block_history key={idx} item={item} onClick={() => openPopup(item)} />
       ))}
@@ -139,6 +141,7 @@ function Background() {
           <Popup_detail item={selected} onClose={closePopup} />
         </PopupOverlay>
       )}
+      <Navbar />
     </div>
   );
 }
@@ -155,7 +158,7 @@ function Header_history({ onClose }: { onClose?: () => void }) {
       aria-label={clickable ? "ปิดหน้าต่าง" : undefined}
     >
       <BackButton />
-      <h1 className="text-[32px] font-bold text-shadow-lg mt-8">ประวัติการเดินทาง</h1>
+      <h1 className="text-[32px] font-bold text-shadow-lg mt-18">ประวัติการเดินทาง</h1>
     </div>
   );
 }
@@ -173,7 +176,7 @@ function HistoryCard({ item, onClick }: { item: HistoryItem; onClick?: () => voi
       className={`${onClick ? "block text-left focus:outline-none cursor-pointer" : ""}`}
       aria-label={onClick ? "ดูรายละเอียดการเดินทาง" : undefined}
     >
-      <div className="h-[147px] w-[366px] bg-white rounded-[30px] shadow-md mt-5 p-3">
+      <div className="h-[141px] w-[366px] bg-white rounded-[30px] shadow-md mt-5 p-3">
         <div className="flex mt-1 mb-1">
           {/* คอลัมน์ไอคอน + เส้นเชื่อม */}
           <div className="relative flex flex-col items-center">

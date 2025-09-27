@@ -46,7 +46,7 @@ function Header_topup() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-8">เติมเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">เติมเงิน</p>
     </div>
   );
 }
@@ -177,6 +177,9 @@ function Goto_payment({
                        ${canProceed ? "opacity-100" : "opacity-60"}`}
             role="button"
             aria-label="ยืนยันเติมเงิน"
+            onClick={() => {
+              localStorage.setItem("topupAmount", amountInput);
+            }}
           >
             <p className="text-center text-2xl font-medium">เติมเงิน</p>
           </div>

@@ -5,6 +5,7 @@ import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import Navbar from "../components/navbar";
 
 type Gender = "male" | "female";
 
@@ -40,6 +41,8 @@ function Background() {
           }}
         />
       )}
+      <div className="mb-20"></div>
+      <Navbar />
     </div>
   );
 }
@@ -53,7 +56,7 @@ function Header_profile() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-8">โปรไฟล์</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );
 }
@@ -76,7 +79,7 @@ function Block_profileuser({ username, role, gender = "male",email }: HeaderProp
               className="h-7 w-7 ml-1"
             />
           </div>
-          <div className="flex items-center mb-1 w-30 h-13">
+          <div className="flex items-center mb-1 w-40 h-13">
             <RoleBar role={role} />
           </div>
           <p className="text-base">{email}</p>
@@ -142,7 +145,7 @@ function Block_logout({ onClick }: { onClick?: () => void }) {
       role="button"
       tabIndex={0}
       onClick={onClick}
-      className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-3 flex items-center justify-center px-6 cursor-pointer hover:shadow-lg transition"
+      className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-5 flex items-center justify-center px-6 cursor-pointer hover:shadow-lg transition"
     >
       <p className="text-center text-red-600 text-xl">ออกจากระบบ</p>
     </div>

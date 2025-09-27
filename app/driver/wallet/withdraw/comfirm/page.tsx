@@ -53,7 +53,7 @@ export function HeaderWithdraw() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-8">ถอนเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">ถอนเงิน</p>
     </div>
   );
 }
