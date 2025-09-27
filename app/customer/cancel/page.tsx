@@ -1,5 +1,3 @@
-// เดี๋ยวมาแก้เป็นโชว์คนขับที่ถูกสุ่มมา
-
 "use client";
 
 function Page_choose_new_driver() {
