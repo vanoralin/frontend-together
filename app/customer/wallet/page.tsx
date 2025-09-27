@@ -33,8 +33,7 @@ const historyData: HistoryBlockProps[] = [
 ];
 
   return (
-    <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
-      
+    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_wallet />
       <Profile_wallet username="เตา อั่งโล่" gender="female" coin={50} />
       <Topup />
@@ -45,9 +44,9 @@ const historyData: HistoryBlockProps[] = [
 
 function Header_wallet() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">กระเป๋าเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">กระเป๋าเงิน</p>
     </div>
   );
 }
@@ -58,7 +57,7 @@ function Profile_wallet({ username, gender, coin }: ProfileWalletProps) {
       <img src="/user.svg" alt="icon" className="h-[130px] w-[130px] rounded-full object-cover ml-3" />
       <div className="flex flex-col ml-4">
         <div className="flex items-center">
-          <p className="text-2xl font-medium">{username}</p>
+          <p className="text-xl font-medium">{username}</p>
           <img src={gender === "male" ? "/male.svg" : "/female.svg"} alt={gender} className="h-7 w-7 ml-2" />
         </div>
         <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
@@ -124,7 +123,7 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
                 {/* แถวบน: ชื่อรายการซ้าย / จำนวนเงินขวา */}
                 <div className="flex items-start justify-between">
                   <p className="text-xl font-semibold">{labelType}</p>
-                  <p className="text-xl font-bold">{(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}</p>
+                  <p className="text-xl font-semibold">{(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}</p>
                 </div>
 
                 {/* แถวล่าง: สถานะ (สี) | วันที่ (เทา) */}

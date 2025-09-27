@@ -33,7 +33,7 @@ const historyData: HistoryBlockProps[] = [
 ];
 
   return (
-    <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
+    <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
       <Header_wallet />
       <Profile_wallet username="เตา อั่งโล่" gender="female" coin={50} />
       <Topup />
@@ -44,9 +44,9 @@ const historyData: HistoryBlockProps[] = [
 
 function Header_wallet() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">กระเป๋าเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">กระเป๋าเงิน</p>
     </div>
   );
 }
@@ -57,12 +57,12 @@ function Profile_wallet({ username, gender, coin }: ProfileWalletProps) {
       <img src="/user.svg" alt="icon" className="h-[130px] w-[130px] rounded-full object-cover ml-3" />
       <div className="flex flex-col ml-4">
         <div className="flex items-center">
-          <p className="text-2xl font-medium">{username}</p>
+          <p className="text-xl font-medium">{username}</p>
           <img src={gender === "male" ? "/male.svg" : "/female.svg"} alt={gender} className="h-7 w-7 ml-2" />
         </div>
         <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
           <img src="/coin.svg" alt="icon" className="h-6 w-6 mr-2" />
-          <p className="text-2xl">{coin.toFixed(2)}</p>
+          <p className="text-xl">{coin.toFixed(2)}</p>
         </div>
       </div>
     </div>
@@ -74,12 +74,12 @@ function Topup() {
     <div className="flex gap-10">
         <Link href="/driver/wallet/topup">
             <div className="h-[51px] w-[155px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
-                <p className="text-center text-2xl font-medium">เติมเงิน</p>
+                <p className="text-center text-xl font-medium">เติมเงิน</p>
             </div>
         </Link>
         <Link href="/driver/wallet/withdraw">
             <div className="h-[51px] w-[155px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
-                <p className="text-center text-2xl font-medium">ถอนเงิน</p>
+                <p className="text-center text-xl font-medium">ถอนเงิน</p>
             </div>
         </Link>
     </div>
@@ -128,7 +128,7 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
                 {/* แถวบน: ชื่อรายการซ้าย / จำนวนเงินขวา */}
                 <div className="flex items-start justify-between">
                   <p className="text-xl font-semibold">{labelType}</p>
-                  <p className="text-xl font-bold">{(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}</p>
+                  <p className="text-xl font-semibold">{(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}</p>
                 </div>
 
                 {/* แถวล่าง: สถานะ (สี) | วันที่ (เทา) */}
@@ -213,7 +213,7 @@ export default Background;
 //       />
 //       <div className="flex flex-col flex-1">
 //         <div className="flex items-center flex-wrap gap-2">
-//           <p className="text-xl sm:text-2xl font-medium">{username}</p>
+//           <p className="text-xl sm:text-xl font-medium">{username}</p>
 //           <img
 //             src={gender === "male" ? "/male.svg" : "/female.svg"}
 //             alt={gender}
@@ -223,7 +223,7 @@ export default Background;
 
 //         <div className="mt-3 inline-flex items-center justify-center bg-[rgba(181,91,50,0.8)] rounded-2xl pl-4 pr-4 py-2 gap-2">
 //           <img src="/coin.svg" alt="coin" className="h-5 w-5 sm:h-6 sm:w-6" />
-//           <p className="text-lg sm:text-2xl">{coin.toFixed(2)}</p>
+//           <p className="text-lg sm:text-xl">{coin.toFixed(2)}</p>
 //         </div>
 //       </div>
 //     </div>
@@ -235,7 +235,7 @@ export default Background;
 //     <div className="w-full flex justify-center">
 //       <Link href="/customer/wallet/topup" className="w-full max-w-md sm:max-w-lg">
 //         <div className="w-full bg-white rounded-3xl shadow-md mt-5 flex justify-center items-center py-3 sm:py-4">
-//           <p className="text-center text-xl sm:text-2xl font-medium">เติมเงิน</p>
+//           <p className="text-center text-xl sm:text-xl font-medium">เติมเงิน</p>
 //         </div>
 //       </Link>
 //     </div>
@@ -245,7 +245,7 @@ export default Background;
 // function History({ history }: { history: HistoryBlockProps[] }) {
 //   return (
 //     <div className="w-full max-w-md sm:max-w-lg mt-8">
-//       <p className="text-xl sm:text-2xl font-bold text-shadow-md">ประวัติรายการ</p>
+//       <p className="text-xl sm:text-xl font-bold text-shadow-md">ประวัติรายการ</p>
 //       <Block_history history={history} />
 //     </div>
 //   );

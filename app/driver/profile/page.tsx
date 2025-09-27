@@ -51,9 +51,9 @@ const genderIconMap: Record<Gender, string> = {
 
 function Header_profile() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">โปรไฟล์</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">โปรไฟล์</p>
     </div>
   );
 }
@@ -67,22 +67,22 @@ function Block_profileuser({ username, role, gender = "male",email }: HeaderProp
           alt="user icon"
           className="h-[132px] w-[132px] rounded-full object-cover ml-2"
         />
-        <div className="flex flex-col ml-1 mr-2">
+        <div className="flex flex-col ml-1">
           <div className="flex items-center">
-            <p className="text-2xl mb-1">{username}</p>
+            <p className="text-xl mb-1">{username}</p>
             <img
               src={genderIconMap[gender] ?? "/male.svg"}
               alt={`${gender} icon`}
               className="h-7 w-7 ml-1"
             />
           </div>
-          <div className="flex items-center mb-1">
+          <div className="flex items-center mb-1 w-30 h-13">
             <RoleBar role={role} />
           </div>
-          <p className="text-lg">{email}</p>
+          <p className="text-base">{email}</p>
         </div>
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 mr-2" />
-      </div>
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-3" />
+      </div>   
     </div>
   );
 }
@@ -92,8 +92,8 @@ function Block_Driver_info() {
     <div>
       <Link href="/driver/driver_info">
       <div className="h-[82px] w-[366px] bg-white rounded-[20px] shadow-md mt-5 flex items-center px-4">
-        <p className="text-2xl">ข้อมูลคนขับ,ยานพาหนะ</p>
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+        <p className="text-xl">ข้อมูลคนขับ,ยานพาหนะ</p>
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
       </div>
       </Link>
     </div>
@@ -109,28 +109,28 @@ function Block_listitem_profile({ coin }: ListItemProps) {
     <div>
       <Link href="/driver/wallet">
         <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center px-4">
-          <p className="text-2xl">กระเป๋าเงิน</p>
+          <p className="text-xl">กระเป๋าเงิน</p>
           <div className="ml-10 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
             <img src="/coin.svg" alt="coin icon" className="h-6 w-6 mr-2" />
-            <p className="text-2xl">{coin.toFixed(2)}</p>
+            <p className="text-xl">{coin.toFixed(2)}</p>
           </div>
-          <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
         </div>
       </Link>
       <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
-        <p className="text-2xl">ทริปขาประจำ</p>
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+        <p className="text-xl">ทริปขาประจำ</p>
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
       </div>
       <Link href="/driver/history_page">
         <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
-          <p className="text-2xl">ประวัติการเดินทาง</p>
-          <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+          <p className="text-xl">ประวัติการเดินทาง</p>
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
         </div>
       </Link>
       <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center px-4">
-        <p className="text-2xl">แจ้งปัญหา</p>
-        <img src="/help.svg" alt="help" className="h-6 w-6 ml-2" />
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+        <p className="text-xl">แจ้งปัญหา</p>
+        <img src="/help.svg" alt="help" className="h-5 w-5 ml-2" />
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
       </div>
     </div>
   );
@@ -144,7 +144,7 @@ function Block_logout({ onClick }: { onClick?: () => void }) {
       onClick={onClick}
       className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-3 flex items-center justify-center px-6 cursor-pointer hover:shadow-lg transition"
     >
-      <p className="text-center text-red-600 text-2xl">ออกจากระบบ</p>
+      <p className="text-center text-red-600 text-xl">ออกจากระบบ</p>
     </div>
   );
 }

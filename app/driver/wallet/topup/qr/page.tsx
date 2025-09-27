@@ -14,7 +14,7 @@ type DetailProps = {
 
 function Background() {
   return (
-    <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
+    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
       <Header />
       <QRCode />
       <Detail amount={100} onExpire={() => alert("Expired")} />
@@ -26,9 +26,9 @@ function Background() {
 function Header() {
   return (
     
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">QR Code</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">QR Code</p>
     </div>
   );
 }

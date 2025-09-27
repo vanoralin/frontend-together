@@ -27,7 +27,7 @@ export default function ConfirmWithdrawPage() {
   const isValid = !isNaN(amountNum) && amountNum > 0;
   const amountDisplay = localStorage.getItem("withdrawAmount") || "0.00";
   return (
-    <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
+    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
       <HeaderWithdraw />
 
       <main className="w-full max-w-[640px] px-5 mt-6">
@@ -51,9 +51,9 @@ export default function ConfirmWithdrawPage() {
 /* -------------------- Header -------------------- */
 export function HeaderWithdraw() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">ถอนเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">ถอนเงิน</p>
     </div>
   );
 }

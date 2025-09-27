@@ -34,7 +34,7 @@ function Background() {
   const [amountInput, setAmountInput] = React.useState<string>("");
 
   return (
-    <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center pb-[120px]">
+    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center pb-[120px]">
       <Header_topup />
       <Detail amountInput={amountInput} setAmountInput={setAmountInput} />
       <Goto_payment amountInput={amountInput} />
@@ -44,9 +44,9 @@ function Background() {
 
 function Header_topup() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">เติมเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">เติมเงิน</p>
     </div>
   );
 }

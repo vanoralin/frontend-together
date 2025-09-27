@@ -64,7 +64,7 @@ function Background() {
   const canProceed = !exceedsBalance && !isZeroOrInvalid;
 
   return (
-    <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center pb-[120px]">
+    <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center pb-[120px]">
       <Header_withdraw />
 
       <div className="w-full max-w-[640px] px-5">
@@ -133,9 +133,9 @@ function Background() {
 
 function Header_withdraw() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">ถอนเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-8">ถอนเงิน</p>
     </div>
   );
 }

@@ -12,7 +12,7 @@ function Background() {
 }
 function Header() {
     return(
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
         <p></p>
     </div>
     );
