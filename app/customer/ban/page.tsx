@@ -67,12 +67,14 @@ export default function BanNotificationPage() {
 
       {/* Popup Modal */}
       {showPopup && (
-        <div className="absolute inset-0  flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-lg p-6 w-72 text-center">
-            <h2 className="text-lg text-[#B55C32] mb-3">ส่งแล้ว ✅</h2>
-            <p className="text-gray-700 mb-5">ระบบได้รับคำร้องของคุณแล้ว</p>
+            <h2 className="text-lg font-bold text-[#B55C32] mb-3">
+              ส่งแล้ว ✅
+            </h2>
+            <p className="text-gray-700 mb-5">ระบบได้รับข้อความของคุณแล้ว</p>
             <button
-              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black rounded-xl transition-colors"
+              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black font-semibold rounded-xl transition-colors"
               onClick={() => setShowPopup(false)}
             >
               ปิด

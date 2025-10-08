@@ -6,9 +6,15 @@ import { BackButton } from "@/app/components/share_component";
 export default function ReportProblemPage() {
   const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
+  const [error, setError] = useState(""); // state สำหรับเก็บ error
 
   const handleSubmit = () => {
+    if (message.trim() === "") {
+      setError("กรุณาเขียนข้อความก่อน"); // แจ้งเตือนถ้าไม่ได้พิมพ์
+      return;
+    }
     console.log("Report message:", message);
+    setError(""); // ล้าง error
     setShowPopup(true); // เปิด popup
   };
 
@@ -54,6 +60,9 @@ export default function ReportProblemPage() {
             onChange={(e) => setMessage(e.target.value)}
             className="w-full min-h-[300px] bg-white border-0 rounded-2xl shadow-sm text-gray-700 placeholder:text-gray-400 resize-none text-base p-4 focus:outline-none focus:ring-2 focus:ring-[#B55C32]"
           />
+          {error && (
+            <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+          )}
         </div>
       </div>
 
@@ -78,12 +87,12 @@ export default function ReportProblemPage() {
       {showPopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-lg p-6 w-72 text-center">
-            <h2 className="text-lg font-bold text-[#B55C32] mb-3">
+            <h2 className="text-lg font-semibold text-[#B55C32] mb-3">
               ส่งแล้ว ✅
             </h2>
             <p className="text-gray-700 mb-5">ระบบได้รับข้อความของคุณแล้ว</p>
             <button
-              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black font-semibold rounded-xl transition-colors"
+              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black rounded-3xl transition-colors"
               onClick={() => setShowPopup(false)}
             >
               ปิด
