@@ -3,9 +3,10 @@
 import RoleBar from "@/app/components/user_components";
 import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/navbar";
+
 type Gender = "male" | "female";
 
 interface HeaderProps {
@@ -15,33 +16,34 @@ interface HeaderProps {
   email: string;
 }
 
-function Background() {
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const router = useRouter();
+interface ListItemProps {
+  coin: number;
+}
 
-  const openLogout = useCallback(() => setIsLogoutOpen(true), []);
-  const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
+type ApiGender = "male" | "female" | "MALE" | "FEMALE" | string;
 
-  return (
-    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
-      <Header_profile />
-      <Block_profileuser username="เตา อั่งโล่" role={0} gender="female" email="6xxxxxxx@kmitl.ac.th" />
-      <Block_listitem_profile coin={100} />
-      <Block_logout onClick={openLogout} />
+interface ApiProfile {
+  username?: string;
+  name?: string; // sometimes APIs use name instead of username
+  email?: string;
+  role?: number;
+  gender?: ApiGender;
+  coin?: number;
+  wallet?: number; // safety: some APIs name it differently
+}
 
-      {isLogoutOpen && (
-        <Popup_logout
-          onCancel={closeLogout}
-          onConfirm={() => {
-            closeLogout();
-            // TODO: ใส่ logic logout จริง เช่น clear token, call API
-            router.replace("/customer/login");
-          }}
-        />
-      )}
-      <Navbar />
-    </div>
-  );
+const API_URL = "http://129.150.62.182:8888/User/profile";
+
+function normalizeGender(g?: ApiGender): Gender {
+  const val = String(g ?? "").toLowerCase();
+  return val === "female" ? "female" : "male";
+}
+
+function pickNumber(...values: Array<number | undefined | null>): number {
+  for (const v of values) {
+    if (typeof v === "number" && !Number.isNaN(v)) return v;
+  }
+  return 0;
 }
 
 const genderIconMap: Record<Gender, string> = {
@@ -49,49 +51,186 @@ const genderIconMap: Record<Gender, string> = {
   female: "/female.svg",
 };
 
+function Background() {
+  const router = useRouter();
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [username, setUsername] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [role, setRole] = useState<number>(0);
+  const [gender, setGender] = useState<Gender>("male");
+  const [coin, setCoin] = useState<number>(0);
+
+  const openLogout = useCallback(() => setIsLogoutOpen(true), []);
+  const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
+
+  // Fetch profile on mount
+  useEffect(() => {
+    const abort = new AbortController();
+
+    async function loadProfile() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Get token from localStorage (adjust key name if yours is different)
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(API_URL, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          cache: "no-store",
+          signal: abort.signal,
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          // Not authenticated -> send to login
+          router.replace("/customer/login");
+          return;
+        }
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Request failed with ${res.status}`);
+        }
+
+        const data: ApiProfile = await res.json();
+
+        // Map fields safely
+        const name = data.username ?? data.name ?? "";
+        const g = normalizeGender(data.gender);
+        const c = pickNumber(data.coin, data.wallet);
+
+        setUsername(name);
+        setEmail(data.email ?? "");
+        setRole(typeof data.role === "number" ? data.role : 0);
+        setGender(g);
+        setCoin(c);
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        setError(err?.message ?? "เกิดข้อผิดพลาดในการดึงข้อมูลโปรไฟล์");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+    return () => abort.abort();
+  }, [router]);
+
+  const canShowProfile = useMemo(
+    () => !loading && !error && username && email,
+    [loading, error, username, email]
+  );
+
+  return (
+    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
+      <Header_profile />
+
+      {/* Loading state */}
+      {loading && (
+        <div className="h-[198px] w-[366px] bg-white/70 rounded-[30px] shadow-md mt-7 animate-pulse" />
+      )}
+
+      {/* Error state */}
+      {!loading && error && (
+        <div className="h-auto w-[366px] bg-white rounded-[20px] shadow-md mt-7 p-4 text-center text-red-600">
+          <p className="text-lg font-medium">ไม่สามารถโหลดโปรไฟล์ได้</p>
+          <p className="text-sm mt-1">{error}</p>
+          <button
+            onClick={() => location.reload()}
+            className="mt-3 px-4 py-2 rounded-full bg-[#E6A88A] border-2 border-[#B55C32] font-medium shadow-md hover:brightness-95 transition text-base"
+          >
+            ลองใหม่
+          </button>
+        </div>
+      )}
+
+      {/* Profile block when data ready (fallback to minimal content if some fields missing) */}
+      {canShowProfile && (
+        <Block_profileuser
+          username={username}
+          role={role}
+          gender={gender}
+          email={email}
+        />
+      )}
+
+      {/* Wallet / list items */}
+      <Block_listitem_profile coin={coin} />
+
+      {/* Logout */}
+      <Block_logout onClick={openLogout} />
+
+      {isLogoutOpen && (
+        <Popup_logout
+          onCancel={closeLogout}
+          onConfirm={() => {
+            closeLogout();
+            // Clear auth + go to login
+            try {
+              localStorage.removeItem("token"); // adjust if you store other keys
+              sessionStorage.clear();
+            } catch {}
+            // Optionally call a logout API here if you have one
+            router.replace("/customer/login");
+          }}
+        />
+      )}
+
+      <Navbar />
+    </div>
+  );
+}
+
 function Header_profile() {
   return (
-    <div className="flex flex-col items-center ">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] text-center font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
+      <p className="text-[32px] text-center font-bold text-shadow-lg mt-10">
+        โปรไฟล์
+      </p>
     </div>
   );
 }
 
-function Block_profileuser({ username, role, gender = "male",email }: HeaderProps) {
+function Block_profileuser({ username, role, gender = "male", email }: HeaderProps) {
   return (
-    <div><Link href="/customer/edit_profile">
-    <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
-      <div className="flex items-center">
-        <img
-          src="/user.svg"
-          alt="user icon"
-          className="h-[132px] w-[132px] rounded-full object-cover ml-2"
-        />
-        <div className="flex flex-col ml-1">
+    <div>
+      <Link href="/customer/edit_profile">
+        <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
           <div className="flex items-center">
-            <p className="text-xl mb-1">{username}</p>
             <img
-              src={genderIconMap[gender] ?? "/male.svg"}
-              alt={`${gender} icon`}
-              className="h-7 w-7 ml-1"
+              src="/user.svg"
+              alt="user icon"
+              className="h-[132px] w-[132px] rounded-full object-cover ml-2"
             />
+            <div className="flex flex-col ml-1">
+              <div className="flex items-center">
+                <p className="text-xl mb-1 break-all">{username}</p>
+                <img
+                  src={genderIconMap[gender] ?? "/male.svg"}
+                  alt={`${gender} icon`}
+                  className="h-7 w-7 ml-1"
+                />
+              </div>
+              <div className="flex items-center mb-1 w-45 h-13">
+                <RoleBar role={role} />
+              </div>
+              <p className="text-base break-all">{email}</p>
+            </div>
+            <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-1" />
           </div>
-          <div className="flex items-center mb-1 w-45 h-13">
-            <RoleBar role={role} />
-          </div>
-          <p className="text-base">{email}</p>
         </div>
-        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-1" />
-      </div>   
-    </div>
-    </Link>
+      </Link>
     </div>
   );
-}
-
-interface ListItemProps {
-  coin: number;
 }
 
 function Block_listitem_profile({ coin }: ListItemProps) {
@@ -108,10 +247,10 @@ function Block_listitem_profile({ coin }: ListItemProps) {
         </div>
       </Link>
       <Link href="/customer">
-      <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
-        <p className="text-xl">ทริปขาประจำ</p>
-        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
-      </div>
+        <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
+          <p className="text-xl">ทริปขาประจำ</p>
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-auto" />
+        </div>
       </Link>
       <Link href="/customer/history_page">
         <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
@@ -157,18 +296,13 @@ function Popup_logout({
   }, [onCancel]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onCancel}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative h-[164px] w-[366px] bg-white rounded-[30px] shadow-md p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-lg text-center mt-2">
-          แน่ใจไหมว่าต้องการออกจากระบบ?
-        </p>
+        <p className="text-lg text-center mt-2">แน่ใจไหมว่าต้องการออกจากระบบ?</p>
         <div className="flex justify-center space-x-6 mt-5">
           <button
             onClick={onCancel}
