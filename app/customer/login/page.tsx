@@ -39,7 +39,7 @@ export default function LoginPage() {
       }
 
       const res = await axios.post<LoginResponse>(
-        "http://129.150.62.182:8888/User/login",
+        "/api/User/login",
         { email, password },
         {
           withCredentials: true,
