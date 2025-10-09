@@ -50,7 +50,6 @@ export default function LoginPage() {
       );
 
       console.log("Login success:", res.data);
-      localStorage.setItem("token", res.data.token);
 
       window.location.href = "/dashboard";
     } catch (err: any) {
