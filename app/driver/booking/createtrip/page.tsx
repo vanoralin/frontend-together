@@ -1,40 +1,38 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
+import React from "react";
+import { useRouter } from "next/navigation";
+import { BackButton } from "@/app/components/share_component";
 
-export default function BookingPage() {
-  const router = useRouter()
+export default function Background() {
+  const router = useRouter();
 
   return (
-    <div className="w-[390px] h-[844px] bg-[#ffffff] px-6 py-6 mx-auto overflow-hidden ">
-      {/* Back Button */}
-      <div className="mb-8">
-        <button
-          className="w-12 h-12 bg-[#191919] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95"
-          onClick={() => router.back()}
-        >
-          <img src="/arrow.png" alt="Back" className="w-6 h-6 filter invert" />
-        </button>
+    <div className="bg-[#ffffff] min-h-screen w-full flex flex-col items-center pb-[140px] relative">
+      
+      {/* Back Button ด้านบนซ้าย */}
+      <div className="w-full flex items-center justify-start px-6 mt-6">
+        <BackButton />
       </div>
 
-      {/* Main Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#191919] mb-2">จองทริป</h1>
+      {/* Title อยู่กลาง */}
+      <div className="flex flex-col mt-20 items-start w-80">
+        <h1 className="text-4xl font-semibold text-[#191919] mb-2">สร้างทริป</h1>
         <p className="text-base text-[#191919] leading-relaxed">
           เพื่อออกเดินทางไปยังที่ที่คุณต้องการได้ง่าย ๆ
         </p>
       </div>
 
-      {/* Booking Options */}
-      <div className="space-y-5 mb-6">
+      {/* Booking Options (เลื่อนลงมาอีก) */}
+      <div className="w-full px-6 mt-8 space-y-5">
         {/* First Option */}
         <button
-          className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
-          onClick={() => router.push("/booking/map")}
+          className="w-full bg-[#C5D4E8] rounded-2xl p-6 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
+          onClick={() => router.push("/driver/booking/normal/create")}
         >
           <div className="text-left">
             <h2 className="text-lg font-semibold text-[#191919] mb-1">
-              จองทริปแบบปกติ
+              สร้างทริปแบบปกติ
             </h2>
             <p className="text-sm text-[#191919]">เดินทางเพียงครั้งเดียว</p>
           </div>
@@ -55,12 +53,12 @@ export default function BookingPage() {
 
         {/* Second Option */}
         <button
-          className="w-full bg-[#c5deda] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
-          onClick={() => router.push("/booking/createTrip")}
+          className="w-full bg-[#C5D4E8] rounded-2xl p-6 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
+          onClick={() => router.push("/driver/booking/regular/create")}
         >
           <div className="text-left">
             <h2 className="text-lg font-semibold text-[#191919] mb-1">
-              จองทริปแบบประจำ
+              สร้างทริปแบบขาประจำ
             </h2>
             <p className="text-sm text-[#191919] leading-relaxed">
               เลือกวันและเวลาที่ต้องการเดินทางเป็นประจำ
@@ -83,7 +81,7 @@ export default function BookingPage() {
       </div>
 
       {/* Bottom Illustration */}
-      <div className="flex justify-center items-end h-[320px] -mt-2">
+      <div className="flex justify-center items-end h-[320px] mt-8">
         <img
           src="/homeBK.png"
           alt="Booking illustration"
@@ -91,5 +89,5 @@ export default function BookingPage() {
         />
       </div>
     </div>
-  )
+  );
 }

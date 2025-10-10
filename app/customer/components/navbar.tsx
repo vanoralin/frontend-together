@@ -90,7 +90,7 @@ export default function Navbar() {
             {/* ปุ่ม + ตรงกลาง */}
             <button
                 className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-theme-orange text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg z-50"
-                onClick={() => router.push("/")}
+                onClick={() => router.push("/customer/booking/createtrip")}
             >
                 <img src="/icon_plus.svg" alt="เพิ่ม" className="w-10 h-10" />
             </button>
