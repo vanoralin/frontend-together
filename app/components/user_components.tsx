@@ -1,37 +1,43 @@
 'use client';
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface HeaderProps {
-    role: number;
+interface RoleBarProps {
+    userRole?: string;      // role จริงของ user ('user' หรือ 'driver')
+    pageRole?: string;      // role ของหน้า ณ ตอนนี้ ('user' หรือ 'driver')
 }
 
-export default function RoleBar({ role: initialRole }: HeaderProps) {
-    const [role, setRole] = useState(initialRole);
+export default function RoleBar({ userRole = "user", pageRole = "user" }: RoleBarProps) {
+    const [currentRole, setCurrentRole] = useState<string>(pageRole);
     const router = useRouter();
 
     const toggleRole = () => {
-        const newRole = role === 0 ? 1 : 0; // 0 = passenger, 1 = driver
-        setRole(newRole);
-
-        // redirect ตาม role
-        if (newRole === 0) {
-            router.push("/customer"); // ผู้โดยสาร
+        if (currentRole === "user") {
+            // ถ้า userRole เป็น driver → switch ไปหน้า driver
+            if (userRole === "driver") {
+                setCurrentRole("driver");
+                router.push("/driver/home");
+            } else {
+                // user ปกติ → ยังไม่มี driver account → ไปลงทะเบียน
+                router.push("/driver/register");
+            }
         } else {
-            router.push("/driver"); // คนขับ
+            // ถ้า currentRole เป็น driver → สลับกลับ user
+            setCurrentRole("user");
+            router.push("/customer/home");
         }
     };
 
     return (
         <div className="flex gap-2 items-center">
             <div className="border-2 p-1 px-4 rounded-3xl border-theme-orange bg-white flex items-center">
-                {role === 0 && (
+                {currentRole === "user" ? (
                     <h3 className="flex items-center">
                         <img src="/role_customer.svg" alt="Passenger" className="w-6 h-6 mr-2" />
                         ผู้โดยสาร
                     </h3>
-                )}
-                {role === 1 && (
+                ) : (
                     <h3 className="flex items-center">
                         <img src="/role_driver.svg" alt="Driver" className="w-6 h-6 mr-2" />
                         คนขับ
@@ -40,7 +46,7 @@ export default function RoleBar({ role: initialRole }: HeaderProps) {
             </div>
 
             <button onClick={toggleRole}>
-                <img src="/role_swap.svg" alt="swap role" className="w-8" />
+                <img src="/role_swap.svg" alt="swap role" className="w-8 hover:cursor-pointer" />
             </button>
         </div>
     );

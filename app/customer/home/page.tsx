@@ -1,18 +1,29 @@
 "use client";
 
-import Header from "../components/welcome";
-import Navbar from "./components/navbar";
-import { NumberInCar } from "../components/trip_components";
+import Header from "../../components/welcome";
+import Navbar from "../components/navbar";
+import { NumberInCar } from "../../components/trip_components";
 import Link from "next/link";
+import axios from "axios";
 
 // TripHome.tsx
-import { PinName } from "../components/trip_components";
+import { PinName } from "../../components/trip_components";
+import { useEffect, useState } from "react";
+
+interface UserProfile {
+    id: number;
+    name: string;
+    email: string;
+    balance: number;
+    role: string;
+}
 
 interface TripHome {
     name: string;
 }
 
 export function TripHome() {
+
     return (
         <div className="text-start border-2 p-4 rounded-3xl border-theme-orange flex flex-col gap-4">
             <div className="">
@@ -54,7 +65,7 @@ export function TripTodayCard() {
             </div> */}
 
 
-                
+
             </div>
         </>
     );
@@ -73,52 +84,65 @@ export function PostBanner() {
 }
 
 interface TripListCardProps {
-  title: string;
-  image: string;
-  bgColor: string;
+    title: string;
+    image: string;
+    bgColor: string;
+    href?: string;
 }
 
-export function TripListCard({ title, image, bgColor }: TripListCardProps) {
-  return (
-    <div
-      className={`flex-1 rounded-xl shadow-md p-4 bg-gradient-to-b ${bgColor} flex flex-col items-center justify-center`}
-    >
-      <img src={image} alt={title} className="w-16 h-16 mb-2" />
-      <p className="text-sm font-medium text-theme-black">{title}</p>
-    </div>
-  );
+export function TripListCard({ title, image, bgColor, href }: TripListCardProps) {
+    const cardContent = (
+        <div
+            className={`flex-1 rounded-xl shadow-md p-4 bg-gradient-to-b ${bgColor} flex flex-col items-center justify-center`}
+        >
+            <img src={image} alt={title} className="w-16 h-16 mb-2" />
+            <p className="text-sm font-medium text-theme-black">{title}</p>
+        </div>
+    );
+
+    return href ? <Link href={href}>{cardContent}</Link> : cardContent;
 }
 
 
 export default function Home() {
+    const [user, setUser] = useState<UserProfile | null>(null);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const res = await axios.get<UserProfile>("/api/User/profile");
+                setUser(res.data);
+            } catch (err) {
+                console.error("Error fetching user profile:", err);
+            }
+        };
+        fetchProfile();
+    }, []);
     return (
 
         <div className="bg-theme-customer h-full overflow-hidden">
-            <Header username="โมโมโกะ" role={0} />
+            <Header username={user?.name || "ไม่ได้เข้าสู่ระบบ"} userRole={user?.role} pageRole={'user'} />
             <div className="flex flex-col  mx-4 gap-4 mt-4">
 
                 <PostBanner />
 
-                <Link href="./customer/tripmap">
+                <Link href="./tripmap">
                     <TripTodayCard />
                 </Link>
 
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-2xl font-medium">รายการทริป</h1>
-                    <div className="">
-                        <div className="flex gap-4">
-                            <TripListCard
-                                title="ทริปปกติ"
-                                image="/home_car.png"
-                                bgColor="from-white to-[#F0B599]"
-                            />
-                            <TripListCard
-                                title="ทริปประจำ"
-                                image="/home_package.png"
-                                bgColor="from-white to-[#FFCADB]"
-                            />
-                        </div>
-                    </div>
+                <div className="flex gap-4">
+                    <TripListCard
+                        title="ทริปปกติ"
+                        image="/home_car.png"
+                        bgColor="from-white to-[#F0B599]"
+                        href="./home/trip_list" // 🔹 route ไปหน้า /trip_list
+                    />
+                    <TripListCard
+                        title="ทริปประจำ"
+                        image="/home_package.png"
+                        bgColor="from-white to-[#FFCADB]"
+                        href="./home/trip_list" // 🔹 route ไปหน้า /trip_list
+                    />
                 </div>
             </div>
             <Navbar />
