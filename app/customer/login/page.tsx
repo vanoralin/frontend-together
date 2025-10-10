@@ -39,7 +39,7 @@ export default function LoginPage() {
       }
 
       const res = await axios.post<LoginResponse>(
-        "http://129.150.62.182:8888/User/login",
+        "/api/User/login",
         { email, password },
         {
           withCredentials: true,
@@ -50,7 +50,6 @@ export default function LoginPage() {
       );
 
       console.log("Login success:", res.data);
-      localStorage.setItem("token", res.data.token);
 
       window.location.href = "/dashboard";
     } catch (err: any) {
