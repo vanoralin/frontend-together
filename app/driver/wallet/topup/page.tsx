@@ -1,190 +1,157 @@
-// ยังไม่เสร็จ
 "use client";
-import { BackButton } from "@/app/components/share_component";
+
 import React from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import axios from "axios";
+import { BackButton } from "@/app/components/share_component";
 
-/** Helper: ทำความสะอาดอินพุตให้รองรับทศนิยม
- * - แทน , เป็น .
- * - เก็บไว้เฉพาะตัวเลขและจุด
- * - อนุญาตให้มีจุดได้แค่ 1 จุด
- * - ถ้าขึ้นต้นด้วย . ให้เติม 0 นำหน้า (".5" -> "0.5")
- * - (ตัวเลือก) หากอยากบังคับทศนิยมไม่เกิน 2 หลัก ให้ปลดคอมเมนต์ส่วนท้าย
- */
-function sanitizeDecimal(input: string) {
-  let s = input.replace(/,/g, ".");      // รองรับผู้ใช้ที่พิมพ์คอมมา
-  s = s.replace(/[^\d.]/g, "");          // เก็บเฉพาะตัวเลขกับจุด
+/* ============== Types ============== */
+type WithdrawResponse = {
+  message?: string;
+  transaction_id?: number | string;
+  // เติมฟิลด์อื่นได้ตามที่ API ส่งกลับ
+};
 
-  const parts = s.split(".");
-  if (parts.length > 2) {
-    // รวมจุดให้เหลือแค่จุดแรก
-    s = parts[0] + "." + parts.slice(1).join("");
-  }
-
-  if (s.startsWith(".")) s = "0" + s;    // ".5" -> "0.5"
-
-  // // จำกัดทศนิยมไม่เกิน 2 หลัก (ถ้าต้องการ ให้ปลดคอมเมนต์)
-  // const [intPart, decPart = ""] = s.split(".");
-  // if (decPart.length > 2) s = intPart + "." + decPart.slice(0, 2);
-
-  return s;
+/* ============== Helpers ============== */
+function maskAccount(acc?: string) {
+  if (!acc) return "******1234";
+  if (acc.length <= 4) return "******" + acc;
+  return "******" + acc.slice(-4);
 }
 
-function Background() {
-  const [amountInput, setAmountInput] = React.useState<string>("");
+/* ============== API Caller (เหมือน postTopup) ============== */
+async function postWithdraw(amount: number) {
+  const res = await axios.post<WithdrawResponse>(
+    "/api/withdraw",
+    { amount: Math.round(amount) },
+    {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+  return res.data;
+}
+
+/* ============== Page ============== */
+export default function ConfirmWithdrawPage() {
+  const router = useRouter();
+  const search = useSearchParams();
+
+  const account = search.get("account") ?? "0123456789";
+  const nextHref = "/driver/wallet";
+
+  // อ่านจำนวนเงินจาก localStorage เพื่อแสดงบน UI
+  const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
+
+  React.useEffect(() => {
+    const s = localStorage.getItem("withdrawAmount") || "0";
+    const n = Number(s);
+    setAmountDisplay(isNaN(n) ? "0.00" : n.toFixed(2));
+  }, []);
 
   return (
-    <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center pb-[120px]">
-      <Header_topup />
-      <Detail amountInput={amountInput} setAmountInput={setAmountInput} />
-      <Goto_payment amountInput={amountInput} />
+    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
+      <HeaderWithdraw />
+
+      <main className="w-full max-w-[640px] px-5 mt-6">
+        <section className="space-y-6">
+          <DisplayAmount amount={amountDisplay} />
+
+          <div className="flex items-center justify-between">
+            <p className="text-base">เข้าบัญชีหมายเลข</p>
+            <p className="text-base font-medium tracking-wider">
+              {maskAccount(account)}
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <GotoPayment nextHref={nextHref} />
     </div>
   );
 }
 
-function Header_topup() {
+/* ============== Header ============== */
+export function HeaderWithdraw() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">เติมเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">ถอนเงิน</p>
     </div>
   );
 }
 
-function Detail({
-  amountInput,
-  setAmountInput,
-}: {
-  amountInput: string;
-  setAmountInput: React.Dispatch<React.SetStateAction<string>>;
-}) {
-  const currentBalance = 20;
-
-  const [selected, setSelected] = React.useState<number | null>(null);
-  const amounts: number[] = [20, 50, 100, 200];
-
-  // ถ้าเป็นค่าว่าง หรือเป็น "." ให้ตีเป็น 0 ชั่วคราวเพื่อคำนวณ
-  const parsedAmount = amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
-  const safeAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
-  const afterTopup = currentBalance + safeAmount;
-
-  const handleClickAmount = (amount: number) => {
-    if (selected === amount) {
-      // toggle: ถ้ากดซ้ำให้กลับเป็นค่าเริ่มต้น
-      setSelected(null);
-      setAmountInput("");
-    } else {
-      setSelected(amount);
-      setAmountInput(String(amount));
-    }
-  };
-
-  const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cleaned = sanitizeDecimal(e.target.value);
-    setAmountInput(cleaned);
-
-    // เลือกปุ่มอัตโนมัติเมื่อค่าตรงกับตัวเลือกแบบจำนวนเต็มเท่านั้น
-    if (cleaned && !cleaned.includes(".")) {
-      const n = Number(cleaned);
-      setSelected(amounts.includes(n) ? n : null);
-    } else {
-      setSelected(null);
-    }
-  };
-
+/* ============== DisplayAmount ============== */
+export function DisplayAmount({ amount }: { amount: string }) {
   return (
-    <div className="w-full max-w-[640px] px-5">
-      {/* ยอดเงิน */}
-      <div className="grid grid-cols-2 gap-6 mt-5">
-        <div className="flex flex-col">
-          <p className="text-xl text-left">ยอดเงินปัจจุบัน</p>
-          <p className="text-xl font-semibold text-left">฿{currentBalance.toFixed(2)}</p>
-        </div>
-        <div className="flex flex-col">
-          <p className="text-xl text-left">ยอดเงินหลังเติม</p>
-          <p className="text-xl font-semibold text-left">฿{afterTopup.toFixed(2)}</p>
-        </div>
-      </div>
-
-      {/* ช่องกรอกจำนวนเงิน */}
-      <div className="flex flex-col mt-8">
-        <p className="text-xl text-left">จำนวนเงินที่ต้องการเติม</p>
-        <input
-          type="text"
-          inputMode="decimal"
-          // หมายเหตุ: pattern ใช้ตอน validate ตอน submit ไม่ได้บล็อกตอนพิมพ์
-          pattern="^[0-9]+([.][0-9]*)?$"
-          value={amountInput}
-          onChange={handleChangeInput}
-          className="w-full rounded-[30px] bg-white mt-2 pl-5 py-2 border border-gray-300
-                     focus:outline-none focus:ring-0"
-          placeholder="กรอกจำนวนเงิน"
-        />
-      </div>
-
-      {/* ปุ่มเลือกจำนวน */}
-      <div className="grid grid-cols-2 gap-4 mt-8">
-        {amounts.map((amount) => {
-          const isSelected = selected === amount;
-          return (
-            <button
-              key={amount}
-              type="button"
-              aria-pressed={isSelected}
-              onClick={() => handleClickAmount(amount)}
-              className={`w-full h-[51px] rounded-[30px] border transition
-                ${isSelected ? "bg-[#E6A88A] border-[#B55C32] text-black"
-                             : "bg-white border-transparent text-black"}
-                hover:opacity-95 active:scale-[0.98] focus:outline-none focus:ring-0 cursor-pointer shadow-md`}
-            >
-              <span className="text-xl">฿{amount}</span>
-            </button>
-          );
-        })}
+    <div className="flex flex-col gap-2">
+      <label className="text-base">ถอนเงิน</label>
+      <div className="relative w-full rounded-[20px] bg-white px-4 py-3 text-[#E6A88A] text-xl font-semibold shadow-sm border border-transparent">
+        ฿{amount}
       </div>
     </div>
   );
 }
 
-function Goto_payment({
-  amountInput,
-}: {
-  amountInput: string;
-}) {
-  // อนุญาตเฉพาะจำนวนเงิน > 0 เท่านั้น
-  const parsed = amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
-  const canProceed = !isNaN(parsed) && parsed > 0;
+/* ============== GotoPayment ============== */
+export function GotoPayment({ nextHref }: { nextHref: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = React.useState(false);
+
+  const handleConfirm = async () => {
+    if (loading) return;
+
+    const amountStr = localStorage.getItem("withdrawAmount") || "0";
+    const amount = Number(amountStr);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert("จำนวนเงินไม่ถูกต้อง");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // ยิง API /api/withdraw (แนบคุกกี้)
+      await postWithdraw(amount);
+
+      // เคลียร์ค่าเมื่อทำรายการสำเร็จ
+      localStorage.removeItem("withdrawAmount");
+
+      // ไปหน้ากระเป๋าเงิน
+      router.replace(nextHref);
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data ||
+        e?.message ||
+        "เกิดข้อผิดพลาดในการถอนเงิน";
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="absolute w-full bottom-0">
       <div className="h-[120px] w-full bg-white rounded-t-2xl shadow-md flex flex-col items-center justify-center">
-        {/* กันที่ข้อความเตือนคงที่ ไม่ให้ปุ่มขยับ */}
-        <div className="h-5 mb-2" aria-live="polite">
-          {!canProceed && (
-            <p className="text-center text-sm text-gray-600 leading-5">
-              กรุณากรอกจำนวนเงินให้ถูกต้องเพื่อดำเนินการต่อ
-            </p>
-          )}
-        </div>
-
-        <Link
-          href={canProceed ? "/driver/wallet/topup/qr" : "#"}
-          aria-disabled={!canProceed}
-          className={canProceed ? "" : "pointer-events-none"}
+        <button
+          onClick={handleConfirm}
+          disabled={loading}
+          className={`relative h-[56px] w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center mt-7 ${
+            loading ? "opacity-60 pointer-events-none" : "opacity-100"
+          }`}
+          aria-label="ยืนยันถอนเงิน"
+          type="button"
         >
-          <div
-            className={`relative h-[60px] w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center
-                       ${canProceed ? "opacity-100" : "opacity-60"}`}
-            role="button"
-            aria-label="ยืนยันเติมเงิน"
-          >
-            <p className="text-center text-2xl font-medium">เติมเงิน</p>
-          </div>
-        </Link>
+          <p className="text-center text-2xl font-medium">
+            {loading ? "กำลังดำเนินการ..." : "ยืนยัน"}
+          </p>
+        </button>
+
+        {/* ถ้าต้องการลิงก์กลับหน้า wallet เพิ่มเติม */}
+        {/* <Link href={nextHref} className="mt-3 text-sm underline">กลับไปหน้ากระเป๋าเงิน</Link> */}
       </div>
     </div>
   );
 }
-
-export default Background;
-export { Header_topup, Detail, Goto_payment };

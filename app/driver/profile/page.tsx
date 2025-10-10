@@ -10,10 +10,11 @@ import Navbar from "../components/navbar";
 type Gender = "male" | "female";
 
 interface HeaderProps {
-  username: string;
+  name: string;
   role: number;
   gender?: Gender;
   email?: string;
+  profile_picture?: string;
 }
 
 function Background() {
@@ -26,7 +27,7 @@ function Background() {
   return (
     <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center overflow-y-scroll">
       <Header_profile />
-      <Block_profileuser username="โรส แมรี่" role={1} gender="female"  email="66010001@kmtil.ac.th"/>
+      <Block_profileuser name="โรส แมรี่" role={1} gender="female"  email="66010001@kmtil.ac.th"/>
       <Block_Driver_info />
       <Block_listitem_profile coin={900} />
       <Block_logout onClick={openLogout} />
@@ -61,31 +62,31 @@ function Header_profile() {
   );
 }
 
-function Block_profileuser({ username, role, gender = "male",email }: HeaderProps) {
+function Block_profileuser({ profile_picture,name, role, gender = "male", email }: HeaderProps) {
   return (
     <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
       <div className="flex items-center">
         <img
-          src="/user.svg"
+          src={profile_picture && profile_picture.trim() !== "" ? profile_picture : "/user.svg"}
           alt="user icon"
-          className="h-[132px] w-[132px] rounded-full object-cover ml-2"
+          className="h-[125px] w-[125px] rounded-full object-cover"
         />
-        <div className="flex flex-col ml-1">
+        <div className="flex flex-col ml-1 mr-1">
           <div className="flex items-center">
-            <p className="text-xl mb-1">{username}</p>
-            <img
-              src={genderIconMap[gender] ?? "/male.svg"}
-              alt={`${gender} icon`}
-              className="h-7 w-7 ml-1"
-            />
+        <p className="text-2xl mb-1">{name}</p>
+        <img
+          src={genderIconMap[gender] ?? "/male.svg"}
+          alt={`${gender} icon`}
+          className="h-7 w-7 ml-1"
+        />
           </div>
-          <div className="flex items-center mb-1 w-40 h-13">
-            <RoleBar role={role} />
+          <div className="flex items-center mb-1">
+        <RoleBar role={role} />
           </div>
-          <p className="text-base">{email}</p>
+          <p className="text-lg">{email}</p>
         </div>
-        <img src="/vector_next.svg" alt="next" className="h-5 w-5 ml-3" />
-      </div>   
+        <img src="/vector_next.svg" alt="next" className="h-6 w-6 mr-2" />
+      </div>
     </div>
   );
 }

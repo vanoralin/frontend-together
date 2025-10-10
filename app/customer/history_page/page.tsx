@@ -5,31 +5,50 @@ import { BackButton } from "@/app/components/share_component";
 import Navbar from "../components/navbar";
 
 /** -------- Types & Demo Data -------- */
+interface Status {
+  type: "completed" | "cancelled" | "cancelled_with_penalty";
+}
+
 interface HistoryItem {
   from: string;
   to: string;
   fare: number;
   pax: number;
   date: string; // e.g., "12/12/2023"
+  status: Status; // ✅ เพิ่มสถานะเข้าไปใน item
 }
 
+/** label ภาษาไทย + style ของ badge ตามสถานะ */
+const STATUS_LABELS: Record<Status["type"], string> = {
+  completed: "สำเร็จ",
+  cancelled: "ยกเลิก",
+  cancelled_with_penalty: "ยกเลิก (ปรับ)",
+};
+
+const STATUS_STYLES: Record<Status["type"], string> = {
+  completed: "text-emerald-700",
+  cancelled: "text-rose-600",
+  cancelled_with_penalty: "text-rose-600",
+};
+
 const historyItems: HistoryItem[] = [
-  { from: "ฝั่งตรงข้ามเกกี4", to: "หน้าตึก ECC", fare: 100, pax: 3, date: "12/12/2023" },
-  { from: "สนามกีฬา", to: "หอพัก A", fare: 75, pax: 1, date: "05/01/2024" },
-  { from: "คณะ IT", to: "คณะวิศวะ", fare: 55, pax: 2, date: "13/01/2024" },
-  { from: "อาคารเรียนรวม", to: "ประตูหน้า", fare: 40, pax: 1, date: "20/02/2024" },
-  { from: "คณะวิทย์", to: "ตึก ECC", fare: 90, pax: 4, date: "03/03/2024" },
-  { from: "ฝั่งตรงข้ามเกกี4", to: "หน้าตึก ECC", fare: 100, pax: 3, date: "12/12/2023" },
-  { from: "สนามกีฬา", to: "หอพัก A", fare: 75, pax: 1, date: "05/01/2024" },
-  { from: "คณะ IT", to: "คณะวิศวะ", fare: 55, pax: 2, date: "13/01/2024" },
-  { from: "อาคารเรียนรวม", to: "ประตูหน้า", fare: 40, pax: 1, date: "20/02/2024" },
-  { from: "คณะวิทย์", to: "ตึก ECC", fare: 90, pax: 4, date: "03/03/2024" },
+  { from: "ฝั่งตรงข้ามเกกี4", to: "หน้าตึก ECC", fare: 100, pax: 3, date: "12/12/2023", status: { type: "completed" } },
+  { from: "สนามกีฬา", to: "หอพัก A", fare: 75, pax: 1, date: "05/01/2024", status: { type: "cancelled" } },
+  { from: "คณะ IT", to: "คณะวิศวะ", fare: 55, pax: 2, date: "13/01/2024", status: { type: "completed" } },
+  { from: "อาคารเรียนรวม", to: "ประตูหน้า", fare: 40, pax: 1, date: "20/02/2024", status: { type: "cancelled_with_penalty" } },
+  { from: "คณะวิทย์", to: "ตึก ECC", fare: 90, pax: 4, date: "03/03/2024", status: { type: "completed" } },
+  { from: "ฝั่งตรงข้ามเกกี4", to: "หน้าตึก ECC", fare: 100, pax: 3, date: "12/12/2023", status: { type: "completed" } },
+  { from: "สนามกีฬา", to: "หอพัก A", fare: 75, pax: 1, date: "05/01/2024", status: { type: "cancelled_with_penalty" } },
+  { from: "คณะ IT", to: "คณะวิศวะ", fare: 55, pax: 2, date: "13/01/2024", status: { type: "completed" } },
+  { from: "อาคารเรียนรวม", to: "ประตูหน้า", fare: 40, pax: 1, date: "20/02/2024", status: { type: "cancelled" } },
+  { from: "คณะวิทย์", to: "ตึก ECC", fare: 90, pax: 4, date: "03/03/2024", status: { type: "completed" } },
 ];
 
 /* ---------------- Utils ---------------- */
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
-/** จุดหยุดของแผง (สัดส่วนจากความสูงจอ) */
-const SNAP_POINTS = [0.33, 0.66] as const; // เพิ่ม 1 ถ้าต้องการเต็มจอ: [0.33, 0.66, 1]
+
+// ปรับสัดส่วนให้เตี้ยลง
+const SNAP_POINTS = [0.3, 0.55] as const; // เคยเป็น [0.33, 0.66]
 
 /* ---------------- Page ---------------- */
 function Background() {
@@ -67,6 +86,7 @@ function Background() {
     <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_history onClose={open ? closePopup : undefined} />
       <div className="mt-5"></div>
+
       {/* การ์ดประวัติ (คลิกแล้วเปิด popup พร้อมส่ง item) */}
       {historyItems.map((item, idx) => (
         <Block_history key={idx} item={item} onClick={() => openPopup(item)} />
@@ -83,9 +103,7 @@ function Background() {
   );
 }
 
-/** Header สูงคงที่ 64px (h-16) และอยู่เหนือ overlay
- *  ถ้ามี onClose → คลิกหัวข้อเพื่อปิด popup ได้
- */
+/** Header สูงคงที่ 64px (h-16) และอยู่เหนือ overlay */
 function Header_history({ onClose }: { onClose?: () => void }) {
   const clickable = Boolean(onClose);
   return (
@@ -107,7 +125,7 @@ function Header_history({ onClose }: { onClose?: () => void }) {
   );
 }
 
-/** การ์ดพื้นฐาน: ใช้ได้ทั้งใน list และใน popup (ถ้า onClick มี → ทำเป็นปุ่ม) */
+/** การ์ดพื้นฐาน */
 function HistoryCard({
   item,
   onClick,
@@ -116,6 +134,9 @@ function HistoryCard({
   onClick?: () => void;
 }) {
   const Wrapper: any = onClick ? "button" : "div";
+  const statusClass = STATUS_STYLES[item.status.type];
+  const statusLabel = STATUS_LABELS[item.status.type];
+
   return (
     <Wrapper
       type={onClick ? "button" : undefined}
@@ -123,7 +144,7 @@ function HistoryCard({
       className={`${onClick ? "block text-left focus:outline-none cursor-pointer" : ""}`}
       aria-label={onClick ? "ดูรายละเอียดการเดินทาง" : undefined}
     >
-      <div className="h-[141px] w-[366px] bg-white rounded-[30px] shadow-md  mt-5 p-3">
+      <div className="h-[141px] w-[366px] bg-white rounded-[30px] shadow-md  mt-5 p-3 relative">
         <div className="flex mt-1 mb-1">
           <div className="flex flex-col items-center">
             <img src="/icon_pin.svg" alt="start" className="h-[25px] w-[25px] mt-1" />
@@ -161,6 +182,17 @@ function HistoryCard({
           <img src="/calendar.svg" className="h-5 w-5 ml-1" alt="calendar" />
           <p className="ml-2 text-sm text-gray-500">{item.date}</p>
         </div>
+
+        {/* Badge/Label สถานะ มุมขวาล่าง */}
+        <div className="absolute bottom-2 right-5">
+          <span
+            className={`text-base ${statusClass}`}
+            aria-label={`สถานะ: ${statusLabel}`}
+            title={statusLabel}
+          >
+            {statusLabel}
+          </span>
+        </div>
       </div>
     </Wrapper>
   );
@@ -177,7 +209,7 @@ function Block_history({
   return <HistoryCard item={item} onClick={onClick} />;
 }
 
-/* ---------------- Bottom Sheet Overlay (อัปเดต) ---------------- */
+/* ---------------- Bottom Sheet Overlay (ลดความสูง + behavior เดิม) ---------------- */
 function PopupOverlay({
   onClose,
   children,
@@ -185,7 +217,7 @@ function PopupOverlay({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const [snapIndex, setSnapIndex] = useState(0); // 0 = 1/3, 1 = 2/3
+  const [snapIndex, setSnapIndex] = useState(0); // 0 = เตี้ย, 1 = กลาง
   const [heightRatio, setHeightRatio] = useState<number>(SNAP_POINTS[0]);
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
@@ -213,7 +245,7 @@ function PopupOverlay({
     const vh = window.innerHeight || 1;
     const deltaY = startYRef.current - clientY; // ขึ้น = บวก
     const deltaRatio = deltaY / vh;
-    const next = clamp(startRatioRef.current + deltaRatio, 0.2, 0.98);
+    const next = clamp(startRatioRef.current + deltaRatio, 0.25, 0.9); // ยก min ขึ้นเล็กน้อยกันค้าง
     setHeightRatio(next);
   };
   const onDragEnd = () => {
@@ -257,7 +289,7 @@ function PopupOverlay({
       role="dialog"
       aria-modal="true"
     >
-      {/* Backdrop */}
+      {/* Backdrop (กลับไปสีอ่อนแบบเดิม) */}
       <button
         aria-label="ปิดหน้าต่าง"
         onClick={onClose}
@@ -271,7 +303,7 @@ function PopupOverlay({
                    shadow-xl border-t border-[#D9D9D9]
                    transition-[height] duration-200 ease-out overflow-hidden bottom-0"
         style={{
-          height: `min(calc(${heightRatio * 100}vh), 700px)`,
+          height: `min(calc(${heightRatio * 100}vh), 560px)`, // เคยเป็น 700px → 560px
         }}
       >
         {/* Drag handle */}
@@ -294,9 +326,7 @@ function PopupOverlay({
           className="absolute top-3 right-3"
           aria-label="ปิดหน้าต่าง"
           title="ปิด"
-        >
-          {/* <img src="/x.svg" alt="Close" className="h-[28px] w-[28px]" /> */}
-        </button>
+        />
 
         {/* เนื้อหาเลื่อนภายใน */}
         <div className="h-[calc(100%-44px)] overflow-y-auto px-3 pb-6">
@@ -307,7 +337,7 @@ function PopupOverlay({
   );
 }
 
-/** เนื้อหา popup — ปรับให้กว้างเต็มแผง และระยะหายใจเหมาะกับ bottom sheet */
+/** เนื้อหา popup — แบบเดิม แต่รูปรถแสดงด้านในเสมอ (ไม่ sticky) */
 function Popup_detail({
   item,
   onClose,
@@ -315,6 +345,8 @@ function Popup_detail({
   item: HistoryItem;
   onClose?: () => void;
 }) {
+  const showDetail = item.status.type === "completed"; // แสดงรายละเอียดเฉพาะงานสำเร็จ
+
   return (
     <div className="w-full bg-transparent flex flex-col items-center relative">
       {/* การ์ดเดียวกับที่คลิก */}
@@ -322,23 +354,32 @@ function Popup_detail({
         <HistoryCard item={item} />
       </div>
 
-      {/* เส้นคั่น + หัวข้อ */}
-      <div className="flex items-center mt-4 px-4 w-full max-w-[390px]">
-        <div className="flex-grow border-t-2 border-[#8B8B8B]"></div>
-        <p className="mx-3 text-base whitespace-nowrap">รายละเอียดการเดินทาง</p>
-        <div className="flex-grow border-t-2 border-[#8B8B8B]"></div>
-      </div>
-
+      {/* โปรไฟล์คนขับ: แสดงเสมอ */}
       <div className="flex justify-center w-full">
         <Profile_driver />
       </div>
-      <div className="flex justify-center w-full">
-        <Detail />
-      </div>
+
+      {/* รายละเอียด: เฉพาะ completed */}
+      {showDetail && (
+        <>
+          {/* เส้นคั่น + หัวข้อ */}
+          <div className="flex items-center mt-4 px-4 w-full max-w-[390px]">
+            <div className="flex-grow border-t-2 border-[#8B8B8B]"></div>
+            <p className="mx-3 text-base whitespace-nowrap">รายละเอียดการเดินทาง</p>
+            <div className="flex-grow border-t-2 border-[#8B8B8B]"></div>
+          </div>
+
+          <div className="flex justify-center w-full">
+            <Detail />
+          </div>
+        </>
+      )}
+
+      {/* รูปรถ: อยู่ล่างสุดของเนื้อหาเสมอ */}
       <div className="flex justify-center w-full">
         <img
           src="/car_popup_detail.svg"
-          alt="Map"
+          alt="รถ"
           className="mt-3 w-[155px]"
         />
       </div>
@@ -402,7 +443,6 @@ function Detail() {
           </div>
           <div className="w-1/2 pr-6">
             <p className="text-gray-500">คะแนนรีวิว</p>
-            {/* เดิม: <p className="text-yellow-500 text-lg -mt-1">★★★★☆</p> */}
             <div>
               <StarRatingDisplay value={4} size={18} />
             </div>
@@ -422,7 +462,6 @@ function Detail() {
     </div>
   );
 }
-
 
 function StarRatingDisplay({
   value,
@@ -464,4 +503,4 @@ function StarRatingDisplay({
 }
 
 export default Background;
-export { Popup_detail, Block_history, Header_history, StarRatingDisplay  };
+export { Popup_detail, Block_history, Header_history, StarRatingDisplay };

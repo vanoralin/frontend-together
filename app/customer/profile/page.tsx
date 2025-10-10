@@ -14,6 +14,7 @@ interface HeaderProps {
   role: number;
   gender?: Gender;
   email: string;
+  profile_picture?: string;
 }
 
 interface ProfileData {
@@ -22,13 +23,15 @@ interface ProfileData {
   gender?: Gender;
   email: string;
   balance: number;
+  profile_picture?: string;
 }
+
 
 function Background() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const router = useRouter();
-
+  const [busy, setBusy] = useState(false);
   const openLogout = useCallback(() => setIsLogoutOpen(true), []);
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
@@ -49,14 +52,34 @@ function Background() {
       }
     };
     fetchData();
-  }, [router]);
+  }, [router]); 
 
+  const handleLogoutConfirm = useCallback(async () => {
+    console.log("[Background] Confirm logout clicked");
+    setBusy(true);
+    try {
+      const out = await postLogout();
+      // alert(out?.message || "ออกจากระบบสำเร็จ");
+    } catch (err: any) {
+      console.warn("[Background] logout error:", err?.message);
+      alert("เกิดข้อผิดพลาดในการออกจากระบบ");
+    } finally {
+      // localStorage.removeItem("topupAmount");
+      // localStorage.removeItem("topupMessage");
+      // localStorage.removeItem("topupQrBase64");
+      // localStorage.removeItem("topupTxId");
+
+      setBusy(false);
+      closeLogout();
+      router.replace("/customer/login");
+    }
+  }, [router, closeLogout]);
   return (
     <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_profile />
       {profile ? (
         <>
-          <Block_profileuser name={profile.name} role={profile.role} gender={profile.gender} email={profile.email} />
+          <Block_profileuser profile_picture={profile.profile_picture} name={profile.name} role={profile.role} gender={profile.gender} email={profile.email} />
           <Block_listitem_profile coin={profile.balance} />
         </>
       ) : (
@@ -65,26 +88,15 @@ function Background() {
         </div>
       )}
       
+      
       <Block_logout onClick={openLogout} />
 
+      {/* Popup ยืนยัน */}
       {isLogoutOpen && (
         <Popup_logout
           onCancel={closeLogout}
-          onConfirm={async () => {
-            closeLogout();
-            // TODO: ใส่ logic logout จริง เช่น clear token, call API
-            try{
-              await axios.post("/api/User/logout", {}, {
-                withCredentials: true,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              });
-            }catch(err){
-              console.error(err);
-            }
-            router.replace("/customer/login");
-          }}
+          onConfirm={handleLogoutConfirm}
+          busy={busy}
         />
       )}
     </div>
@@ -98,33 +110,33 @@ const genderIconMap: Record<Gender, string> = {
 
 function Header_profile() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center ">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">โปรไฟล์</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );
 }
 
-function Block_profileuser({ name, role, gender = "male", email }: HeaderProps) {
+function Block_profileuser({ profile_picture,name, role, gender = "male", email }: HeaderProps) {
   return (
     <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
       <div className="flex items-center">
         <img
-          src="/user.svg"
+          src={profile_picture && profile_picture.trim() !== "" ? profile_picture : "/user.svg"}
           alt="user icon"
-          className="h-[132px] w-[132px] rounded-full object-cover ml-2"
+          className="h-[125px] w-[125px] rounded-full object-cover"
         />
-        <div className="flex flex-col ml-1 mr-2">
+        <div className="flex flex-col ml-1 mr-1">
           <div className="flex items-center">
-            <p className="text-2xl mb-1">{name}</p>
-            <img
-              src={genderIconMap[gender] ?? "/male.svg"}
-              alt={`${gender} icon`}
-              className="h-7 w-7 ml-1"
-            />
+        <p className="text-2xl mb-1">{name}</p>
+        <img
+          src={genderIconMap[gender] ?? "/male.svg"}
+          alt={`${gender} icon`}
+          className="h-7 w-7 ml-1"
+        />
           </div>
           <div className="flex items-center mb-1">
-            <RoleBar role={role} />
+        <RoleBar role={role} />
           </div>
           <p className="text-lg">{email}</p>
         </div>
@@ -169,6 +181,31 @@ function Block_listitem_profile({ coin }: ListItemProps) {
     </div>
   );
 }
+async function postLogout() {
+  console.log("[postLogout] start");
+  const res = await fetch("/api/User/logout", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+  });
+
+  const raw = await res.text();
+  console.log("[postLogout] status:", res.status, "raw:", raw);
+
+  let data: any = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    data = { message: raw };
+  }
+
+  // if (!res.ok) throw new Error(data?.message || "Logout failed");
+  // console.log("[postLogout] success:", data?.message);
+  return data;
+}
 
 function Block_logout({ onClick }: { onClick?: () => void }) {
   return (
@@ -176,24 +213,27 @@ function Block_logout({ onClick }: { onClick?: () => void }) {
       role="button"
       tabIndex={0}
       onClick={onClick}
-      className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-3 flex items-center justify-center px-6 cursor-pointer hover:shadow-lg transition"
+      className="h-[60px] w-[366px] bg-white rounded-full shadow-md mt-5 mb-3 
+                 flex items-center justify-center px-6 cursor-pointer 
+                 hover:shadow-lg transition"
     >
       <p className="text-center text-red-600 text-2xl">ออกจากระบบ</p>
     </div>
   );
 }
 
+/* ======================= Popup logout ======================= */
 function Popup_logout({
   onCancel,
   onConfirm,
+  busy,
 }: {
   onCancel: () => void;
   onConfirm: () => void;
+  busy: boolean;
 }) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
@@ -214,15 +254,20 @@ function Popup_logout({
         <div className="flex justify-center space-x-6 mt-5">
           <button
             onClick={onCancel}
-            className="px-6 py-2 rounded-full bg-[#FFFFFF] border-2 border-[#8B8B8B] font-medium shadow-md hover:bg-gray-100 transition text-xl"
+            disabled={busy}
+            className="px-6 py-2 rounded-full bg-white border-2 border-[#8B8B8B] 
+                       font-medium shadow-md hover:bg-gray-100 transition text-xl"
           >
             ยกเลิก
           </button>
           <button
             onClick={onConfirm}
-            className="px-8 py-2 rounded-full bg-[#E6A88A] border-2 border-[#B55C32] font-medium shadow-md hover:brightness-95 transition text-xl"
+            disabled={busy}
+            className={`px-8 py-2 rounded-full bg-[#E6A88A] border-2 border-[#B55C32] 
+                        font-medium shadow-md hover:brightness-95 transition text-xl 
+                        ${busy ? "opacity-60" : ""}`}
           >
-            ตกลง
+            {busy ? "กำลังออกจากระบบ..." : "ตกลง"}
           </button>
         </div>
       </div>
