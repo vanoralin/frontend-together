@@ -30,3 +30,10 @@
 ::-webkit-scrollbar {
   display: none;
 }
+
+.rdp-caption_label,
+.rdp-dropdown {
+  font-weight: 300 !important; 
+}
+
+

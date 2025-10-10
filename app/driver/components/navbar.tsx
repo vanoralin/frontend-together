@@ -50,7 +50,7 @@ export default function Navbar() {
     return (
         <>
             {/* Navbar */}
-            <nav className="bg-white shadow-md fixed w-[390px] bottom-0 flex justify-between items-center px-6 h-16 z-40">
+            <nav className="bg-white shadow-md fixed w-[390px] bottom-0 flex left-1/2 -translate-x-1/2 justify-between items-center px-6 h-16 z-40">
                 {/* Left items */}
                 <div className="flex space-x-8">
                     {navItemsLeft.map((item, index) => (
@@ -91,7 +91,7 @@ export default function Navbar() {
             {/* ปุ่ม + ตรงกลาง */}
             <button
                 className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-theme-orange text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg z-50"
-                onClick={() => router.push("/create")}
+                onClick={() => router.push("/driver/booking/createtrip")}
             >
                 <img src="/icon_plus.svg" alt="เพิ่ม" className="w-10 h-10" />
             </button>
