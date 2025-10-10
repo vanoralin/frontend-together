@@ -5,36 +5,84 @@ import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import axios, { head } from "axios";
 
 type Gender = "male" | "female";
 
 interface HeaderProps {
-  username: string;
+  name: string;
   role: number;
   gender?: Gender;
   email: string;
 }
 
+interface ProfileData {
+  name: string;
+  role: number;
+  gender?: Gender;
+  email: string;
+  balance: number;
+}
+
 function Background() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const router = useRouter();
 
   const openLogout = useCallback(() => setIsLogoutOpen(true), []);
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axios.get<ProfileData>("/api/User/profile", {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        console.log("Profile data:", res.data);
+        setProfile(res.data);
+      } catch (err) {
+        console.error(err);
+        router.replace("/customer/login");
+      }
+    };
+    fetchData();
+  }, [router]);
+
   return (
     <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_profile />
-      <Block_profileuser username="เตา อั่งโล่" role={0} gender="female" email="6xxxxxxx@kmitl.ac.th" />
-      <Block_listitem_profile coin={100} />
+      {profile ? (
+        <>
+          <Block_profileuser name={profile.name} role={profile.role} gender={profile.gender} email={profile.email} />
+          <Block_listitem_profile coin={profile.balance} />
+        </>
+      ) : (
+        <div className="h-[198px] w-[366px] rounded-[30px] mt-7 flex items-center justify-center">
+          <p>กำลังโหลด...</p>
+        </div>
+      )}
+      
       <Block_logout onClick={openLogout} />
 
       {isLogoutOpen && (
         <Popup_logout
           onCancel={closeLogout}
-          onConfirm={() => {
+          onConfirm={async () => {
             closeLogout();
             // TODO: ใส่ logic logout จริง เช่น clear token, call API
+            try{
+              await axios.post("/api/User/logout", {}, {
+                withCredentials: true,
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              });
+            }catch(err){
+              console.error(err);
+            }
             router.replace("/customer/login");
           }}
         />
@@ -57,7 +105,7 @@ function Header_profile() {
   );
 }
 
-function Block_profileuser({ username, role, gender = "male", email }: HeaderProps) {
+function Block_profileuser({ name, role, gender = "male", email }: HeaderProps) {
   return (
     <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
       <div className="flex items-center">
@@ -68,7 +116,7 @@ function Block_profileuser({ username, role, gender = "male", email }: HeaderPro
         />
         <div className="flex flex-col ml-1 mr-2">
           <div className="flex items-center">
-            <p className="text-2xl mb-1">{username}</p>
+            <p className="text-2xl mb-1">{name}</p>
             <img
               src={genderIconMap[gender] ?? "/male.svg"}
               alt={`${gender} icon`}
