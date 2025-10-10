@@ -1,33 +1,56 @@
 "use client";
+
 import React from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import axios from "axios";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { BackButton } from "@/app/components/share_component";
 
-// Helper ฟังก์ชัน
-function formatAmount(n: number) {
-  if (!isFinite(n)) return "0.00";
-  return n.toFixed(2);
-}
+/* ============== Types ============== */
+type WithdrawResponse = {
+  message?: string;
+  transaction_id?: number | string;
+  // เพิ่มฟิลด์อื่นๆได้ตามที่ API ส่งกลับ
+};
+
+/* ============== Helpers ============== */
 function maskAccount(acc?: string) {
   if (!acc) return "******1234";
   if (acc.length <= 4) return "******" + acc;
   return "******" + acc.slice(-4);
 }
 
-/* -------------------- Component หลัก -------------------- */
+/* ============== API Caller ============== */
+async function postWithdraw(amount: number) {
+  const res = await axios.post<WithdrawResponse>(
+    "/api/withdraw",
+    { amount: Math.round(amount) },
+    {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+  return res.data;
+}
+
+/* ============== Components ============== */
 export default function ConfirmWithdrawPage() {
+  const router = useRouter();
   const search = useSearchParams();
 
-  const rawAmount = search.get("amount");
   const account = search.get("account") ?? "0123456789";
-  const nextHref = "/driver/wallet"; // ไปหน้าต่อไป
+  const nextHref = "/driver/wallet";
 
-  const amountNum = rawAmount ? Number(rawAmount) : NaN;
-  const isValid = !isNaN(amountNum) && amountNum > 0;
-  const amountDisplay = localStorage.getItem("withdrawAmount") || "0.00";
+  const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
+
+  React.useEffect(() => {
+    const s = localStorage.getItem("withdrawAmount") || "0";
+    const n = Number(s);
+    setAmountDisplay(isNaN(n) ? "0.00" : n.toFixed(2));
+  }, []);
+
   return (
-    <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
+    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
       <HeaderWithdraw />
 
       <main className="w-full max-w-[640px] px-5 mt-6">
@@ -48,17 +71,15 @@ export default function ConfirmWithdrawPage() {
   );
 }
 
-/* -------------------- Header -------------------- */
 export function HeaderWithdraw() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">ถอนเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">ยืนยันการถอน</p>
     </div>
   );
 }
 
-/* -------------------- DisplayAmount -------------------- */
 export function DisplayAmount({ amount }: { amount: string }) {
   return (
     <div className="flex flex-col gap-2">
@@ -70,25 +91,63 @@ export function DisplayAmount({ amount }: { amount: string }) {
   );
 }
 
-/* -------------------- GotoPayment -------------------- */
 export function GotoPayment({ nextHref }: { nextHref: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = React.useState(false);
+
+  const handleConfirm = async () => {
+    if (loading) return;
+
+    const amountStr = localStorage.getItem("withdrawAmount") || "0";
+    const amount = Number(amountStr);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert("จำนวนเงินไม่ถูกต้อง");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // ยิง API ถอน
+      await postWithdraw(amount);
+
+      // เคลียร์ค่าเมื่อสำเร็จ
+      localStorage.removeItem("withdrawAmount");
+
+      // กลับไปหน้ากระเป๋า
+      router.replace(nextHref);
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data ||
+        e?.message ||
+        "เกิดข้อผิดพลาดในการถอนเงิน";
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="absolute w-full bottom-0">
       <div className="h-[120px] w-full bg-white rounded-t-2xl shadow-md flex flex-col items-center justify-center">
-        <Link href={nextHref}>
-          <div
-            className="relative h-[56px] w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center opacity-100  mt-7"
-            role="button"
-            aria-label="ยืนยันถอนเงิน"
-            onClick={() => {
-              localStorage.setItem("withdrawAmount", "0");
-            }}
-          >
-            <p className="text-center text-2xl font-medium">ยืนยัน</p>
-          </div>
-        </Link>
+        <button
+          onClick={handleConfirm}
+          disabled={loading}
+          className={`relative h-[56px] w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center mt-7 ${
+            loading ? "opacity-60 pointer-events-none" : "opacity-100"
+          }`}
+          aria-label="ยืนยันถอนเงิน"
+          type="button"
+        >
+          <p className="text-center text-2xl font-medium">
+            {loading ? "กำลังดำเนินการ..." : "ยืนยัน"}
+          </p>
+        </button>
+
+        {/* เผื่ออยากให้กลับหน้า wallet แบบลิงก์ */}
+        {/* <Link href={nextHref} className="mt-3 text-sm underline">กลับไปหน้ากระเป๋าเงิน</Link> */}
       </div>
     </div>
   );
 }
-
