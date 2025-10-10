@@ -32,10 +32,13 @@ export function PinName({ location }: PinProps) {
 interface LocationSearchInputProps {
     value: string;
     onChange: (val: string) => void;
-    placeholder: string;
+    placeholder?: string;
     iconSrc?: string;
-    onSearch?: () => void; // ✅ action เวลา search
+    onSearch?: () => void;
+    onFocus?: React.FocusEventHandler<HTMLInputElement>;
+    onBlur?: React.FocusEventHandler<HTMLInputElement>;
 }
+
 
 export function LocationSearchInput({
     value,
@@ -43,24 +46,28 @@ export function LocationSearchInput({
     placeholder,
     iconSrc = "/icon_search.svg",
     onSearch,
+    onFocus,
+    onBlur,
 }: LocationSearchInputProps) {
     return (
-        <div className="w-90 relative item-center">
+        <div className="w-90 relative items-center">
             <input
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full h-10 text-base bg-white text-black rounded-[1.35rem] pl-10 pr-10 placeholder-theme-gray"
                 placeholder={placeholder}
+                className="w-full h-10 text-base bg-white text-black rounded-[1.35rem] pl-10 pr-10 placeholder-theme-gray"
                 onKeyDown={(e) => {
                     if (e.key === "Enter" && onSearch) {
                         onSearch();
                     }
                 }}
+                onFocus={onFocus}
+                onBlur={onBlur}
             />
 
             {/* ไอคอนค้นหา */}
-            {!value && (
+            {!value && onSearch && (
                 <button
                     type="button"
                     onClick={onSearch}
@@ -99,6 +106,7 @@ export function LocationSearchInput({
         </div>
     );
 }
+
 
 
 interface LocationInputProps {

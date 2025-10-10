@@ -1,11 +1,11 @@
 'use client';
-import Link from "next/link";
-import Header from "../components/welcome";
-import Navbar from "./components/navbar";
-import { div } from "framer-motion/client";
-import { PinName, LocationShowBox } from "../components/trip_components";
 
-import { useState } from "react";
+import Link from "next/link";
+import Header from "../../components/welcome";
+import Navbar from "../components/navbar";
+import { PinName, LocationShowBox } from "../../components/trip_components";
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 interface Stop {
     id: number;
@@ -37,18 +37,11 @@ export function TripCard({ start, end, stops }: TripCardProps) {
 
             {/* เส้นทางหลัก */}
             <div className="relative mt-4 ml-3">
-
-                {/* จุดเริ่ม */}
                 <LocationShowBox value={start} />
-
-                {/* จุดแวะ */}
                 {showDetails &&
                     stops.map((stop) => (
                         <div key={stop.id} className="relative mb-4">
-
                             <LocationShowBox value={stop.name} />
-
-                            {/* แสดงจำนวนคน */}
                             {stop.pickups && (
                                 <div className="absolute top-2 right-2 flex items-center gap-1 text-theme-black text-xs">
                                     <img src="/icon_cus_in.svg" alt="" />
@@ -62,17 +55,11 @@ export function TripCard({ start, end, stops }: TripCardProps) {
                                 </div>
                             )}
                         </div>
-                    ))
-                }
-
-                {/* จุดสิ้นสุด */}
+                    ))}
                 <LocationShowBox value={end} />
             </div>
 
-            {/* ปุ่ม */}
             <Link href="./driver/tripmap">
-
-
                 <button className="mt-6 w-full bg-theme-orange text-white py-2 rounded-lg shadow-md">
                     เริ่มต้นการเดินทาง
                 </button>
@@ -81,10 +68,36 @@ export function TripCard({ start, end, stops }: TripCardProps) {
     );
 }
 
+interface UserProfile {
+    id: number;
+    name: string;
+    email: string;
+    balance: number;
+    role: string; // 'user' หรือ 'driver'
+}
+
 export default function HomePage() {
+    const [user, setUser] = useState<UserProfile | null>(null);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const res = await axios.get<UserProfile>("/api/User/profile");
+                setUser(res.data);
+            } catch (err) {
+                console.error("Error fetching user profile:", err);
+            }
+        };
+        fetchProfile();
+    }, []);
+
     return (
         <div className="bg-theme-driver h-full">
-            <Header username="โมโมโกะ" role={1} />
+            <Header 
+                username={user?.name || "ไม่ได้เข้าสู่ระบบ"} 
+                userRole={user?.role} 
+                pageRole="driver" 
+            />
             <div className="flex flex-col mx-4 gap-4 mt-4 overflow-scroll">
                 <h1 className="text-2xl font-medium">รายการทริป</h1>
                 <TripCard
@@ -100,7 +113,5 @@ export default function HomePage() {
             </div>
             <Navbar />
         </div>
-
-
     );
 }
