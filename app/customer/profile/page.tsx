@@ -5,13 +5,14 @@ import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import axios, { head } from "axios";
-
+import axios from "axios";
+import Navbar from "../components/navbar";
 type Gender = "male" | "female";
 
 interface HeaderProps {
   name: string;
-  role: number;
+  userRole?: string;         // optional
+  pageRole: string;          // ต้องส่งเข้ามา (เพิ่มใน Block_profileuser)
   gender?: Gender;
   email: string;
   profile_picture?: string;
@@ -19,19 +20,19 @@ interface HeaderProps {
 
 interface ProfileData {
   name: string;
-  role: number;
+  userRole?: string;         // optional
   gender?: Gender;
   email: string;
   balance: number;
   profile_picture?: string;
 }
 
-
 function Background() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
+
   const openLogout = useCallback(() => setIsLogoutOpen(true), []);
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
@@ -40,65 +41,63 @@ function Background() {
       try {
         const res = await axios.get<ProfileData>("/api/User/profile", {
           withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         });
-        console.log("Profile data:", res.data);
         setProfile(res.data);
       } catch (err) {
-        console.error(err);
+        console.error("[/api/User/profile] error:", err);
         router.replace("/customer/login");
       }
     };
     fetchData();
-  }, [router]); 
+  }, [router]);
 
   const handleLogoutConfirm = useCallback(async () => {
-    console.log("[Background] Confirm logout clicked");
     setBusy(true);
     try {
-      const out = await postLogout();
-      // alert(out?.message || "ออกจากระบบสำเร็จ");
+      await postLogout();
     } catch (err: any) {
       console.warn("[Background] logout error:", err?.message);
       alert("เกิดข้อผิดพลาดในการออกจากระบบ");
     } finally {
-      // localStorage.removeItem("topupAmount");
-      // localStorage.removeItem("topupMessage");
-      // localStorage.removeItem("topupQrBase64");
-      // localStorage.removeItem("topupTxId");
-
       setBusy(false);
       closeLogout();
       router.replace("/customer/login");
     }
   }, [router, closeLogout]);
+
   return (
     <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_profile />
+
       {profile ? (
         <>
-          <Block_profileuser profile_picture={profile.profile_picture} name={profile.name} role={profile.role} gender={profile.gender} email={profile.email} />
-          <Block_listitem_profile coin={profile.balance} />
+          <Block_profileuser
+            profile_picture={profile.profile_picture}
+            name={profile.name || "ผู้ใช้"}
+            userRole={profile.userRole || "user"}
+            gender={profile.gender || "male"}
+            email={profile.email || "-"}
+            pageRole="customer"        // <— ตั้งค่าให้ชัด (ปรับตามระบบจริงของคุณได้)
+          />
+          <Block_listitem_profile coin={Number(profile.balance) || 0} />
         </>
       ) : (
-        <div className="h-[198px] w-[366px] rounded-[30px] mt-7 flex items-center justify-center">
+        <div
+          className="h-[198px] w-[366px] rounded-[30px] mt-7 flex items-center justify-center"
+          aria-live="polite"
+        >
           <p>กำลังโหลด...</p>
         </div>
       )}
-      
-      
+
       <Block_logout onClick={openLogout} />
 
       {/* Popup ยืนยัน */}
       {isLogoutOpen && (
-        <Popup_logout
-          onCancel={closeLogout}
-          onConfirm={handleLogoutConfirm}
-          busy={busy}
-        />
+        <Popup_logout onCancel={closeLogout} onConfirm={handleLogoutConfirm} busy={busy} />
       )}
+      <Navbar />
     </div>
   );
 }
@@ -117,29 +116,42 @@ function Header_profile() {
   );
 }
 
-function Block_profileuser({ profile_picture,name, role, gender = "male", email }: HeaderProps) {
+function Block_profileuser({
+  profile_picture,
+  name,
+  userRole = "user",
+  pageRole,
+  gender = "male",
+  email,
+}: HeaderProps) {
+  const avatarSrc =
+    profile_picture && profile_picture.trim() !== "" ? profile_picture : "/user.svg";
+  const genderIcon = genderIconMap[gender] ?? "/male.svg";
+
   return (
     <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
       <div className="flex items-center">
         <img
-          src={profile_picture && profile_picture.trim() !== "" ? profile_picture : "/user.svg"}
-          alt="user icon"
-          className="h-[125px] w-[125px] rounded-full object-cover"
+          src={avatarSrc}
+          alt="user avatar"
+          className="h-[120px] w-[120px] rounded-full object-cover"
         />
+
         <div className="flex flex-col ml-1 mr-1">
           <div className="flex items-center">
-        <p className="text-2xl mb-1">{name}</p>
-        <img
-          src={genderIconMap[gender] ?? "/male.svg"}
-          alt={`${gender} icon`}
-          className="h-7 w-7 ml-1"
-        />
+            <p className="text-2xl mb-1 truncate max-w-[170px]" title={name}>
+              {name}
+            </p>
+            <img src={genderIcon} alt={`${gender} icon`} className="h-7 w-7 ml-1" />
           </div>
+
           <div className="flex items-center mb-1">
-        <RoleBar role={role} />
+            <RoleBar userRole={userRole} pageRole={pageRole} />
           </div>
-          <p className="text-lg">{email}</p>
+
+          <p className="text-lg break-all">{email}</p>
         </div>
+
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 mr-2" />
       </div>
     </div>
@@ -163,16 +175,19 @@ function Block_listitem_profile({ coin }: ListItemProps) {
           <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
         </div>
       </Link>
+
       <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
         <p className="text-2xl">ทริปขาประจำ</p>
         <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
       </div>
+
       <Link href="/customer/history_page">
         <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
           <p className="text-2xl">ประวัติการเดินทาง</p>
           <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
         </div>
       </Link>
+
       <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center px-4">
         <p className="text-2xl">แจ้งปัญหา</p>
         <img src="/help.svg" alt="help" className="h-6 w-6 ml-2" />
@@ -181,8 +196,9 @@ function Block_listitem_profile({ coin }: ListItemProps) {
     </div>
   );
 }
+
+/* ======================= API: Logout ======================= */
 async function postLogout() {
-  console.log("[postLogout] start");
   const res = await fetch("/api/User/logout", {
     method: "POST",
     credentials: "include",
@@ -193,8 +209,6 @@ async function postLogout() {
   });
 
   const raw = await res.text();
-  console.log("[postLogout] status:", res.status, "raw:", raw);
-
   let data: any = {};
   try {
     data = JSON.parse(raw);
@@ -202,8 +216,8 @@ async function postLogout() {
     data = { message: raw };
   }
 
+  // หากต้องการเข้มงวด:
   // if (!res.ok) throw new Error(data?.message || "Logout failed");
-  // console.log("[postLogout] success:", data?.message);
   return data;
 }
 
@@ -248,9 +262,7 @@ function Popup_logout({
         className="relative h-[164px] w-[366px] bg-white rounded-[30px] shadow-md p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-lg text-center mt-2">
-          แน่ใจไหมว่าต้องการออกจากระบบ?
-        </p>
+        <p className="text-lg text-center mt-2">แน่ใจไหมว่าต้องการออกจากระบบ?</p>
         <div className="flex justify-center space-x-6 mt-5">
           <button
             onClick={onCancel}
@@ -276,4 +288,10 @@ function Popup_logout({
 }
 
 export default Background;
-export { Header_profile, Block_listitem_profile, Block_logout, Block_profileuser, Popup_logout };
+export {
+  Header_profile,
+  Block_listitem_profile,
+  Block_logout,
+  Block_profileuser,
+  Popup_logout,
+};

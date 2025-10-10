@@ -1,121 +1,181 @@
+// ทำงานเหมือนโค้ดตัวอย่างด้านล่างครบ
 "use client";
+
 import React from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import axios from "axios";
+import { useRouter } from "next/navigation";
 import { BackButton } from "@/app/components/share_component";
 
-/* ---------- Helpers ---------- */
-function maskAccount(acc?: string) {
-  if (!acc) return "******1234";
-  if (acc.length <= 4) return "******" + acc;
-  return "******" + acc.slice(-4);
+const API_CONFIRM = "/api/topup/confirm"; // API ยืนยัน
+
+/* ================= Types ================= */
+type DetailProps = {
+  amount: number;
+  currencyLabel?: string;
+  initialSeconds?: number;
+  onExpire?: () => void;
+  expired?: boolean;
+};
+
+type ConfirmResp = unknown; // หากมี schema เฉพาะ สามารถระบุได้
+
+/* ================= API ================= */
+async function confirmTopup(txId: number): Promise<ConfirmResp> {
+  const res = await fetch(API_CONFIRM, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({ transaction_id: txId }),
+  });
+
+  if (res.status === 401) {
+    throw new Error("401");
+  }
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(txt || "ยืนยันไม่สำเร็จ");
+  }
+  return res.json().catch(() => ({}));
 }
 
-/* ---------- API: ใช้ api/withdraw และส่ง cookies ---------- */
-async function postWithdraw(amount: number) {
-  const res = await axios.post(
-    "/api/withdraw",
-    { amount },
-    {
-      withCredentials: true, // << สำคัญ: ส่ง cookies ไปด้วย
-      headers: { "Content-Type": "application/json", accept: "application/json" },
-    }
-  );
-  return res.data;
-}
-
-/* -------------------- Component หลัก -------------------- */
-export default function ConfirmWithdrawPage() {
+/* ================= Page ================= */
+function Background() {
   const router = useRouter();
-  const search = useSearchParams();
 
-  const account = search.get("account") ?? "0123456789";
-  const nextHref = "/driver/wallet";
+  // อ่านค่าเก็บไว้ (เหมือนตัวอย่างที่ให้มา)
+  const amountInput =
+    (typeof window !== "undefined" && localStorage.getItem("topupAmount")) || "0";
+  const base64 =
+    (typeof window !== "undefined" && localStorage.getItem("topupQrBase64")) || "";
+  const txId =
+    (typeof window !== "undefined" && localStorage.getItem("topupTxId")) || "";
 
-  // อ่านจำนวนเงินจาก localStorage เพื่อแสดงบน UI
-  const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
+  // ถ้าไม่มีข้อมูลที่จำเป็น → แจ้งเตือนและย้อนกลับไปหน้า topup
   React.useEffect(() => {
-    const s = localStorage.getItem("withdrawAmount") || "0";
-    const n = Number(s);
-    setAmountDisplay(isNaN(n) ? "0.00" : n.toFixed(2));
-  }, []);
+    if (!base64 || !txId) {
+      alert("ไม่พบข้อมูล QR / transaction_id");
+      router.replace("/driver/wallet/topup");
+    }
+  }, [base64, txId, router]);
+
+  // ทำ data URL จาก base64; ถ้าไม่มี ใช้ภาพ fallback
+  const dataUrl = base64 ? `data:image/png;base64,${base64}` : "/QR.png";
+  const [expired, setExpired] = React.useState(false);
 
   return (
-    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
-      <HeaderWithdraw />
+    <div className="bg-[#C5D4E8] min-h-screen relative w-full flex flex-col items-center pb-[140px]">
+      <Header />
 
-      <main className="w-full max-w-[640px] px-5 mt-6">
-        <section className="space-y-6">
-          <DisplayAmount amount={amountDisplay} />
+      {/* กล่อง QR */}
+      <div className="flex flex-col items-center mt-10 bg-white p-4 rounded-lg shadow-lg">
+        <img
+          src={dataUrl}
+          alt="QR Code"
+          className="w-[280px] h-[280px] object-contain"
+        />
+      </div>
 
-          <div className="flex items-center justify-between">
-            <p className="text-base">เข้าบัญชีหมายเลข</p>
-            <p className="text-base font-medium tracking-wider">
-              {maskAccount(account)}
-            </p>
-          </div>
-        </section>
-      </main>
+      {/* รายละเอียดยอด/เวลา นับถอยหลัง */}
+      <Detail
+        amount={Number(amountInput) || 0}
+        onExpire={() => setExpired(true)}
+        expired={expired}
+      />
 
-      <GotoPayment nextHref={nextHref} />
+      {/* ปุ่มยืนยัน (ยิง /api/topup/confirm) */}
+      <Goto_payment expired={expired} />
     </div>
   );
 }
 
-/* -------------------- Header -------------------- */
-export function HeaderWithdraw() {
+function Header() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">ถอนเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">QR Code</p>
     </div>
   );
 }
 
-/* -------------------- DisplayAmount -------------------- */
-export function DisplayAmount({ amount }: { amount: string }) {
+function Detail({
+  amount,
+  currencyLabel = "บาท",
+  initialSeconds = 300, // 5 นาที
+  onExpire,
+  expired = false,
+}: DetailProps) {
+  const [secondsLeft, setSecondsLeft] = React.useState(initialSeconds);
+  const firedRef = React.useRef(false);
+
+  // รีเซ็ตทุกครั้งที่ amount/initialSeconds เปลี่ยน
+  React.useEffect(() => {
+    firedRef.current = false;
+    setSecondsLeft(initialSeconds);
+  }, [initialSeconds, amount]);
+
+  // เรียก onExpire ครั้งเดียวเมื่อนับถึง 0
+  React.useEffect(() => {
+    if (secondsLeft === 0 && !firedRef.current) {
+      firedRef.current = true;
+      onExpire?.();
+    }
+  }, [secondsLeft, onExpire]);
+
+  // นับถอยหลัง
+  React.useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [secondsLeft]);
+
+  const mm = Math.floor(secondsLeft / 60).toString();
+  const ss = (secondsLeft % 60).toString().padStart(2, "0");
+
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-base">ถอนเงิน</label>
-      <div className="relative w-full rounded-[20px] bg-white px-4 py-3 text-[#E6A88A] text-xl font-semibold shadow-sm border border-transparent">
-        ฿{amount}
-      </div>
+    <div className="mt-5 text-center">
+      <p className="text-2xl">
+        ยอดชำระ {amount.toLocaleString()} {currencyLabel}
+      </p>
+      <p className={`text-xl mt-5 ${expired ? "text-red-600" : "text-[#B55C32]"}`}>
+        {expired
+          ? "คิวอาร์โค้ดหมดอายุแล้ว"
+          : `คิวอาร์โค้ดจะหมดอายุภายใน ${mm}:${ss} นาที`}
+      </p>
     </div>
   );
 }
 
-/* -------------------- GotoPayment -------------------- */
-export function GotoPayment({ nextHref }: { nextHref: string }) {
+function Goto_payment({ expired }: { expired: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
 
   const handleConfirm = async () => {
-    if (loading) return;
-
-    const amountStr = localStorage.getItem("withdrawAmount") || "0";
-    const amount = Number(amountStr);
-    if (!amount || isNaN(amount) || amount <= 0) {
-      alert("จำนวนเงินไม่ถูกต้อง");
-      return;
-    }
+    if (loading || expired) return;
+    const txIdStr = localStorage.getItem("topupTxId");
+    if (!txIdStr) return alert("ไม่พบ transaction_id");
 
     try {
       setLoading(true);
-      await postWithdraw(amount); // เรียก /api/withdraw พร้อม cookies
+      await confirmTopup(Number(txIdStr));
 
-      // เคลียร์ค่าใน localStorage เมื่อสำเร็จ
-      localStorage.removeItem("withdrawAmount");
+      // ล้างข้อมูล localStorage หลังยืนยันสำเร็จ
+      localStorage.removeItem("topupAmount");
+      localStorage.removeItem("topupMessage");
+      localStorage.removeItem("topupQrBase64");
+      localStorage.removeItem("topupTxId");
 
-      // ไปหน้ากระเป๋าเงิน
-      router.replace(nextHref);
+      // กลับหน้า wallet (ยึดตามตัวอย่าง)
+      router.replace("/driver/wallet");
     } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.response?.data ||
-        e?.message ||
-        "เกิดข้อผิดพลาดในการถอนเงิน";
-      alert(msg);
+      if (e?.message === "401") {
+        alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง");
+        router.replace("/customer/login");
+        return;
+      }
+      alert(e?.message || "เกิดข้อผิดพลาดในการยืนยัน");
     } finally {
       setLoading(false);
     }
@@ -123,24 +183,25 @@ export function GotoPayment({ nextHref }: { nextHref: string }) {
 
   return (
     <div className="absolute w-full bottom-0">
-      <div className="h-[120px] w-full bg-white rounded-t-2xl shadow-md flex flex-col items-center justify-center">
-        <button
+      <div className="h-[120px] w-full bg-white rounded-t-2xl shadow-md flex justify-center items-center">
+        <div
           onClick={handleConfirm}
-          disabled={loading}
-          className={`relative h-[56px] w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center mt-7 ${
-            loading ? "opacity-60 pointer-events-none" : "opacity-100"
+          className={`relative h-15 w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center mt-7 ${
+            loading || expired
+              ? "opacity-60 pointer-events-none"
+              : "opacity-100 cursor-pointer"
           }`}
-          aria-label="ยืนยันถอนเงิน"
-          type="button"
+          role="button"
+          aria-label="ยืนยันการเติมเงิน"
         >
           <p className="text-center text-2xl font-medium">
-            {loading ? "กำลังดำเนินการ..." : "ยืนยัน"}
+            {loading ? "กำลังยืนยัน..." : expired ? "QR หมดอายุ" : "ยืนยันการเติมเงิน"}
           </p>
-        </button>
-
-        {/* ถ้าอยากมีลิงก์กลับหน้า wallet เพิ่มเติม */}
-        {/* <Link href={nextHref} className="mt-3 text-sm underline">กลับไปหน้ากระเป๋าเงิน</Link> */}
+        </div>
       </div>
     </div>
   );
 }
+
+export default Background;
+export { Header, Detail, Goto_payment };
