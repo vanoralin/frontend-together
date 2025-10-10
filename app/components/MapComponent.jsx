@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
+
 const customIcon = new L.Icon({
   iconUrl: "/icon_pin_map.svg",
   iconSize: [38, 38],

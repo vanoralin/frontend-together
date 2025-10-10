@@ -40,7 +40,7 @@ export default function RoleBar({ role: initialRole }: HeaderProps) {
             </div>
 
             <button onClick={toggleRole}>
-                <img src="/role_swap.svg" alt="swap role" className="w-8" />
+                <img src="/role_swap.svg" alt="swap role" className="w-8 hover:cursor-pointer" />
             </button>
         </div>
     );

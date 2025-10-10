@@ -25,7 +25,7 @@ export default function Welcome({ username, role }: HeaderProps) {
             <img
                 src="/home_scooter.svg"
                 alt="home car"
-                className="absolute top-1/2 right-3 transform -translate-y-1/2 w-45 h-auto"
+                className="absolute top-1/2 right-3 transform -translate-y-1/2 w-30 h-auto"
             />
         </div>
 

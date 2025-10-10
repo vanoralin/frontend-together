@@ -19,7 +19,7 @@ export default function Navbar() {
         },
         {
             label: "แผนที่",
-            href: "/driver/map",
+            href: "/map",
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <path d="M15.5 21L9.5 18.9L4.85 20.7C4.51667 20.8333 4.20833 20.796 3.925 20.588C3.64167 20.38 3.5 20.1007 3.5 19.75V5.75C3.5 5.53333 3.56267 5.34167 3.688 5.175C3.81333 5.00833 3.984 4.88333 4.2 4.8L9.5 3L15.5 5.1L20.15 3.3C20.4833 3.16667 20.7917 3.20433 21.075 3.413C21.3583 3.62167 21.5 3.90067 21.5 4.25V18.25C21.5 18.4667 21.4377 18.6583 21.313 18.825C21.1883 18.9917 21.0173 19.1167 20.8 19.2L15.5 21ZM14.5 18.55V6.85L10.5 5.45V17.15L14.5 18.55Z" />
@@ -56,7 +56,7 @@ export default function Navbar() {
                     {navItemsLeft.map((item, index) => (
                         <button
                             key={index}
-                            className="flex flex-col items-center"
+                            className="flex flex-col items-center hover:cursor-pointer"
                             onClick={() => router.push(item.href)}
                         >
                             {React.cloneElement(item.icon, {
@@ -74,7 +74,7 @@ export default function Navbar() {
                     {navItemsRight.map((item, index) => (
                         <button
                             key={index}
-                            className="flex flex-col items-center"
+                            className="flex flex-col items-center hover:cursor-pointer"
                             onClick={() => router.push(item.href)}
                         >
                             {React.cloneElement(item.icon, {

@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Header from "../components/welcome";
-import TripHome from "../customer/components/trip_home";
+import { TripHome } from "../customer/page";
 
 export default function Home() {
     const [activeTab, setActiveTab] = useState(1);
