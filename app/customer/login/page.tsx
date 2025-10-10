@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useState, FormEvent } from "react";
 import Link from "next/link";
 import axios from "axios";
@@ -19,14 +18,20 @@ export default function LoginPage() {
     e.preventDefault();
     let isValid = true;
 
+    // reset error
     setEmailError("");
     setPasswordError("");
     setServerError("");
 
+    // ✅ ตรวจสอบความถูกต้องของ input
     if (!email) {
       setEmailError("กรุณากรอกอีเมล");
       isValid = false;
+    } else if (!email.endsWith("@kmitl.ac.th")) {
+      setEmailError("กรุณากรอกอีเมล @kmitl.ac.th เท่านั้น");
+      isValid = false;
     }
+
     if (!password) {
       setPasswordError("กรุณากรอกรหัสผ่าน");
       isValid = false;
@@ -40,26 +45,48 @@ export default function LoginPage() {
         token: string;
       }
 
+      // ✅ ใช้ URL จริงของ backend หรือ proxy /api ที่ตั้งใน next.config.js
       const res = await axios.post<LoginResponse>(
         "/api/User/login",
         { email, password },
         {
           withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         }
       );
 
-      console.log("Login success:", res.data);
+      console.log("✅ Login success:", res.data);
 
+      // ไปหน้า customer
       window.location.href = "/customer";
     } catch (err: any) {
-      console.error(err);
+      console.error("❌ Error:", {
+        status: err.response?.status,
+        data: err.response?.data || "(no body)",
+      });
+
       if (err.response) {
-        setServerError(err.response.data?.Message || "เกิดข้อผิดพลาด");
+        const status = err.response.status;
+
+        let errorMsg = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+
+        switch (status) {
+          case 400:
+            errorMsg = "ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่อีกครั้ง";
+            break;
+          case 401:
+            errorMsg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
+            break;
+          case 500:
+            errorMsg = "เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
+            break;
+        }
+
+        setServerError(errorMsg);
+      } else if (err.request) {
+        setServerError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
       } else {
-        setServerError("ไม่สามารถเชื่อมต่อ server ได้");
+        setServerError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
       }
     }
   };
@@ -80,12 +107,18 @@ export default function LoginPage() {
           className="px-6 pt-12 pb-6 flex flex-col items-center relative z-10"
           style={{ height: "100%", boxSizing: "border-box" }}
         >
-          <h1 style={{ fontSize: titleSize, color: "#191919", marginBottom: 8 }}>
+          <h1
+            style={{ fontSize: titleSize, color: "#191919", marginBottom: 8 }}
+          >
             ไปด้วยกันนะ
           </h1>
 
           <div style={{ width: 318 }}>
-            <label className="block text-[#191919] pt-6" style={{ fontSize: baseSize }}>
+            {/* Email */}
+            <label
+              className="block text-[#191919] pt-6"
+              style={{ fontSize: baseSize }}
+            >
               อีเมล (@kmitl.ac.th)
             </label>
             <div className="relative">
@@ -110,7 +143,11 @@ export default function LoginPage() {
             </div>
             {emailError && <p className="text-red-500 text-sm">{emailError}</p>}
 
-            <label className="block text-[#191919] mt-2" style={{ fontSize: baseSize }}>
+            {/* Password */}
+            <label
+              className="block text-[#191919] mt-2"
+              style={{ fontSize: baseSize }}
+            >
               รหัสผ่าน
             </label>
             <div className="relative">
@@ -133,10 +170,16 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+            {passwordError && (
+              <p className="text-red-500 text-sm">{passwordError}</p>
+            )}
 
-            {serverError && <p className="text-red-500 text-sm mt-2">{serverError}</p>}
+            {/* Server error message */}
+            {serverError && (
+              <p className="text-red-500 text-sm mt-2">{serverError}</p>
+            )}
 
+            {/* Button */}
             <div className="flex justify-center mb-4 mt-4">
               <button
                 type="submit"
@@ -153,10 +196,14 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="text-center text-[#191919] mb-4" style={{ fontSize: baseSize }}>
+            <div
+              className="text-center text-[#191919] mb-4"
+              style={{ fontSize: baseSize }}
+            >
               หรือ
             </div>
 
+            {/* Google button */}
             <button
               type="button"
               className="w-full h-12 bg-white border border-gray-200 rounded-2xl mb-6 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
@@ -164,9 +211,16 @@ export default function LoginPage() {
               <span>เข้าสู่ระบบด้วย Google</span>
             </button>
 
-            <div className="text-center text-[#191919]" style={{ fontSize: baseSize }}>
+            <div
+              className="text-center text-[#191919]"
+              style={{ fontSize: baseSize }}
+            >
               ยังไม่ได้เป็นสมาชิก?{" "}
-              <Link href="/customer/register" className="text-[#E6A78A]" style={{ fontSize: baseSize }}>
+              <Link
+                href="/customer/register"
+                className="text-[#E6A78A]"
+                style={{ fontSize: baseSize }}
+              >
                 ลงทะเบียน
               </Link>
             </div>

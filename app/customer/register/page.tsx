@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const titleSize = 40;
@@ -12,8 +14,20 @@ export default function RegisterPage() {
 
   const [preview, setPreview] = useState<string | null>(null);
   const [gender, setGender] = useState<"male" | "female" | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [birthday, setBirthday] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [serverError, setServerError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
+
+  // ✅ Preview avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -30,22 +44,119 @@ export default function RegisterPage() {
     };
   }, [preview]);
 
+  // ✅ Register submit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setServerError("");
+
+    // 🧩 ตรวจสอบความถูกต้องของข้อมูล
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !confirmPassword ||
+      !phone ||
+      !birthday ||
+      !gender
+    ) {
+      setServerError("กรุณากรอกข้อมูลให้ครบทุกช่อง");
+      return;
+    }
+
+    if (!email.endsWith("@kmitl.ac.th")) {
+      setServerError("กรุณาใช้อีเมล @kmitl.ac.th เท่านั้น");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setPasswordError("รหัสผ่านไม่ตรงกัน กรุณากรอกใหม่อีกครั้ง");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await axios.post(
+        "/api/User/register",
+        {
+          name,
+          email,
+          password,
+          confirm_password: confirmPassword,
+          phone,
+          birthday,
+          gender,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      console.log("✅ Register success:", res.data);
+      alert("🎉 สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
+      router.push("/customer/login");
+    } catch (err: any) {
+      console.error("❌ Register error:", err.response?.data);
+
+      if (err.response) {
+        const data = err.response.data || {};
+        const status = err.response.status;
+        const dataText = typeof data === "string" ? data : JSON.stringify(data);
+        let errorMsg = "";
+
+        // ✅ ตรวจข้อความจาก backend (เช่น duplicate key)
+        if (
+          dataText.includes("duplicate key value") &&
+          dataText.includes("idx_users_email")
+        ) {
+          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น";
+        } else if (status === 400) {
+          errorMsg = "⚠️ ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
+        } else if (status === 401) {
+          errorMsg = "❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+        } else if (status === 409) {
+          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น";
+        } else if (status >= 500) {
+          errorMsg = "🚨 เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
+        } else {
+          errorMsg =
+            data.message ||
+            data.error ||
+            "❌ ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง";
+        }
+
+        setServerError(errorMsg);
+      } else if (err.request) {
+        setServerError(
+          "📡 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต"
+        );
+      } else {
+        setServerError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ กรุณาลองใหม่");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-theme-customer flex items-center justify-center">
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-y-auto"
         style={{
           width: 390,
-          height: 844,
+          maxHeight: "100vh",
           backgroundColor: "#EAFCFC",
-          boxShadow: "rgba(0,0,0,0.1)",
+          boxShadow: "rgba(0,0,0,0.1) 0 0 10px",
           fontFamily: "'Mitr', sans-serif",
+          borderRadius: 20,
         }}
       >
-        <div
+        <form
+          onSubmit={handleSubmit}
           className="px-6 pt-6 pb-6 flex flex-col items-center relative z-10"
-          style={{ height: "100%", boxSizing: "border-box" }}
         >
+          {/* Header */}
           <div className="w-full flex items-center">
             <BackButton href="/customer/login" className="mr-2" />
             <h1
@@ -62,15 +173,13 @@ export default function RegisterPage() {
             </h1>
           </div>
 
-          {/* avatar */}
+          {/* Avatar Upload */}
           <div className="px-6 mb-4 w-full mt-2">
             <div
               role="button"
               tabIndex={0}
               onClick={() => fileRef.current?.click()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") fileRef.current?.click();
-              }}
+              onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
               className="w-32 h-32 mx-auto rounded-full flex items-center justify-center bg-white relative cursor-pointer shadow-sm"
               aria-label="อัปโหลดรูปโปรไฟล์"
             >
@@ -90,14 +199,9 @@ export default function RegisterPage() {
                     aria-hidden
                   >
                     <path
-                      d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"
-                      stroke="#9CA3AF"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M20 21v-1c0-2.21-3.582-4-8-4s-8 1.79-8 4v1"
+                      d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 
+                      1.79-4 4 1.79 4 4 4zM20 21v-1c0-2.21-3.582-4-8-4s-8 
+                      1.79-8 4v1"
                       stroke="#9CA3AF"
                       strokeWidth="1.5"
                       strokeLinecap="round"
@@ -133,148 +237,115 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Input Fields */}
           <div style={{ width: 318 }}>
-            <label
-              className="block text-[#191919] mb-2"
-              style={{ fontSize: baseSize }}
-            >
-              ชื่อผู้ใช้
-            </label>
+            {/* Username */}
+            <label className="block text-[#191919] mb-2">ชื่อผู้ใช้</label>
             <div className="relative mb-4">
               <img
                 src="/user.svg"
-                alt=""
-                aria-hidden="true"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
+                alt="user"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="text"
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-4 outline-none"
-                style={{
-                  border: "2px solid #D9D9D9",
-                  borderRadius: 20,
-                  fontSize: baseSize,
-                  boxSizing: "border-box",
-                }}
-                placeholder=""
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
               />
             </div>
 
-            <label
-              className="block text-[#191919] mb-2"
-              style={{ fontSize: baseSize }}
-            >
+            {/* Email */}
+            <label className="block text-[#191919] mb-2">
               อีเมล (@kmitl.ac.th)
             </label>
             <div className="relative mb-4">
               <img
                 src="/email.svg"
-                alt=""
-                aria-hidden="true"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
+                alt="email"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="email"
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none"
-                style={{
-                  border: "2px solid #D9D9D9",
-                  borderRadius: 20,
-                  fontSize: baseSize,
-                  boxSizing: "border-box",
-                }}
-                placeholder=""
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
               />
             </div>
 
-            <label
-              className="block text-[#191919] mb-2"
-              style={{ fontSize: baseSize }}
-            >
-              รหัสผ่าน
-            </label>
+            {/* Password */}
+            <label className="block text-[#191919] mb-2">รหัสผ่าน</label>
             <div className="relative mb-4">
               <img
                 src="/password.svg"
-                alt=""
-                aria-hidden="true"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
+                alt="password"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="password"
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none"
-                style={{
-                  border: "2px solid #D9D9D9",
-                  borderRadius: 20,
-                  fontSize: baseSize,
-                  boxSizing: "border-box",
-                }}
-                placeholder=""
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
               />
             </div>
 
-            <label
-              className="block text-[#191919] mb-2"
-              style={{ fontSize: baseSize }}
-            >
-              เบอร์โทรศัพท์
-            </label>
+            {/* Confirm Password */}
+            <label className="block text-[#191919] mb-2">ยืนยันรหัสผ่าน</label>
+            <div className="relative mb-4">
+              <img
+                src="/password.svg"
+                alt="confirm"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
+              />
+            </div>
+            {passwordError && (
+              <p className="text-red-500 text-sm mb-2">{passwordError}</p>
+            )}
+
+            {/* Phone */}
+            <label className="block text-[#191919] mb-2">เบอร์โทรศัพท์</label>
             <div className="relative mb-4">
               <img
                 src="/phone.svg"
-                alt=""
-                aria-hidden="true"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
+                alt="phone"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="tel"
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-4 outline-none"
-                style={{
-                  border: "2px solid #D9D9D9",
-                  borderRadius: 20,
-                  fontSize: baseSize,
-                  boxSizing: "border-box",
-                }}
-                placeholder=""
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
               />
             </div>
 
+            {/* Birthday & Gender */}
             <div className="flex space-x-4 mb-4">
               <div className="flex-1">
-                <label
-                  className="block text-[#191919] mb-2"
-                  style={{ fontSize: baseSize }}
-                >
-                  วันเกิด
-                </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    className="w-full h-12 bg-white shadow-sm pl-4 pr-4 outline-none"
-                    style={{
-                      border: "2px solid #D9D9D9",
-                      borderRadius: 20,
-                      fontSize: baseSize,
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
+                <label className="block text-[#191919] mb-2">วันเกิด</label>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className="w-full h-12 bg-white shadow-sm pl-4 pr-4 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
+                />
               </div>
 
               <div className="w-28">
-                <label
-                  className="block text-[#191919] mb-2"
-                  style={{ fontSize: baseSize }}
-                >
-                  เพศ
-                </label>
+                <label className="block text-[#191919] mb-2">เพศ</label>
                 <div className="flex space-x-2">
                   <button
                     type="button"
                     onClick={() => setGender("male")}
                     className={`w-12 h-12 rounded-full flex items-center justify-center border transition ${
                       gender === "male"
-                        ? "bg-[#77C4E5] border-[2px] border-black text-black shadow-md font-bold"
-                        : "bg-white border-[2px] border-[#D9D9D9] text-[#8B8B8B] shadow-md"
+                        ? "bg-[#77C4E5] border-black text-black shadow-md font-bold"
+                        : "bg-white border-[#D9D9D9] text-[#8B8B8B] shadow-md"
                     }`}
                   >
                     ♂
@@ -284,8 +355,8 @@ export default function RegisterPage() {
                     onClick={() => setGender("female")}
                     className={`w-12 h-12 rounded-full flex items-center justify-center border transition ${
                       gender === "female"
-                        ? "bg-[#FFA6E0] border-[2px] border-black text-black shadow-md"
-                        : "bg-white border-[2px] border-[#D9D9D9] text-[#8B8B8B] shadow-md"
+                        ? "bg-[#FFA6E0] border-black text-black shadow-md"
+                        : "bg-white border-[#D9D9D9] text-[#8B8B8B] shadow-md"
                     }`}
                   >
                     ♀
@@ -294,39 +365,41 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Server Error */}
+            {serverError && (
+              <p className="text-red-500 text-sm mb-2 text-center">
+                {serverError}
+              </p>
+            )}
+
+            {/* Submit */}
             <div className="flex justify-center mb-4">
               <button
-                className="inline-flex items-center justify-center h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-6"
-                style={{
-                  boxSizing: "border-box",
-                  color: "#191919",
-                  border: "2px solid #B55C32",
-                  borderRadius: 25,
-                  fontSize: buttonSize,
-                }}
+                type="submit"
+                disabled={isLoading}
+                className={`inline-flex items-center justify-center h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-6 rounded-[25px] border-2 border-[#B55C32] ${
+                  isLoading ? "opacity-50" : ""
+                }`}
+                style={{ fontSize: buttonSize }}
               >
-                ลงทะเบียน
+                {isLoading ? "กำลังสมัครสมาชิก..." : "ลงทะเบียน"}
               </button>
             </div>
 
+            {/* Login link */}
             <div
               className="text-center text-[#191919]"
               style={{ fontSize: baseSize }}
             >
               มีบัญชีแล้ว?{" "}
-              <Link
-                href="/customer/login"
-                className="text-[#E6A78A]"
-                style={{ fontSize: baseSize }}
-              >
+              <Link href="/customer/login" className="text-[#E6A78A]">
                 เข้าสู่ระบบ
               </Link>
             </div>
           </div>
 
-          {/* keep spacer so layout matches login but DO NOT render bottom image */}
           <div style={{ flex: 1 }} />
-        </div>
+        </form>
       </div>
     </div>
   );
