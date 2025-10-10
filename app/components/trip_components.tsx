@@ -1,5 +1,6 @@
 "use client";
 
+//ไอคอนรถพร้อมจำนวนคน
 interface NumberInCarProps {
     number: number;
 }
@@ -12,6 +13,8 @@ export function NumberInCar({ number }: NumberInCarProps) {
         </div>
     );
 }
+
+//ไอคอนหมุด + ชื่อสถานที่ ใช้ในแมพ
 interface PinProps {
     location: string;
 }
@@ -25,21 +28,86 @@ export function PinName({ location }: PinProps) {
     );
 }
 
-interface PinDirectionProps {
-    location1?: string;
-    location2?: string;
+
+interface LocationSearchInputProps {
+    value: string;
+    onChange: (val: string) => void;
+    placeholder?: string;
+    iconSrc?: string;
+    onSearch?: () => void;
+    onFocus?: React.FocusEventHandler<HTMLInputElement>;
+    onBlur?: React.FocusEventHandler<HTMLInputElement>;
 }
 
-export function PinDirection({ location1, location2 }: PinDirectionProps) {
+
+export function LocationSearchInput({
+    value,
+    onChange,
+    placeholder,
+    iconSrc = "/icon_search.svg",
+    onSearch,
+    onFocus,
+    onBlur,
+}: LocationSearchInputProps) {
     return (
-        <div className="flex items-center gap-2">
-            <span>จุดรับ:</span>
-            <PinName location={location1 ?? "-"} />
-            <span>จุดส่ง:</span>
-            <PinName location={location2 ?? "-"} />
+        <div className="w-90 relative items-center">
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                className="w-full h-10 text-base bg-white text-black rounded-[1.35rem] pl-10 pr-10 placeholder-theme-gray"
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && onSearch) {
+                        onSearch();
+                    }
+                }}
+                onFocus={onFocus}
+                onBlur={onBlur}
+            />
+
+            {/* ไอคอนค้นหา */}
+            {!value && onSearch && (
+                <button
+                    type="button"
+                    onClick={onSearch}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center"
+                >
+                    <img
+                        src={iconSrc}
+                        alt="search"
+                        className="h-5 w-5 object-contain"
+                    />
+                </button>
+            )}
+
+            {/* ปุ่ม clear */}
+            {value && (
+                <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-gray-400 hover:text-gray-600 flex items-center justify-center"
+                    onClick={() => onChange("")}
+                >
+                    <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                        />
+                    </svg>
+                </button>
+            )}
         </div>
     );
 }
+
+
 
 interface LocationInputProps {
     value: string;
@@ -75,15 +143,14 @@ export function LocationInput({ value, onChange, placeholder, iconSrc = "/locati
     );
 }
 
+//format แสดงหมุดพร้อมชื่อสถานที่
 interface LocationShowBoxProps {
     value: string;
-    placeholder: string;
     iconSrc?: string;
 }
 
 export function LocationShowBox({
     value,
-    placeholder,
     iconSrc = "/location.png",
 }: LocationShowBoxProps) {
     return (
@@ -97,17 +164,16 @@ export function LocationShowBox({
                 <div
                     className="w-full h-8 text-base bg-theme-light-gray text-black rounded-[1.35rem] pl-4 pr-3 flex items-center"
                 >
-                    {value ? (
-                        <span>{value}</span>
-                    ) : (
-                        <span className="text-gray-500">{placeholder}</span>
-                    )}
+
+                    <span>{value}</span>
+
                 </div>
             </div>
         </div>
     );
 }
 
+//แสดง format สถานที่ 2 จุด
 interface LocationDirextProps {
     value1: string;
     value2: string;
@@ -116,8 +182,8 @@ interface LocationDirextProps {
 export function LocationDirectionShowBox({ value1, value2 }: LocationDirextProps) {
     return (
         <div className="flex flex-col">
-            <LocationShowBox value={value1} placeholder="จุดเริ่มต้น" />
-            <LocationShowBox value={value2} placeholder="จุดหมาย" />
+            <LocationShowBox value={value1} />
+            <LocationShowBox value={value2} />
         </div>
     );
 }

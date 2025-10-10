@@ -10,7 +10,7 @@ export default function Navbar() {
     const navItemsLeft = [
         {
             label: "หน้าแรก",
-            href: "/driver",
+            href: "/driver/home",
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <path d="M4.5 21V9L12.5 3L20.5 9V21H14.5V14H10.5V21H4.5Z" />
@@ -50,13 +50,13 @@ export default function Navbar() {
     return (
         <>
             {/* Navbar */}
-            <nav className="bg-white shadow-md fixed w-[390px] bottom-0 flex justify-between items-center px-6 h-16 z-40">
+            <nav className="bg-white shadow-md fixed w-[390px] bottom-0 flex left-1/2 -translate-x-1/2 justify-between items-center px-6 h-16 z-40">
                 {/* Left items */}
                 <div className="flex space-x-8">
                     {navItemsLeft.map((item, index) => (
                         <button
                             key={index}
-                            className="flex flex-col items-center"
+                            className="flex flex-col items-center hover:cursor-pointer"
                             onClick={() => router.push(item.href)}
                         >
                             {React.cloneElement(item.icon, {
@@ -74,7 +74,7 @@ export default function Navbar() {
                     {navItemsRight.map((item, index) => (
                         <button
                             key={index}
-                            className="flex flex-col items-center"
+                            className="flex flex-col items-center hover:cursor-pointer"
                             onClick={() => router.push(item.href)}
                         >
                             {React.cloneElement(item.icon, {
@@ -91,7 +91,7 @@ export default function Navbar() {
             {/* ปุ่ม + ตรงกลาง */}
             <button
                 className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-theme-orange text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg z-50"
-                onClick={() => router.push("/create")}
+                onClick={() => router.push("/driver/booking/createtrip")}
             >
                 <img src="/icon_plus.svg" alt="เพิ่ม" className="w-10 h-10" />
             </button>
