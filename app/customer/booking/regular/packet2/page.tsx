@@ -207,7 +207,7 @@ export default function Header() {
         {/* ปุ่มยืนยัน */}
         <div className="mt-4 w-full max-w-3xl px-2">
           <button
-            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl shadow-md hover:bg-[#944724] transition-colors duration-200"
+            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl shadow-md hover:bg-[#d9956f] transition-colors duration-200"
             onClick={() => router.push("/customer/booking/regular/packet3")}
           >
             ขั้นตอนถัดไป

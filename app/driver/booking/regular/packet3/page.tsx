@@ -1,9 +1,9 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/app/components/share_component";
 import CalendarComponent from "@/app/components/Calendar";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronDown } from "lucide-react";
 
 // --- ไอคอนนาฬิกา ---
 const ClockIcon = () => (
@@ -16,7 +16,63 @@ const ClockIcon = () => (
   </svg>
 );
 
-// --- กล่องแสดงจุดรับส่ง ---
+// --- VehiclePicker พร้อม click outside ---
+function VehiclePicker({
+  selectedVehicle,
+  setSelectedVehicle,
+}: {
+  selectedVehicle: "จักรยานยนต์" | "รถยนต์" | "รถยนต์ขนาดใหญ่" | null;
+  setSelectedVehicle: (
+    v: "จักรยานยนต์" | "รถยนต์" | "รถยนต์ขนาดใหญ่"
+  ) => void;
+}) {
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const vehicles = ["จักรยานยนต์", "รถยนต์", "รถยนต์ขนาดใหญ่"] as const;
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setShow(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative w-full" ref={ref}>
+      <button
+        className="w-full justify-between bg-gray-100 border border-gray-100 text-[#191919] font-light rounded-3xl px-4 py-2 flex items-center"
+        onClick={() => setShow(!show)}
+      >
+        <span>{selectedVehicle || "เลือกยานพาหนะของคุณ"}</span>
+        <ChevronDown className="h-4 w-4" />
+      </button>
+
+      {show && (
+        <div className="absolute w-full mt-1 bg-white border rounded shadow-lg z-50 max-h-60 overflow-y-auto">
+          {vehicles.map((v) => (
+            <button
+              key={v}
+              className={`w-full text-left font-light px-4 py-2 hover:bg-blue-100 ${
+                selectedVehicle === v ? "bg-blue-500 text-white" : "text-gray-700"
+              }`}
+              onClick={() => {
+                setSelectedVehicle(v);
+                setShow(false);
+              }}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- LocationBox พร้อมปุ่มลบ ---
 function LocationBox({
   value,
   onClear,
@@ -38,16 +94,20 @@ function LocationBox({
 
       <div className="relative z-10 flex items-center justify-between bg-[#8B8B8B]/10 rounded-full px-4 py-2 w-full">
         <span className="text-black text-base ml-1">{value}</span>
+        {value && (
+          <button onClick={onClear} className="ml-2 text-gray-500 hover:text-gray-700">
+            ✕
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-// --- หน้าเลือกวันที่และสรุปค่าแพ็คเกจ ---
+// --- หน้า RideBookingPage ---
 export default function RideBookingPage() {
   const router = useRouter();
 
-  // --- State ---
   const [selected, setSelected] = useState<Date[]>([]);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -55,6 +115,9 @@ export default function RideBookingPage() {
   const [selectedEndTime, setSelectedEndTime] = useState("12:20");
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<
+    "จักรยานยนต์" | "รถยนต์" | "รถยนต์ขนาดใหญ่" | null
+  >(null);
 
   const [location1, setLocation1] = useState("ฝั่งตรงข้ามเกกี 4");
   const [location2, setLocation2] = useState("หน้าตึก ECC");
@@ -75,7 +138,6 @@ export default function RideBookingPage() {
     "16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30",
   ];
 
-  // ฟังก์ชันแปลงวันที่เป็นไทย
   const formatThaiDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -83,7 +145,6 @@ export default function RideBookingPage() {
     return `${day}/${month}/${year}`;
   };
 
-  // อัปเดต start และ end date
   useEffect(() => {
     if (selected.length > 0) {
       const sorted = [...selected].sort((a, b) => a.getTime() - b.getTime());
@@ -95,7 +156,6 @@ export default function RideBookingPage() {
     }
   }, [selected]);
 
-  // ตรวจสอบเวลาให้ start < end
   useEffect(() => {
     const [startHour, startMin] = selectedStartTime.split(":").map(Number);
     const [endHour, endMin] = selectedEndTime.split(":").map(Number);
@@ -104,7 +164,6 @@ export default function RideBookingPage() {
     }
   }, [selectedStartTime, selectedEndTime]);
 
-  // toggle dropdown เวลา
   const toggleStartPicker = () => {
     setShowStartTimePicker(!showStartTimePicker);
     setShowEndTimePicker(false);
@@ -124,7 +183,7 @@ export default function RideBookingPage() {
       {/* หัวข้อ */}
       <div className="flex-1 text-center mt-4 py-5">
         <h1 className="text-lg text-black font-light">การจองทริปขาประจำ หน้า 3/3</h1>
-        <p className="text-xl font-regular text-black mt-2">ยืนยันการจอง</p>
+        <p className="text-xl font-normal text-black mt-2">ยืนยันการจอง</p>
         <p className="text-xl font-light text-[#B55C32] mt-2">กรุณาตรวจสอบรายการเดินทาง</p>
       </div>
 
@@ -139,7 +198,7 @@ export default function RideBookingPage() {
       {/* ปฏิทิน */}
       <div className="w-full max-w-md bg-white rounded-2xl p-4 shadow-md shadow-black/50 mb-6 font-light">
         <CalendarComponent selected={selected} setSelected={setSelected} />
-        <p className="text-l font-light text-center text-[#B55C32] mt-3">
+        <p className="text-lg font-light text-center text-[#B55C32] mt-3">
           จิ้มที่วันที่เพื่อเลือก - จิ้มอีกครั้งเพื่อยกเลิก
         </p>
       </div>
@@ -170,7 +229,7 @@ export default function RideBookingPage() {
                 </span>
               </div>
               {showStartTimePicker && (
-                <div className="absolute z-50 mt-14 w-20 max-h-40 overflow-y-auto bg-white border rounded shadow-md font-light">
+                <div className="absolute top-full mt-1 w-20 max-h-40 overflow-y-auto bg-white border rounded shadow-md font-light z-50">
                   {timeOptions.map((time) => (
                     <div
                       key={time}
@@ -202,7 +261,7 @@ export default function RideBookingPage() {
                 </span>
               </div>
               {showEndTimePicker && (
-                <div className="absolute z-50 mt-14 w-20 max-h-40 overflow-y-auto bg-white border rounded shadow-md font-light">
+                <div className="absolute top-full mt-1 w-20 max-h-40 overflow-y-auto bg-white border rounded shadow-md font-light z-50">
                   {timeOptions.map((time) => (
                     <div
                       key={time}
@@ -221,23 +280,16 @@ export default function RideBookingPage() {
               )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ค่าแพ็คเกจ */}
-      <div className="w-full max-w-md bg-white rounded-2xl p-4 mb-6 flex justify-between items-start shadow-md shadow-black/50 font-light">
-        <div>
-          <p className="text-[#191919] text-base mb-4">ค่าแพ็คเกจ</p>
-          <div className="flex items-center gap-2">
-            <img src="/coin.svg" alt="coin" className="w-8 h-8 object-contain" />
-            <p className="text-[#191919] text-xl">700 บาท</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-[#8b8b8b] text-sm">ยอดในกระเป๋าเงิน</p>
-          <div className="flex items-center justify-end gap-1">
-            <img src="/coin.svg" alt="coin" className="w-4 h-4 object-contain" />
-            <p className="text-[#8b8b8b] text-base">100 บาท</p>
+          {/* Vehicle Picker */}
+          <div className="pt-2 w-full">
+            <span className="text-[#191919] font-light">ยานพาหนะ</span>
+            <div className="mt-2">
+              <VehiclePicker
+                selectedVehicle={selectedVehicle}
+                setSelectedVehicle={setSelectedVehicle}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -255,21 +307,11 @@ export default function RideBookingPage() {
       {/* Popup ยืนยัน */}
       {showPopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center">
-            
-            {/* ค่าเดินทาง */}
-            <div className="w-[80%] mx-auto bg-white rounded-2xl p-4 shadow-md shadow-black/50 mb-5">
-              <p className="text-[#191919] text-base font-semibold mb-2">ค่าเดินทาง</p>
-              <div className="flex justify-center items-center gap-2 mb-4">
-                <img src="/coin.svg" alt="coin" className="w-6 h-6 object-contain" />
-                <p className="text-[#191919] text-lg">700 บาท</p>
-              </div>
-            </div>
+          <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center overflow-y-auto max-h-[90vh]">
 
             {/* ข้อความยืนยัน */}
-            <p className="text-[#191919] text-m font-semibold mb-4">
-              เมื่อจองแล้วจะไม่สามารถแก้ไขได้<br />
-              และเงินในกระเป๋าจะถูกหักทันที
+            <p className="text-[#191919] text-m font-semibold mb-2">
+              เมื่อจองแล้วจะไม่สามารถแก้ไขได้
             </p>
             <p className="text-[#191919] text-sm font-light mb-4">
               แน่ใจหรือไม่ว่าต้องการทำรายการจองนี้

@@ -37,7 +37,7 @@ function Background() {
         {/* ปุ่มสร้างแพ็คเกจ */}
         <div className="bg-white rounded-t-2xl shadow-inner px-6 pt-4 pb-6">
           <button
-            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl shadow-md hover:bg-[#944724] hover:text-white transition-colors duration-200"
+            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl shadow-md hover:bg-[#d9956f] transition-colors duration-200"
             onClick={() => router.push("/driver/booking/regular/packet1")}
           >
             สร้างแพ็คเกจทริปขาประจำ

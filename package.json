@@ -10,14 +10,10 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.13",
-<<<<<<< HEAD
     "@types/axios": "^0.9.36",
     "axios": "^1.12.2",
-    "framer-motion": "^12.23.12",
-=======
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.22",
->>>>>>> Mo
     "leaflet": "^1.9.4",
     "lucide-react": "^0.544.0",
     "next": "15.5.2",

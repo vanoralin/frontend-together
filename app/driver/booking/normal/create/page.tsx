@@ -3,44 +3,65 @@
 import NavBar from "@/app/driver/components/navbar";
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { X, Plus, Calendar, Clock, User, ChevronDown } from "lucide-react"
+import { X, Plus, ChevronDown } from "lucide-react"
 import { BackButton } from "@/app/components/share_component";
-import { format, getDaysInMonth } from "date-fns"
+import { format } from "date-fns"
 
+// --- Calendar Icon ---
+function CalendarIcon() {
+  return (
+    <svg
+      className="w-5 h-5 text-[#B55C32]"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M19 4H18V2H16V4H8V2H6V4H5C3.9 4 3 4.9 3 6V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V9H19V20ZM5 7V6H19V7H5Z"/>
+    </svg>
+  )
+}
+
+// --- Clock Icon ---
+const ClockIcon = () => (
+  <svg
+    className="w-5 h-5 text-[#B55C32]"
+    fill="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L12 13V7H12.5V12.2L17,14.7L16.2,16.2Z" />
+  </svg>
+)
+
+// --- Profile Icon ---
+const ProfileIcon = () => <img src="/icon_nav_profile.svg" alt="profile" className="w-5 h-5" style={{ filter: "brightness(0)" }}/>
+
+// --- Simple Calendar ---
 function SimpleCalendar({ selectedDate, setSelectedDate }: { selectedDate: Date, setSelectedDate: (date: Date) => void }) {
   const [show, setShow] = useState(false)
-  const [currentMonth, setCurrentMonth] = useState(selectedDate.getMonth())
-  const [currentYear, setCurrentYear] = useState(selectedDate.getFullYear())
 
   const selectDate = (day: number) => {
-    const newDate = new Date(currentYear, currentMonth, day)
+    const newDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day)
     setSelectedDate(newDate)
     setShow(false)
   }
 
   const prevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11)
-      setCurrentYear(currentYear - 1)
-    } else {
-      setCurrentMonth(currentMonth - 1)
-    }
+    const prev = new Date(selectedDate)
+    prev.setMonth(prev.getMonth() - 1)
+    setSelectedDate(prev)
   }
 
   const nextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0)
-      setCurrentYear(currentYear + 1)
-    } else {
-      setCurrentMonth(currentMonth + 1)
-    }
+    const next = new Date(selectedDate)
+    next.setMonth(next.getMonth() + 1)
+    setSelectedDate(next)
   }
 
   return (
     <div className="relative flex items-center space-x-2 px-3 py-2 rounded-md">
       <button onClick={() => setShow(!show)} className="flex items-center space-x-2">
         <span>{format(selectedDate, "dd/MM/yyyy")}</span>
-        <Calendar className="h-5 w-5 text-[#B55C32]" />
+        <CalendarIcon />
       </button>
 
       {show && (
@@ -48,7 +69,7 @@ function SimpleCalendar({ selectedDate, setSelectedDate }: { selectedDate: Date,
           <div className="bg-white p-4 rounded-lg w-90 max-w-sm">
             <div className="flex justify-between mb-2">
               <button onClick={prevMonth}>{"<"}</button>
-              <span>{format(new Date(currentYear, currentMonth), "MMMM yyyy")}</span>
+              <span>{format(selectedDate, "MMMM yyyy")}</span>
               <button onClick={nextMonth}>{">"}</button>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center mb-2">
@@ -57,15 +78,11 @@ function SimpleCalendar({ selectedDate, setSelectedDate }: { selectedDate: Date,
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1 text-center">
-              {Array.from({ length: getDaysInMonth(new Date(currentYear, currentMonth)) }, (_, i) => (
+              {Array.from({ length: 31 }, (_, i) => (
                 <button
                   key={i}
                   className={`p-2 rounded-lg hover:bg-blue-100 ${
-                    selectedDate.getDate() === i + 1 &&
-                    selectedDate.getMonth() === currentMonth &&
-                    selectedDate.getFullYear() === currentYear
-                      ? "bg-blue-500 text-white"
-                      : "text-gray-700"
+                    selectedDate.getDate() === i + 1 ? "bg-blue-500 text-white" : "text-gray-700"
                   }`}
                   onClick={() => selectDate(i + 1)}
                 >
@@ -81,11 +98,11 @@ function SimpleCalendar({ selectedDate, setSelectedDate }: { selectedDate: Date,
   )
 }
 
+// --- Time Picker ---
 function TimePicker({ selectedTime, setSelectedTime }: { selectedTime: string, setSelectedTime: (time: string) => void }) {
   const [show, setShow] = useState(false)
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"))
   const minutes = ["00", "15", "30", "45"]
-
   const times = hours.flatMap(h => minutes.map(m => `${h}:${m}`))
 
   return (
@@ -95,7 +112,7 @@ function TimePicker({ selectedTime, setSelectedTime }: { selectedTime: string, s
         onClick={() => setShow(!show)}
       >
         <span className="mr-2">{selectedTime}</span>
-        <Clock className="h-5 w-5 text-[#B55C32]" />
+        <ClockIcon />
       </button>
 
       {show && (
@@ -120,6 +137,7 @@ function TimePicker({ selectedTime, setSelectedTime }: { selectedTime: string, s
   )
 }
 
+// --- Vehicle Picker ---
 function VehiclePicker({ selectedVehicle, setSelectedVehicle }: { selectedVehicle: string, setSelectedVehicle: (v: string) => void }) {
   const [show, setShow] = useState(false)
   const vehicles = ["จักรยานยนต์","รถยนต์", "รถยนต์ขนาดใหญ่"]
@@ -156,7 +174,7 @@ function VehiclePicker({ selectedVehicle, setSelectedVehicle }: { selectedVehicl
   )
 }
 
-
+// --- Main Home Component ---
 export default function Home() {
   const router = useRouter()
   const [locations, setLocations] = useState([
@@ -166,26 +184,20 @@ export default function Home() {
     "หน้าตึก ECC",
     "ฝั่งตรงข้ามเกกี 4",
   ])
-
   const [passengerCount, setPassengerCount] = useState(2)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedTime, setSelectedTime] = useState("12:00")
   const [selectedVehicle, setSelectedVehicle] = useState("")
 
-  const removeLocation = (index: number) => {
-    setLocations(locations.filter((_, i) => i !== index))
-  }
-
-  const addLocation = () => {
-    setLocations([...locations, "เพิ่มจุดรับ"])
-  }
+  const removeLocation = (index: number) => setLocations(locations.filter((_, i) => i !== index))
+  const addLocation = () => setLocations([...locations, "เพิ่มจุดรับ"])
 
   return (
     <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col">
 
-      {/* Back Button ด้านบนซ้าย */}
+      {/* Back Button */}
       <div className="w-full flex items-center justify-start px-6 mt-6">
-          <BackButton />
+        <BackButton />
       </div>
 
       {/* Header */}
@@ -198,15 +210,20 @@ export default function Home() {
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <h2 className="text-xl font-regular text-center mb-6 text-[#191919]">เลือกจุดรับส่ง</h2>
 
-          <div className="space-y-4">
+          <div className="space-y-4 relative">
             {locations.map((location, index) => (
-              <div key={index} className="flex items-center space-x-3">
-                {/* Icon Location */}
-                <img
-                  src="/location.png"
-                  alt="pickup"
-                  className="h-8 w-6 object-contain"
-                />
+              <div key={index} className="flex items-start space-x-3 relative">
+
+                <div className="flex flex-col items-center relative">
+                  <img
+                    src="/location.png"
+                    alt="pickup"
+                    className="h-8 w-6 mt-2 object-contain z-10"
+                  />
+                  {index < locations.length - 1 && (
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[2px] h-12 bg-black" />
+                  )}
+                </div>
 
                 {/* จุดรับส่ง */}
                 <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-3 flex items-center justify-between">
@@ -243,23 +260,21 @@ export default function Home() {
           {/* Date */}
           <div className="flex items-center justify-between">
             <span className="text-[#191919] font-light">วันที่</span>
-            <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
-              <SimpleCalendar selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
-            </div>
+            <SimpleCalendar selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
           </div>
 
           {/* Time */}
           <div className="py-2">
-            <span className="text-[#191919] font-medium">เวลา ที่สามารถออกรับผู้โดยสารได้</span>
+            <span className="text-[#191919] font-light">เวลา ที่สามารถออกรับผู้โดยสารได้</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[#191919] font-medium">ออกเดินทาง</span>
+            <span className="text-[#191919] font-light">ออกเดินทาง</span>
             <TimePicker selectedTime={selectedTime} setSelectedTime={setSelectedTime} />
           </div>
 
           {/* Vehicle Type */}
           <div className="pt-2">
-            <span className="text-[#191919] font-medium">ยานพาหนะ</span>
+            <span className="text-[#191919] font-light">ยานพาหนะ</span>
             <div className="mt-2">
               <VehiclePicker selectedVehicle={selectedVehicle} setSelectedVehicle={setSelectedVehicle} />
             </div>
@@ -267,22 +282,22 @@ export default function Home() {
 
           {/* Passenger Count */}
           <div className="flex items-center justify-between pt-2">
-            <span className="text-[#191919] font-medium">จำนวนคนนั่ง</span>
+            <span className="text-[#191919] font-light">จำนวนคนนั่ง</span>
             <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
-              <User className="h-4 w-4 mr-2 text-[#191919]" />
-              <span className="text-[#191919] font-medium">{passengerCount}</span>
+              <ProfileIcon />
+              <span className="text-[#191919] font-light ml-2">{passengerCount}</span>
               <div className="ml-2 flex flex-col">
                 <button
-                  className="h-4 w-4 p-0 text-[#191919] flex items-center justify-center"
-                  onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))}
-                >
-                  <ChevronDown className="h-3 w-3 rotate-180" />
-                </button>
-                <button
-                  className="h-4 w-4 p-0 text-[#191919] flex items-center justify-center"
+                  className="h-4 w-4 p-0 flex items-center justify-center"
                   onClick={() => setPassengerCount(passengerCount + 1)}
                 >
-                  <ChevronDown className="h-3 w-3" />
+                  <img src="/arrow-up.png" alt="up" className="h-3 w-3" />
+                </button>
+                <button
+                  className="h-4 w-4 p-0 flex items-center justify-center"
+                  onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))}
+                >
+                  <img src="/arrow-down.png" alt="down" className="h-3 w-3" />
                 </button>
               </div>
             </div>
@@ -290,12 +305,11 @@ export default function Home() {
 
         </div>
 
-        {/* ปุ่มยืนยัน ใต้กล่องนี้ */}
+        {/* Confirm Button */}
         <div className="mt-4 flex justify-center">
           <button
-            className="w-[100%] bg-[#B55C32] text-white font-regular py-3 rounded-3xl shadow-lg hover:bg-[#944724]"
+            className="w-[100%] bg-[#B55C32] text-white font-light py-3 rounded-3xl shadow-lg hover:bg-[#944724]"
             onClick={() => {
-              // ใส่ logic ยืนยันข้อมูลที่นี่
               console.log("ยืนยัน:", { locations, selectedDate, selectedTime, selectedVehicle, passengerCount });
               router.push("/driver/booking/normal/map");
             }}
@@ -305,7 +319,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Navbar ด้านล่าง */}
+      {/* Navbar */}
       <div className="fixed bottom-0 w-full">
         <NavBar />
       </div>
