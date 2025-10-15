@@ -26,6 +26,14 @@ export default function RegisterPage() {
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
+  // สมมติ state ของคุณชื่อ birthday
+
+  // เพิ่มตรวจสอบก่อนแปลง
+  const formattedBirthday =
+    birthday && !isNaN(new Date(birthday).getTime())
+      ? new Date(birthday).toISOString().split("T")[0]
+      : null;
+  [0];
 
   // ✅ Preview avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,17 +58,9 @@ export default function RegisterPage() {
     setPasswordError("");
     setServerError("");
 
-    // 🧩 ตรวจสอบความถูกต้องของข้อมูล
-    if (
-      !name ||
-      !email ||
-      !password ||
-      !confirmPassword ||
-      !phone ||
-      !birthday ||
-      !gender
-    ) {
-      setServerError("กรุณากรอกข้อมูลให้ครบทุกช่อง");
+    // 🧩 ตรวจสอบเฉพาะฟิลด์ที่จำเป็น
+    if (!name || !email || !password) {
+      setServerError("กรุณากรอกชื่อผู้ใช้ อีเมล และรหัสผ่าน");
       return;
     }
 
@@ -77,21 +77,22 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const res = await axios.post(
-        "/api/User/register",
-        {
-          name,
-          email,
-          password,
-          confirm_password: confirmPassword,
-          phone,
-          birthday,
-          gender,
-        },
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const payload: any = {
+        name,
+        email,
+        password,
+        confirm_password: confirmPassword,
+        phone,
+        gender,
+      };
+
+      if (formattedBirthday) {
+        payload.birthdate = formattedBirthday;
+      }
+
+      const res = await axios.post("/api/User/register", payload, {
+        headers: { "Content-Type": "application/json" },
+      });
 
       console.log("✅ Register success:", res.data);
       alert("🎉 สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");

@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [serverError, setServerError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,13 +40,15 @@ export default function LoginPage() {
 
     if (!isValid) return;
 
+    setIsLoading(true);
+
     try {
       interface LoginResponse {
-        user: string;
         token: string;
+        user: string;
       }
 
-      // ✅ ใช้ URL จริงของ backend หรือ proxy /api ที่ตั้งใน next.config.js
+      // ✅ ใช้ URL จริงของ backend
       const res = await axios.post<LoginResponse>(
         "/api/User/login",
         { email, password },
@@ -57,8 +60,17 @@ export default function LoginPage() {
 
       console.log("✅ Login success:", res.data);
 
-      // ไปหน้า customer
-      window.location.href = "/customer";
+      // ✅ เก็บ token ลง localStorage
+      const token = res.data.token;
+      if (token) {
+        localStorage.setItem("token", token);
+        console.log("Token saved:", token);
+      } else {
+        console.warn("⚠️ ไม่พบ token จาก response");
+      }
+
+      // ✅ ไปหน้า customer/profile
+      window.location.href = "/customer/profile";
     } catch (err: any) {
       console.error("❌ Error:", {
         status: err.response?.status,
@@ -67,7 +79,6 @@ export default function LoginPage() {
 
       if (err.response) {
         const status = err.response.status;
-
         let errorMsg = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
 
         switch (status) {
@@ -80,6 +91,8 @@ export default function LoginPage() {
           case 500:
             errorMsg = "เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
             break;
+          default:
+            errorMsg = err.response.data?.message || errorMsg;
         }
 
         setServerError(errorMsg);
@@ -88,6 +101,8 @@ export default function LoginPage() {
       } else {
         setServerError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -100,6 +115,7 @@ export default function LoginPage() {
           height: 844,
           backgroundColor: "#EAFCFC",
           boxShadow: "rgba(0,0,0,0.1)",
+          fontFamily: "'Mitr', sans-serif",
         }}
       >
         <form
@@ -183,7 +199,12 @@ export default function LoginPage() {
             <div className="flex justify-center mb-4 mt-4">
               <button
                 type="submit"
-                className="inline-flex items-center justify-center h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-6"
+                disabled={isLoading}
+                className={`inline-flex items-center justify-center h-12 transition-colors px-6 ${
+                  isLoading
+                    ? "bg-gray-400 border-gray-400 cursor-not-allowed"
+                    : "bg-[#E6A88A] hover:bg-[#B55C32] border-[#B55C32]"
+                }`}
                 style={{
                   boxSizing: "border-box",
                   color: "#191919",
@@ -192,7 +213,7 @@ export default function LoginPage() {
                   fontSize: baseSize,
                 }}
               >
-                เข้าสู่ระบบ
+                {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
               </button>
             </div>
 
