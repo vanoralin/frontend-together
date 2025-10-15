@@ -30,27 +30,25 @@ interface HistoryBlockProps {
   amount: number;
 }
 
+interface TransactionDTO {
+  id: number;
+  user_id: number;
+  amount: number;
+  type: "topup" | "withdraw" | "paid";
+  status: "success" | "pending" | "cancel";
+  created_at: string; // ISO: "2025-10-11T12:46:20.693141Z"
+}
+
 function Background() {
   const router = useRouter();
 
-  // mock history (คุณจะสลับไปดึงจาก API ก็ได้)
-  const historyData: HistoryBlockProps[] = [
-    { type: "topup", date: "2024-08-24 22:01", success: "success", amount: 50 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "topup", date: "2024-08-15 09:15", success: "cancel", amount: 100 },
-    { type: "withdraw", date: "2024-08-10 18:45", success: "success", amount: 30 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "withdraw", date: "2024-07-30 16:20", success: "success", amount: 10 },
-    { type: "topup", date: "2024-07-25 08:10", success: "cancel", amount: 150 },
-    { type: "withdraw", date: "2024-07-20 19:55", success: "success", amount: 40 },
-    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-  ];
-
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [history, setHistory] = useState<HistoryBlockProps[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const openLogout = useCallback(() => setIsLogoutOpen(true), []);
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
@@ -78,6 +76,38 @@ function Background() {
     };
     fetchData();
   }, [router]);
+  
+  useEffect(() => {
+  (async () => {
+    try {
+      setHistoryLoading(true);
+      const res = await axios.get<TransactionDTO[]>("/api/transactions/history", {
+        withCredentials: true,
+        headers: { "Content-Type": "application/json" },
+      });
+
+      // ✅ define & use 'mapped' in same block
+      const mapped: HistoryBlockProps[] = (res.data ?? []).map((tx) => {
+  const success: HistoryBlockProps["success"] =
+    tx.status === "success" ? "success" : "cancel";
+
+  return {
+    type: tx.type,
+    date: tx.created_at,
+    success,
+    amount: tx.amount,
+  };
+});
+
+      setHistory(mapped);
+    } catch (err) {
+      console.error(err);
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  })();
+}, []);
 
   return (
     <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
@@ -95,7 +125,7 @@ function Background() {
             coin={profile.balance}
           />
           <Topup />
-          <History history={historyData} />
+          <History history={history ?? []} />
         </>
       ) : (
         <div className="h-[162px] w-[366px] bg-white rounded-[30px] shadow-md mt-8 flex items-center justify-center">
@@ -120,7 +150,7 @@ function Header_wallet() {
 
 function Profile_wallet({ profile_picture, username, gender = "male", coin }: ProfileWalletProps) {
   return (
-    <div className="h-[162px] w-[366px] bg-white rounded-[30px] shadow-md mt-8 p-4 flex items-center">
+    <div className="h-[170px] w-[366px] bg-white rounded-[30px] shadow-md mt-8 p-4 flex items-center">
       <img
           src={profile_picture && profile_picture.trim() !== "" ? profile_picture : "/user.svg"}
           alt="user icon"
@@ -128,16 +158,17 @@ function Profile_wallet({ profile_picture, username, gender = "male", coin }: Pr
         />
       <div className="flex flex-col ml-4">
         <div className="flex items-center">
-          <p className="text-xl font-medium">{username}</p>
+          <p className="text-xl truncate max-w-[150px]">{username}</p>
           <img
-            src={gender === "male" ? "/male.svg" : "/female.svg"}
-            alt={gender}
-            className="h-7 w-7 ml-2"
-          />
+          src={gender === "male" ? "/male.svg" : "/female.svg"}
+          alt={gender}
+          className={`ml-2 ${gender === "female" ? "h-5 w-6" : "h-6 w-6"}`}
+        />
+
         </div>
-        <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
+        <div className="mt-3 h-[51px] w-fit px-2 bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
           <img src="/coin.svg" alt="icon" className="h-6 w-6 mr-2" />
-          <p className="text-2xl">{coin.toFixed(2)}</p>
+          <p className="text-xl">{coin.toFixed(2)}</p>
         </div>
       </div>
     </div>

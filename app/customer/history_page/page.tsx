@@ -293,7 +293,7 @@ function PopupOverlay({
       <button
         aria-label="ปิดหน้าต่าง"
         onClick={onClose}
-        className="absolute inset-0  bg-[#C5DEDA]/20"
+        className="absolute inset-0  bg-[#000000]/20"
         tabIndex={-1}
       />
 

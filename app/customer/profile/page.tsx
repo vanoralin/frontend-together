@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import RoleBar from "@/app/components/user_components";
 import { BackButton } from "@/app/components/share_component";
@@ -7,12 +7,25 @@ import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Navbar from "../components/navbar";
+
 type Gender = "male" | "female";
+type Role = "user" | "driver";
+
+/* ---------- helper: normalize role จากหลายรูปแบบของ API ---------- */
+function normalizeRole(input?: unknown): Role | undefined {
+  if (typeof input === "boolean") return input ? "driver" : "user";
+  if (typeof input === "string") {
+    const s = input.trim().toLowerCase();
+    if (s === "driver") return "driver";
+    if (s === "user") return "user";
+  }
+  return undefined;
+}
 
 interface HeaderProps {
   name: string;
-  userRole?: string;         // optional
-  pageRole: string;          // ต้องส่งเข้ามา (เพิ่มใน Block_profileuser)
+  userRole?: string;         // จะใส่ "driver" | "user" ที่ normalize แล้ว
+  pageRole: string;
   gender?: Gender;
   email: string;
   profile_picture?: string;
@@ -20,7 +33,10 @@ interface HeaderProps {
 
 interface ProfileData {
   name: string;
-  userRole?: string;         // optional
+  userRole?: string;         // บาง API ให้เป็น "Driver" / "USER"
+  role?: string;             // หรือ field อื่น
+  is_driver?: boolean;       // หรือ boolean
+  has_driver?: boolean;      // หรือ boolean
   gender?: Gender;
   email: string;
   balance: number;
@@ -66,6 +82,14 @@ function Background() {
     }
   }, [router, closeLogout]);
 
+  /* ---- สร้างค่าบทบาทที่ normalize แล้วจากหลาย field ที่อาจมาจาก API ---- */
+  const normalizedUserRole: Role | undefined = normalizeRole(
+    profile?.userRole ??
+      profile?.role ??
+      profile?.is_driver ??
+      profile?.has_driver
+  );
+
   return (
     <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center">
       <Header_profile />
@@ -74,11 +98,12 @@ function Background() {
         <>
           <Block_profileuser
             profile_picture={profile.profile_picture}
-            name={profile.name || "ผู้ใช้"}
-            userRole={profile.userRole || "user"}
+            name={profile.name}
+            // ✅ ส่งค่า role หลัง normalize (ถ้าไม่มีให้ fallback เป็น "user")
+            userRole={(normalizedUserRole ?? "user")}
             gender={profile.gender || "male"}
             email={profile.email || "-"}
-            pageRole="customer"        // <— ตั้งค่าให้ชัด (ปรับตามระบบจริงของคุณได้)
+            pageRole="user"
           />
           <Block_listitem_profile coin={Number(profile.balance) || 0} />
         </>
@@ -97,6 +122,7 @@ function Background() {
       {isLogoutOpen && (
         <Popup_logout onCancel={closeLogout} onConfirm={handleLogoutConfirm} busy={busy} />
       )}
+      <div className="mb-15"></div>
       <Navbar />
     </div>
   );
@@ -119,8 +145,8 @@ function Header_profile() {
 function Block_profileuser({
   profile_picture,
   name,
-  userRole = "user",
-  pageRole,
+  userRole,            // ← จะเป็น "driver" | "user" ที่ normalize มาแล้ว
+  pageRole = "user",
   gender = "male",
   email,
 }: HeaderProps) {
@@ -129,30 +155,37 @@ function Block_profileuser({
   const genderIcon = genderIconMap[gender] ?? "/male.svg";
 
   return (
-    <div className="h-[198px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center">
-      <div className="flex items-center">
-        <img
-          src={avatarSrc}
-          alt="user avatar"
-          className="h-[120px] w-[120px] rounded-full object-cover"
-        />
+    <div className="h-[170px] w-[366px] bg-white rounded-[30px] shadow-md mt-7 flex flex-col justify-center px-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <img
+            src={avatarSrc}
+            alt="user avatar"
+            className="h-[125px] w-[125px] rounded-full object-cover"
+          />
 
-        <div className="flex flex-col ml-1 mr-1">
-          <div className="flex items-center">
-            <p className="text-2xl mb-1 truncate max-w-[170px]" title={name}>
-              {name}
-            </p>
-            <img src={genderIcon} alt={`${gender} icon`} className="h-7 w-7 ml-1" />
+          <div className="flex flex-col ml-2 mr-2">
+            <div className="flex items-center">
+              <p className="text-xl mb-1 truncate max-w-[150px]" title={name}>
+                {name}
+              </p>
+              <img
+              src={genderIcon}
+              alt={`${gender} icon`}
+              className={`ml-1 ${gender === "female" ? "h-5 w-6 mb-1" : "h-6 w-6 mb-1"}`}
+              />
+
+            </div>
+
+            <div className="flex items-center mb-1">
+              <RoleBar userRole={userRole} pageRole={pageRole} />
+            </div>
+
+            <p className="text-sm break-all">{email}</p>
           </div>
-
-          <div className="flex items-center mb-1">
-            <RoleBar userRole={userRole} pageRole={pageRole} />
-          </div>
-
-          <p className="text-lg break-all">{email}</p>
         </div>
 
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 mr-2" />
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
       </div>
     </div>
   );
@@ -166,32 +199,36 @@ function Block_listitem_profile({ coin }: ListItemProps) {
   return (
     <div>
       <Link href="/customer/wallet">
-        <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center px-4">
-          <p className="text-2xl">กระเป๋าเงิน</p>
-          <div className="ml-10 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
-            <img src="/coin.svg" alt="coin icon" className="h-6 w-6 mr-2" />
-            <p className="text-2xl">{coin.toFixed(2)}</p>
+        <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center justify-between px-4">
+          <div className="flex items-center">
+            <p className="text-xl">กระเป๋าเงิน</p>
+            <div className="ml-7 h-[51px] w-fit px-2 bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
+              <img src="/coin.svg" alt="coin icon" className="h-6 w-6 mr-2" />
+              <p className="text-xl">{coin.toFixed(2)}</p>
+            </div>
           </div>
-          <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
         </div>
       </Link>
 
-      <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
-        <p className="text-2xl">ทริปขาประจำ</p>
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+      <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center justify-between px-4">
+        <p className="text-xl">ทริปขาประจำ</p>
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
       </div>
 
       <Link href="/customer/history_page">
-        <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center px-4">
-          <p className="text-2xl">ประวัติการเดินทาง</p>
-          <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+        <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center justify-between px-4">
+          <p className="text-xl">ประวัติการเดินทาง</p>
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
         </div>
       </Link>
 
-      <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center px-4">
-        <p className="text-2xl">แจ้งปัญหา</p>
-        <img src="/help.svg" alt="help" className="h-6 w-6 ml-2" />
-        <img src="/vector_next.svg" alt="next" className="h-6 w-6 ml-auto" />
+      <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center justify-between px-4">
+        <div className="flex items-center">
+          <p className="text-xl">แจ้งปัญหา</p>
+          <img src="/help.svg" alt="help" className="h-6 w-6 ml-2" />
+        </div>
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
       </div>
     </div>
   );
@@ -215,9 +252,6 @@ async function postLogout() {
   } catch {
     data = { message: raw };
   }
-
-  // หากต้องการเข้มงวด:
-  // if (!res.ok) throw new Error(data?.message || "Logout failed");
   return data;
 }
 
