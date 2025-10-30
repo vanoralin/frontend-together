@@ -70,13 +70,29 @@ const labelByType: Record<VehicleType, string> = {
   suv: "รถยนต์ขนาดใหญ่",
   motorcycle: "รถจักรยานยนต์",
 };
-const toImgSrc = (p?: string | null) =>
-  !p ? null : p.startsWith("http") ? p : `/${p.replace(/^\/?/, "")}`;
+const toImgSrc = (p?: string | null) => {
+  if (!p) return null;
+  if (/^https?:\/\//i.test(p)) return p;
+
+  const ENV_BASE =
+    process.env.NEXT_PUBLIC_FILE_BASE ||
+    process.env.NEXT_PUBLIC_API_BASE ||
+    (axios.defaults?.baseURL ?? "");
+
+  const clean = p.replace(/^\/+/, "");
+
+  if (ENV_BASE) {
+
+    return `${ENV_BASE.replace(/\/+$/, "")}/${clean}`;
+  }
+
+  return `/${clean}`;
+};
 
 /* ===================== Page ===================== */
 function Background() {
   return (
-    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
+    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center">
       <Header />
       <DriverInfo />
       <ButtonSave />
@@ -505,7 +521,6 @@ function VehicleCard({
             aria-label="รูปยานพาหนะ"
           >
             {toImgSrc(vehicle.previewUrl) ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={toImgSrc(vehicle.previewUrl)!}
                 alt="รูปยานพาหนะ"

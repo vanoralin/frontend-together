@@ -281,7 +281,7 @@ function Block_listitem_profile({ coin }: ListItemProps) {
       </Link>
       <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center justify-between px-4">
         <div className="flex items-center">
-          <p className="text-2xl">แจ้งปัญหา</p>
+          <p className="text-xl">แจ้งปัญหา</p>
           <img src="/help.svg" alt="help" className="h-6 w-6 ml-2" />
         </div>
         <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
