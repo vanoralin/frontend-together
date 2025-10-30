@@ -11,15 +11,15 @@ const VEHICLE_TYPES: VehicleType[] = ["car", "suv", "motorcycle"];
 const MAX = 3; // รวมทุกประเภทไม่เกิน 3 คัน
 
 export type Vehicle = {
-  id?: number | string;            // id จาก API (ถ้ามี)
+  id?: number | string;
   vehicleType: VehicleTypeWithEmpty;
-  model: string;                   // model_vehicle
-  exterior: string;                // description
-  licensePlate: string;            // license_plate
-  seats: string;                   // แสดงใน input
-  previewUrl: string | null;       // URL รูปจาก server หรือ blob preview
-  file?: File | null;              // ไฟล์จริงที่ผู้ใช้อัปโหลด (สำหรับส่งขึ้นเซิร์ฟเวอร์)
-  readonlyFromApi: boolean;        // true ถ้ามาจาก API → ล็อก select + รูปดูอย่างเดียว
+  model: string;            // model_vehicle
+  exterior: string;         // description
+  licensePlate: string;     // license_plate
+  seats: string;            // แสดงใน input
+  previewUrl: string | null;// พาธรูปจาก server (relative) หรือ blob URL
+  file?: File | null;       // ไฟล์จริงที่ผู้ใช้อัปโหลด (ส่งขึ้นเซิร์ฟเวอร์)
+  readonlyFromApi: boolean; // true ถ้ามาจาก API → ล็อก select + รูปดูอย่างเดียว
 };
 
 const EMPTY_VEHICLE = (): Vehicle => ({
@@ -52,15 +52,15 @@ interface ApiVehicle {
   description?: string;
   exterior?: string;
   is_active?: boolean;
-  driving_license_url?: string;
+  driving_license_url?: string; // ex: "uploads/licenses/xxx.png"
   image_url?: string;
 }
 
-/* ===== helpers: จัดเรียงตาม id (ตัวเลข) ===== */
+/* ===== helpers: sort by numeric id ===== */
 function idNum(v: { id?: number | string }) {
   return v?.id != null && !Number.isNaN(Number(v.id))
     ? Number(v.id)
-    : Number.POSITIVE_INFINITY; // ไม่มี id → ไว้ท้ายสุด
+    : Number.POSITIVE_INFINITY;
 }
 function sortById<T extends { id?: number | string }>(arr: T[]) {
   return [...arr].sort((a, b) => idNum(a) - idNum(b));
@@ -70,24 +70,128 @@ const labelByType: Record<VehicleType, string> = {
   suv: "รถยนต์ขนาดใหญ่",
   motorcycle: "รถจักรยานยนต์",
 };
-const toImgSrc = (p?: string | null) => {
-  if (!p) return null;
-  if (/^https?:\/\//i.test(p)) return p;
 
-  const ENV_BASE =
-    process.env.NEXT_PUBLIC_FILE_BASE ||
-    process.env.NEXT_PUBLIC_API_BASE ||
-    (axios.defaults?.baseURL ?? "");
+/* ===================== Toast (success/error/info) ===================== */
+type ToastType = "success" | "error" | "info";
+function Toast({
+  open,
+  type = "success",
+  title,
+  message,
+  onClose,
+  autoHideMs = 1600,
+}: {
+  open: boolean;
+  type?: ToastType;
+  title: string;
+  message?: string;
+  onClose?: () => void;
+  autoHideMs?: number;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => onClose?.(), autoHideMs);
+    return () => clearTimeout(t);
+  }, [open, autoHideMs, onClose]);
 
-  const clean = p.replace(/^\/+/, "");
+  if (!open) return null;
 
-  if (ENV_BASE) {
+  const circleClass =
+    type === "success"
+      ? "bg-green-100 border-green-200"
+      : type === "error"
+      ? "bg-red-100 border-red-200"
+      : "bg-blue-100 border-blue-200";
 
-    return `${ENV_BASE.replace(/\/+$/, "")}/${clean}`;
-  }
+  const icon =
+    type === "success" ? (
+      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+        <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ) : type === "error" ? (
+      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+        <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
+        <path d="M12 8h.01M11 12h1v4h1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
 
-  return `/${clean}`;
-};
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative z-[1001] w-[320px] rounded-2xl bg-white shadow-xl border border-gray-200 p-6 text-center">
+        {type === "success" && (
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <span className="absolute top-2 left-6 w-2 h-6 rounded-full bg-indigo-400 rotate-12 opacity-70" />
+            <span className="absolute top-4 right-10 w-2 h-5 rounded-full bg-fuchsia-400 -rotate-12 opacity-70" />
+            <span className="absolute top-12 left-10 w-1.5 h-4 rounded-full bg-amber-400 rotate-45 opacity-70" />
+            <span className="absolute top-10 right-6 w-1.5 h-6 rounded-full bg-teal-400 -rotate-45 opacity-70" />
+          </div>
+        )}
+        <div className={`mx-auto mb-4 w-20 h-20 rounded-full border ${circleClass} flex items-center justify-center text-green-600`}>
+          {icon}
+        </div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {message ? (
+          <p className="mt-1 text-sm text-gray-600 whitespace-pre-line">{message}</p>
+        ) : null}
+        <button
+          onClick={onClose}
+          className="mt-5 inline-flex items-center justify-center px-4 h-10 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium shadow-sm active:scale-[0.98]"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Confirm Dialog ===================== */
+function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmText = "ยืนยัน",
+  cancelText = "ยกเลิก",
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
+      <div className="relative z-[1001] w-[340px] rounded-2xl bg-white shadow-xl border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {message ? <p className="mt-2 text-sm text-gray-600">{message}</p> : null}
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 h-10 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ===================== Page ===================== */
 function Background() {
@@ -95,7 +199,7 @@ function Background() {
     <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center">
       <Header />
       <DriverInfo />
-      <ButtonSave />
+      {/* ปุ่มบันทึกย้ายไปแสดงแบบมีเงื่อนไขใน Carousel */}
     </div>
   );
 }
@@ -123,7 +227,8 @@ function DriverInfo() {
           headers: { "Content-Type": "application/json" },
         });
         if (!mounted) return;
-        setProfile(res.data ?? null);
+        // บางโปรเจ็กต์ Axios อาจให้ res.data เป็น unknown → cast ป้องกัน TS2345
+        setProfile((res.data as ProfileData) ?? null);
       } catch {
         if (!mounted) setProfile(null);
       }
@@ -156,7 +261,23 @@ function VehiclesCarousel() {
   const [deletingIndex, setDeletingIndex] = React.useState<number | null>(null);
   const [saving, setSaving] = React.useState(false);
 
-  // โหลดข้อมูลทุกประเภท → รวม → sortById → จำกัด MAX
+  // toast
+  const [toast, setToast] = React.useState<{
+    type: ToastType;
+    title: string;
+    message?: string;
+    open: boolean;
+  }>({ type: "success", title: "", message: "", open: false });
+  const showToast = (t: ToastType, title: string, message?: string) =>
+    setToast({ type: t, title, message, open: true });
+
+  // confirm delete
+  const [confirm, setConfirm] = React.useState<{ open: boolean; idx: number | null }>({
+    open: false,
+    idx: null,
+  });
+
+  // โหลดข้อมูลทุกประเภท
   React.useEffect(() => {
     let mounted = true;
     (async () => {
@@ -167,15 +288,13 @@ function VehiclesCarousel() {
         const perType = await Promise.all(
           (["car", "suv", "motorcycle"] as VehicleType[]).map(async (t) => {
             try {
-              const res = await axios.get<ApiVehicle[]>(
-                `/api/driver/vehicles`,
-                {
-                  params: { vehicle_type: t },
-                  withCredentials: true,
-                  headers: { "Content-Type": "application/json" },
-                }
-              );
-              const arr = Array.isArray(res.data) ? res.data : [];
+              const res = await axios.get<ApiVehicle>(`/api/driver/vehicles`, {
+                params: { vehicle_type: t },
+                withCredentials: true,
+                headers: { "Content-Type": "application/json" },
+              });
+              const raw = res.data;
+              const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
               return arr.map(apiVehicleToUi).filter(Boolean) as Vehicle[];
             } catch (err: any) {
               if (err?.response?.status === 404) return [] as Vehicle[];
@@ -206,23 +325,46 @@ function VehiclesCarousel() {
     };
   }, []);
 
-  // บันทึก “การ์ดที่กำลังแสดงอยู่” (ทีละหน้า)
+  /* ---------- ตรวจครบถ้วนทุกช่องในครั้งเดียว ---------- */
+  function validateVehicle(v: Vehicle) {
+    const msgs: string[] = [];
+
+    if (!v.vehicleType) msgs.push("โปรดเลือกประเภทยานพาหนะ");
+    if (!v.model || !v.model.trim()) msgs.push("โปรดกรอกรุ่นยานพาหนะ");
+    if (!v.licensePlate || !v.licensePlate.trim()) msgs.push("โปรดกรอกป้ายทะเบียนรถ");
+
+    const seatsNum = Number(v.seats);
+    if (!v.seats || Number.isNaN(seatsNum)) {
+      msgs.push("โปรดใส่จำนวนผู้โดยสารเป็นตัวเลข");
+    } else if (!Number.isInteger(seatsNum) || seatsNum < 0) {
+      msgs.push("จำนวนผู้โดยสารต้องเป็นจำนวนเต็มที่ไม่ติดลบ");
+    }
+
+    if (!v.readonlyFromApi && !v.file) {
+      msgs.push("โปรดอัปโหลดรูปใบขับขี่/ยานพาหนะ");
+    }
+
+    return { ok: msgs.length === 0, messages: msgs };
+  }
+
+  // บันทึก “การ์ดที่กำลังแสดงอยู่”
   React.useEffect(() => {
     const handler = async () => {
       const v = vehicles[index];
       if (!v) return;
 
       if (v.readonlyFromApi) {
-        alert("ข้อมูลคันนี้บันทึกไว้แล้ว");
+        showToast("info", "ข้อมูลคันนี้บันทึกไว้แล้ว");
         return;
       }
 
-      // validate ตามสเปค POST /driver/addVehicle
-      if (!v.vehicleType) return alert("โปรดเลือกประเภทยานพาหนะ");
-      if (!v.model.trim()) return alert("โปรดกรอกรุ่น");
-      if (!v.licensePlate.trim()) return alert("โปรดกรอกป้ายทะเบียนรถ");
-      if (!v.seats || Number.isNaN(Number(v.seats))) return alert("โปรดใส่จำนวนผู้โดยสารเป็นตัวเลข");
-      if (!v.file) return alert("โปรดอัปโหลดรูปใบขับขี่/ยานพาหนะ");
+      // ✅ ใช้ตัวตรวจใหม่: รวมทุกข้อผิดพลาดในครั้งเดียว
+      const { ok, messages } = validateVehicle(v);
+      if (!ok) {
+        const body = messages.join("\n");
+        showToast("error", "กรอกข้อมูลไม่ครบ", body);
+        return;
+      }
 
       setSaving(true);
       try {
@@ -232,7 +374,7 @@ function VehiclesCarousel() {
         fd.append("license_plate", v.licensePlate);
         fd.append("seats", String(parseInt(v.seats, 10)));
         if (v.exterior) fd.append("description", v.exterior);
-        fd.append("driving_license", v.file);
+        fd.append("driving_license", v.file!);
 
         const res = await axios.post<ApiVehicle>("/api/driver/addVehicle", fd, {
           withCredentials: true,
@@ -241,24 +383,21 @@ function VehiclesCarousel() {
 
         const saved = apiVehicleToUi(res.data);
 
-        // แทนการ์ดปัจจุบัน → sortById → อัปเดต index ไปยังตำแหน่งของ saved.id
         setVehicles((prev) => {
           const next = [...prev];
           const old = next[index];
           if (old?.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(old.previewUrl);
-
           next[index] = { ...saved, readonlyFromApi: true, file: null };
-
           const sorted = sortById(next).slice(0, MAX);
           const newPos = sorted.findIndex((x) => x.id === saved.id);
           setIndex(newPos >= 0 ? newPos : 0);
           return sorted;
         });
 
-        alert("บันทึกสำเร็จ");
+        showToast("success", "บันทึกเรียบร้อย", "เพิ่มยานพาหนะสำเร็จ");
       } catch (err: any) {
         console.error("[save-vehicle] error:", err);
-        alert(err?.response?.data?.message ?? "บันทึกไม่สำเร็จ");
+        showToast("error", "บันทึกไม่สำเร็จ", err?.response?.data?.message ?? "ลองใหม่อีกครั้ง");
       } finally {
         setSaving(false);
       }
@@ -268,7 +407,7 @@ function VehiclesCarousel() {
     return () => window.removeEventListener("save-vehicle", handler as EventListener);
   }, [vehicles, index]);
 
-  // touch handling
+  // gestures
   const startXRef = React.useRef<number | null>(null);
   const deltaXRef = React.useRef<number>(0);
   const onTouchStart = (e: React.TouchEvent) => {
@@ -296,8 +435,7 @@ function VehiclesCarousel() {
     });
   };
 
-  const setPreviewFor = (idx: number, url: string | null) =>
-    updateVehicle(idx, "previewUrl", url);
+  const setPreviewFor = (idx: number, url: string | null) => updateVehicle(idx, "previewUrl", url);
 
   const addVehicle = () => {
     setVehicles((prev) => {
@@ -308,10 +446,14 @@ function VehiclesCarousel() {
     });
   };
 
-  const deleteVehicle = async (idx: number) => {
-    if (vehicles.length === 1) return; // กันไม่ให้เหลือ 0 ใบ
-    const v = vehicles[idx];
+  // กดปุ่ม "ลบคันนี้" → เปิดยืนยัน
+  const requestDelete = (idx: number) => {
+    setConfirm({ open: true, idx });
+  };
 
+  // ยืนยันลบ
+  const performDelete = async (idx: number) => {
+    const v = vehicles[idx];
     try {
       setDeletingIndex(idx);
 
@@ -330,19 +472,26 @@ function VehiclesCarousel() {
         setIndex((cur) => Math.min(cur > idx ? cur - 1 : cur, sorted.length - 1));
         return sorted.length > 0 ? sorted : [EMPTY_VEHICLE()];
       });
+
+      showToast("success", "ลบเรียบร้อย");
     } catch (err: any) {
       console.error("[deleteVehicle] error:", err);
-      alert(err?.response?.data?.message ?? "ลบไม่สำเร็จ");
+      showToast("error", "ลบไม่สำเร็จ", err?.response?.data?.message ?? "ลองใหม่อีกครั้ง");
     } finally {
       setDeletingIndex(null);
+      setConfirm({ open: false, idx: null });
     }
   };
 
   const canAdd = vehicles.length < MAX;
 
+  // การ์ดปัจจุบัน + เงื่อนไขโชว์ปุ่มบันทึก (ต้องไม่ใช่ของ API)
+  const current = vehicles[index];
+  const showSave = !!current && !current.readonlyFromApi;
+
   return (
-    <div className="w-[313px] select-none">
-      {/* Header row: position + add */}
+    <div className="w-[313px] select-none relative">
+      {/* Header row */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-gray-700">
           ยานพาหนะ {index + 1} / {vehicles.length} (รวมสูงสุด {MAX})
@@ -374,10 +523,7 @@ function VehiclesCarousel() {
       >
         <div
           className="flex transition-transform duration-300"
-          style={{
-            transform: `translateX(-${index * CARD_W}px)`,
-            width: `${vehicles.length * CARD_W}px`,
-          }}
+          style={{ transform: `translateX(-${index * CARD_W}px)`, width: `${vehicles.length * CARD_W}px` }}
         >
           {vehicles.map((v, i) => (
             <div key={`card-${v.id ?? i}`} className="shrink-0 w-[313px] px-0">
@@ -387,7 +533,7 @@ function VehiclesCarousel() {
                 vehicle={v}
                 onChange={(key, value) => updateVehicle(i, key, value as any)}
                 onPreviewChange={(url) => setPreviewFor(i, url)}
-                onDelete={() => deleteVehicle(i)}
+                onDelete={() => requestDelete(i)}
                 canDelete={vehicles.length > 1}
                 deleting={deletingIndex === i}
               />
@@ -403,20 +549,39 @@ function VehiclesCarousel() {
             key={i}
             aria-label={`ไปยังยานพาหนะ ${i + 1}`}
             onClick={() => setIndex(i)}
-            className={`h-2.5 rounded-full transition-all ${
-              i === index ? "w-5 bg-gray-700" : "w-2.5 bg-gray-400/60"
-            }`}
+            className={`h-2.5 rounded-full transition-all ${i === index ? "w-5 bg-gray-700" : "w-2.5 bg-gray-400/60"}`}
           />
         ))}
       </div>
 
-      {saving && (
-        <p className="text-xs text-gray-600 mt-2 text-center">กำลังบันทึกคันที่ {index + 1} ...</p>
-      )}
+      {saving && <p className="text-xs text-gray-600 mt-2 text-center">กำลังบันทึกคันที่ {index + 1} ...</p>}
 
       <p className="text-xs text-gray-500 mt-2 text-center">
         ปัดซ้าย/ขวาเพื่อสลับการ์ด • แตะ “+ เพิ่ม” เพื่อเพิ่ม (รวมสูงสุด {MAX} คัน)
       </p>
+
+      {/* ✅ ปุ่มบันทึกจะแสดงเฉพาะตอนเพิ่มคันใหม่ (ไม่ readonlyFromApi) */}
+      {showSave && <ButtonSave />}
+
+      {/* Toast */}
+      <Toast
+        open={toast.open}
+        type={toast.type}
+        title={toast.title}
+        message={toast.message}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+      />
+
+      {/* Confirm Delete */}
+      <ConfirmDialog
+        open={confirm.open}
+        title="ต้องการลบยานพาหนะนี้ใช่หรือไม่?"
+        message="การลบจะไม่สามารถย้อนกลับได้"
+        confirmText="ลบ"
+        cancelText="ยกเลิก"
+        onCancel={() => setConfirm({ open: false, idx: null })}
+        onConfirm={() => (confirm.idx != null ? performDelete(confirm.idx) : null)}
+      />
     </div>
   );
 }
@@ -464,21 +629,23 @@ function VehicleCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const showBadge = vehicle.vehicleType !== "";
-  const canEditType = !vehicle.readonlyFromApi;
+  const canEditType = !vehicle.readonlyFromApi; // คันจาก API จะล็อก dropdown
+
+  // รูปจาก API → ใช้พาธผ่าน proxy, รูปอัปโหลดใหม่ → blob:
+  const serverImgSrc =
+    vehicle.readonlyFromApi && vehicle.previewUrl
+      ? `/${vehicle.previewUrl.replace(/^\/+/, "")}`
+      : null;
 
   return (
     <div className="flex flex-col items-center">
-      {/* top bar: index + type badge + delete */}
+      {/* top bar */}
       <div className="w-[313px] flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-600">คันที่ {index + 1} / {total}</span>
+        <span className="text-sm text-gray-600">
+          คันที่ {index + 1} / {total}
+        </span>
 
         <div className="flex items-center gap-2">
-          {showBadge && vehicle.vehicleType && (
-            <span className="text-xs px-2 py-1 rounded-lg bg-white border border-gray-200 shadow-sm">
-              {labelByType[vehicle.vehicleType as VehicleType]}
-            </span>
-          )}
           <button
             type="button"
             onClick={onDelete}
@@ -493,7 +660,7 @@ function VehicleCard({
         </div>
       </div>
 
-      {/* Vehicle type */}
+      {/* Vehicle type (dropdown แบบเดิม) */}
       <div className="w-77">
         <label className="mb-1 block text-sm text-gray-700">ประเภทยานพาหนะ</label>
         <select
@@ -506,25 +673,26 @@ function VehicleCard({
         >
           <option value="">เลือกประเภทยานพาหนะ</option>
           {VEHICLE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {labelByType[t]}
-            </option>
+            <option key={t} value={t}>{labelByType[t]}</option>
           ))}
         </select>
       </div>
 
-      {/* Image: readonly (มีข้อมูลแล้ว) vs upload (ฟอร์มใหม่) */}
+      {/* Image */}
       <div className="mt-4">
         {vehicle.readonlyFromApi ? (
           <div
             className="relative w-[313px] h-[180px] rounded-2xl bg-white border border-gray-200 shadow-md overflow-hidden"
             aria-label="รูปยานพาหนะ"
           >
-            {toImgSrc(vehicle.previewUrl) ? (
+            {serverImgSrc ? (
               <img
-                src={toImgSrc(vehicle.previewUrl)!}
+                src={serverImgSrc}
                 alt="รูปยานพาหนะ"
                 className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+                }}
               />
             ) : (
               <span className="absolute inset-0 flex items-center justify-center text-gray-500">
@@ -541,7 +709,6 @@ function VehicleCard({
               aria-label="อัปโหลดรูปยานพาหนะ"
             >
               {vehicle.previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={vehicle.previewUrl}
                   alt="รูปยานพาหนะ"
@@ -554,10 +721,7 @@ function VehicleCard({
               )}
               <span className="absolute bottom-2 right-2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-white group-active:scale-95 transition">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="opacity-80">
-                  <path
-                    d="M9 4h6l1.2 2H20a 2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.8L9 4Zm3 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-                    fill="currentColor"
-                  />
+                  <path d="M9 4h6l1.2 2H20a 2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.8L9 4Zm3 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" fill="currentColor" />
                 </svg>
               </span>
             </button>
@@ -648,7 +812,7 @@ function ButtonSave() {
           onClick={async () => {
             try {
               setSaving(true);
-              window.dispatchEvent(new CustomEvent("save-vehicle")); // ให้ Carousel เป็นคนบันทึก "หน้าปัจจุบัน"
+              window.dispatchEvent(new CustomEvent("save-vehicle"));
             } finally {
               setSaving(false);
             }
@@ -675,6 +839,7 @@ function apiVehicleToUi(av: ApiVehicle): Vehicle {
     exterior: av?.description ?? av?.exterior ?? "",
     licensePlate: av?.license_plate ?? "",
     seats: av?.seats != null ? String(av.seats) : "",
+    // เก็บเป็น relative path เพื่อใช้ผ่าน proxy: <img src={`/${path}`} />
     previewUrl: av?.driving_license_url ?? av?.image_url ?? null,
     file: null,
     readonlyFromApi: true,
