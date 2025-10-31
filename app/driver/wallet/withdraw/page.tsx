@@ -59,7 +59,8 @@ function Background() {
     })();
   }, [router]);
 
-  const parsedAmount = amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
+  const parsedAmount =
+    amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
   const safeAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
 
   const afterWithdraw = Math.max(0, balance - safeAmount);
@@ -108,11 +109,15 @@ function Background() {
           <div className="grid grid-cols-2 gap-6 mt-5">
             <div className="flex flex-col">
               <p className="text-xl text-left">ยอดเงินปัจจุบัน</p>
-              <p className="text-xl font-semibold text-left">฿{balance.toFixed(2)}</p>
+              <p className="text-xl font-semibold text-left">
+                ฿{balance.toFixed(2)}
+              </p>
             </div>
             <div className="flex flex-col">
               <p className="text-xl text-left">ยอดเงินหลังถอน</p>
-              <p className="text-xl font-semibold text-left">฿{afterWithdraw.toFixed(2)}</p>
+              <p className="text-xl font-semibold text-left">
+                ฿{afterWithdraw.toFixed(2)}
+              </p>
             </div>
           </div>
         )}
@@ -136,7 +141,9 @@ function Background() {
           />
           <div id="amountHelp" className="mt-1 text-sm">
             {exceedsBalance ? (
-              <span className="text-red-600">จำนวนเงินเกินยอดคงเหลือใส่ไม่ได้</span>
+              <span className="text-red-600">
+                จำนวนเงินเกินยอดคงเหลือใส่ไม่ได้
+              </span>
             ) : (
               <span className="text-gray-600">สูงสุดถอนได้ ฿{balance}</span>
             )}
@@ -156,10 +163,20 @@ function Background() {
                 disabled={disabled}
                 onClick={() => handleClickAmount(amount)}
                 className={`w-full h-[51px] rounded-[30px] border transition shadow-md
-                  ${disabled ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:opacity-95 active:scale-[0.98]"}
-                  ${isSelected ? "!bg-[#E6A88A] border-[#B55C32] text-black" : "border-transparent"}
+                  ${
+                    disabled
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-white text-black hover:opacity-95 active:scale-[0.98]"
+                  }
+                  ${
+                    isSelected
+                      ? "!bg-[#E6A88A] border-[#B55C32] text-black"
+                      : "border-transparent"
+                  }
                   focus:outline-none focus:ring-0`}
-                aria-label={`เลือกถอน ฿${amount}${disabled ? " (เกินยอดคงเหลือ)" : ""}`}
+                aria-label={`เลือกถอน ฿${amount}${
+                  disabled ? " (เกินยอดคงเหลือ)" : ""
+                }`}
               >
                 <span className="text-xl">฿{amount}</span>
               </button>
@@ -168,7 +185,11 @@ function Background() {
         </div>
       </div>
 
-      <Goto_payment currentBalance={balance} amountInput={amountInput} loading={loading} />
+      <Goto_payment
+        currentBalance={balance}
+        amountInput={amountInput}
+        loading={loading}
+      />
     </div>
   );
 }
@@ -191,7 +212,8 @@ function Goto_payment({
   amountInput: string;
   loading: boolean;
 }) {
-  const parsedAmount = amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
+  const parsedAmount =
+    amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
   const safeAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
   const exceedsBalance = safeAmount > currentBalance;
   const isZeroOrInvalid = safeAmount <= 0 || isNaN(safeAmount);
@@ -203,7 +225,9 @@ function Goto_payment({
         <div className="h-5 mb-2" aria-live="polite">
           {!canProceed && (
             <p className="text-center text-sm text-gray-600">
-              {loading ? "กำลังโหลดยอดเงิน..." : "กรอกจำนวนเงินให้ถูกต้องเพื่อดำเนินการต่อ"}
+              {loading
+                ? "กำลังโหลดยอดเงิน..."
+                : "กรอกจำนวนเงินให้ถูกต้องเพื่อดำเนินการต่อ"}
             </p>
           )}
         </div>
@@ -218,7 +242,8 @@ function Goto_payment({
             role="button"
             aria-label="ยืนยันถอนเงิน"
             onClick={() => {
-              if (canProceed) localStorage.setItem("withdrawAmount", String(safeAmount));
+              if (canProceed)
+                localStorage.setItem("withdrawAmount", String(safeAmount));
             }}
           >
             <p className="text-center text-2xl font-medium">ถอนเงิน</p>

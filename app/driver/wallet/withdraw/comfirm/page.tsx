@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import Link from "next/link";
 import { BackButton } from "@/app/components/share_component";
@@ -10,14 +10,11 @@ import { BackButton } from "@/app/components/share_component";
 type WithdrawResponse = {
   message?: string;
   transaction_id?: number | string;
-  // เพิ่มฟิลด์อื่นๆได้ตามที่ API ส่งกลับ
 };
 
-/* ============== Helpers ============== */
-function maskAccount(acc?: string) {
-  if (!acc) return "******1234";
-  if (acc.length <= 4) return "******" + acc;
-  return "******" + acc.slice(-4);
+interface ProfileData {
+  name?: string;
+  email?: string;
 }
 
 /* ============== API Caller ============== */
@@ -36,17 +33,39 @@ async function postWithdraw(amount: number) {
 /* ============== Components ============== */
 export default function ConfirmWithdrawPage() {
   const router = useRouter();
-  const search = useSearchParams();
-
-  const account = search.get("account") ?? "0123456789";
   const nextHref = "/driver/wallet";
 
   const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
+  const [profile, setProfile] = React.useState<ProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     const s = localStorage.getItem("withdrawAmount") || "0";
     const n = Number(s);
     setAmountDisplay(isNaN(n) ? "0.00" : n.toFixed(2));
+  }, []);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingProfile(true);
+        const res = await axios.get<ProfileData>("/api/User/profile", {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!mounted) return;
+        setProfile(res.data ?? null);
+      } catch {
+        if (!mounted) return;
+        setProfile(null);
+      } finally {
+        if (mounted) setLoadingProfile(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -75,7 +94,9 @@ export function HeaderWithdraw() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">ยืนยันการถอน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">
+        ยืนยันการถอน
+      </p>
     </div>
   );
 }

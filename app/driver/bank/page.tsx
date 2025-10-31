@@ -15,8 +15,12 @@ export default function RegisterPage() {
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [errorMsg, setErrorMsg] = useState(""); // ⬅️ ข้อความ error (สีแดง, เหนือปุ่ม)
+  const [successMsg, setSuccessMsg] = useState(""); // ⬅️ ข้อความสำเร็จ (สีเขียว)
+  const [accountNumberError, setAccountNumberError] = useState("");
+
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,47 +39,95 @@ export default function RegisterPage() {
     };
   }, [preview]);
 
-  // ✅ ฟังก์ชันส่งข้อมูลไป backend
+  // ------- ตรวจรูปแบบเลขบัญชี (10 หลัก ตัวเลขเท่านั้น) -------
+  const validateAccountNumber = (num: string) => {
+    if (!/^\d{10}$/.test(num)) {
+      setAccountNumberError("เลขบัญชีไม่ถูกต้อง กรุณากรอกให้ครบ 10 หลัก");
+      return false;
+    }
+    setAccountNumberError("");
+    return true;
+  };
+
+  // ------- ส่งข้อมูลไป backend -------
   const handleSubmit = async () => {
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    // ตรวจ input เบื้องต้น
     if (!bankName || !bankCode || !accountNumber || !accountName) {
-      setMessage("⚠️ กรุณากรอกข้อมูลให้ครบทุกช่อง");
+      setErrorMsg("⚠️ กรุณากรอกข้อมูลให้ครบทุกช่อง");
+      return;
+    }
+    if (!validateAccountNumber(accountNumber)) {
+      setErrorMsg("เลขบัญชีไม่ถูกต้อง กรุณากรอกให้ครบ 10 หลัก");
       return;
     }
 
     try {
       setIsLoading(true);
-      setMessage("");
 
       const token = localStorage.getItem("token");
       if (!token) {
-        setMessage("⚠️ ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
-        setIsLoading(false);
+        setErrorMsg("⚠️ ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
         return;
       }
 
       const res = await axios.post(
-        "https://your-api-url.com/api/driver/linkbank",
+        "/api/driver/linkbank",
         {
-          bank_account_name: accountName,
-          bank_account_number: accountNumber,
-          bank_code: bankCode,
-          bank_name: bankName,
+          bank_account_name: accountName.trim(),
+          bank_account_number: accountNumber.trim(),
+          bank_code: bankCode || null,
+          bank_name: bankName.trim(),
         },
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
+          withCredentials: true,
         }
       );
 
-      setMessage("✅ ผูกบัญชีธนาคารสำเร็จ!");
+      setSuccessMsg("✅ ผูกบัญชีธนาคารสำเร็จ!");
       console.log("response:", res.data);
+      // setTimeout(() => { window.location.href = "/driver/profile"; }, 1200);
     } catch (err: any) {
-      console.error(err);
-      setMessage(
-        err.response?.data?.message ||
-          "❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์"
-      );
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      const msg = String(data?.message || data?.detail || "").toLowerCase();
+
+      if (status === 400) {
+        if (
+          msg.includes("10") ||
+          msg.includes("length") ||
+          msg.includes("digit")
+        ) {
+          setAccountNumberError("เลขบัญชีไม่ถูกต้อง กรุณากรอกให้ครบ 10 หลัก");
+          setErrorMsg("เลขบัญชีไม่ถูกต้อง กรุณากรอกให้ครบ 10 หลัก");
+        } else if (
+          msg.includes("duplicate") ||
+          msg.includes("exists") ||
+          msg.includes("already")
+        ) {
+          setAccountNumberError("เลขบัญชีนี้ถูกใช้งานแล้ว กรุณาใช้บัญชีอื่น");
+          setErrorMsg("เลขบัญชีนี้ถูกใช้งานแล้ว กรุณาใช้บัญชีอื่น");
+        } else {
+          setErrorMsg("❌ ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง");
+        }
+      } else if (status === 409) {
+        setAccountNumberError("เลขบัญชีนี้มีอยู่ในระบบแล้ว");
+        setErrorMsg("เลขบัญชีนี้มีอยู่ในระบบแล้ว");
+      } else if (status === 401) {
+        setErrorMsg("⚠️ หมดสิทธิ์การเข้าถึง กรุณาเข้าสู่ระบบใหม่");
+      } else if (status === 500) {
+        setErrorMsg("⚠️ เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง");
+      } else {
+        setErrorMsg("❌ เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+      }
+
+      console.error("linkbank error:", { status, data });
     } finally {
       setIsLoading(false);
     }
@@ -98,14 +150,14 @@ export default function RegisterPage() {
           <div className="w-full flex items-center mb-4">
             <BackButton href="/driver/register" className="mr-2" />
             <h1
-              className="px-[55px] py-[10px] text-[#191919] font-medium"
+              className="px-[55px] py-[20px] text-[#191919] font-medium"
               style={{ fontSize: titleSize, lineHeight: 1.3 }}
             >
               ผูกบัญชีธนาคาร
             </h1>
           </div>
 
-          {/* Hidden input สำหรับอัปโหลด */}
+          {/* Hidden input สำหรับอัปโหลด (ถ้าจะใช้แนบรูปสมุดบัญชี) */}
           <input
             ref={fileRef}
             type="file"
@@ -117,8 +169,9 @@ export default function RegisterPage() {
           {/* Form */}
           <div className="flex-1 flex items-center justify-center">
             <div style={{ width: 318 }}>
+              {/* ธนาคาร */}
               <label
-                className="block text-[#191919] mt-4 mb-2"
+                className="block text-[#191919] mb-2"
                 style={{ fontSize: baseSize }}
               >
                 ธนาคาร
@@ -132,11 +185,14 @@ export default function RegisterPage() {
                     fontSize: baseSize,
                     boxSizing: "border-box",
                   }}
+                  value={bankCode}
                   onChange={(e) => {
-                    setBankCode(e.target.value);
-                    if (e.target.value === "kbank") setBankName("กสิกรไทย");
-                    if (e.target.value === "scb") setBankName("ไทยพาณิชย์");
-                    if (e.target.value === "bbl") setBankName("กรุงเทพ");
+                    const v = e.target.value;
+                    setBankCode(v);
+                    if (v === "kbank") setBankName("กสิกรไทย");
+                    if (v === "scb") setBankName("ไทยพาณิชย์");
+                    if (v === "bbl") setBankName("กรุงเทพ");
+                    if (v === "") setBankName("");
                   }}
                 >
                   <option value="">เลือกธนาคาร</option>
@@ -160,6 +216,7 @@ export default function RegisterPage() {
                 </svg>
               </div>
 
+              {/* เลขบัญชี */}
               <label
                 className="block text-[#191919] mb-2"
                 style={{ fontSize: baseSize }}
@@ -168,18 +225,36 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
-                className="w-full h-12 mb-4 bg-white shadow-sm pl-4 pr-4 outline-none"
+                inputMode="numeric"
+                maxLength={10}
+                className={`w-full h-12 ${
+                  accountNumberError ? "mb-1" : "mb-4"
+                } bg-white shadow-sm pl-4 pr-4 outline-none`}
                 style={{
                   border: "2px solid #D9D9D9",
                   borderRadius: 20,
                   fontSize: baseSize,
                   boxSizing: "border-box",
                 }}
-                placeholder="กรอกเลขบัญชี"
+                placeholder="กรอกเลขบัญชี 10 หลัก"
                 value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
+                onChange={(e) => {
+                  const onlyDigits = e.target.value
+                    .replace(/[^\d]/g, "")
+                    .slice(0, 10);
+                  setAccountNumber(onlyDigits);
+                  if (accountNumberError) setAccountNumberError("");
+                  if (errorMsg) setErrorMsg("");
+                }}
+                onBlur={() => validateAccountNumber(accountNumber)}
               />
+              {accountNumberError && (
+                <p className="text-red-600 text-sm mb-3">
+                  {accountNumberError}
+                </p>
+              )}
 
+              {/* ชื่อบัญชี */}
               <label
                 className="block text-[#191919] mb-2"
                 style={{ fontSize: baseSize }}
@@ -202,14 +277,34 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* ✅ โซนข้อความแจ้งเตือน (อยู่เหนือปุ่ม) */}
+          <div className="flex flex-col items-center mt-2 min-h-[24px]">
+            {errorMsg && (
+              <p
+                className="text-red-600 text-sm text-center"
+                style={{ fontSize: baseSize }}
+              >
+                {errorMsg}
+              </p>
+            )}
+            {!errorMsg && successMsg && (
+              <p
+                className="text-green-600 text-sm text-center"
+                style={{ fontSize: baseSize }}
+              >
+                {successMsg}
+              </p>
+            )}
+          </div>
+
           {/* ปุ่มด้านล่าง */}
-          <div className="flex flex-col items-center mb-6">
-            <img src="/bank.svg" alt="bank logo" className="w-86 h-86 mb-3" />
+          <div className="flex flex-col items-center">
+            <img src="/bank.svg" alt="bank logo" className="w-86 h-86 mb-2" />
 
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="w-fit h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-5 inline-flex items-center justify-center"
+              className="w-fit h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-5 inline-flex items-center justify-center disabled:opacity-60"
               style={{
                 boxSizing: "border-box",
                 color: "#191919",
@@ -221,15 +316,6 @@ export default function RegisterPage() {
             >
               {isLoading ? "กำลังผูกบัญชี..." : "ผูกบัญชีธนาคาร"}
             </button>
-
-            {message && (
-              <p
-                className="text-center mt-3 text-[#191919]"
-                style={{ fontSize: baseSize }}
-              >
-                {message}
-              </p>
-            )}
           </div>
         </div>
       </div>

@@ -38,12 +38,32 @@ function Background() {
     { type: "topup", date: "2024-08-24 22:01", success: "success", amount: 50 },
     { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
     { type: "topup", date: "2024-08-15 09:15", success: "cancel", amount: 100 },
-    { type: "withdraw", date: "2024-08-10 18:45", success: "success", amount: 30 },
+    {
+      type: "withdraw",
+      date: "2024-08-10 18:45",
+      success: "success",
+      amount: 30,
+    },
     { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "withdraw", date: "2024-07-30 16:20", success: "success", amount: 10 },
+    {
+      type: "withdraw",
+      date: "2024-07-30 16:20",
+      success: "success",
+      amount: 10,
+    },
     { type: "topup", date: "2024-07-25 08:10", success: "cancel", amount: 150 },
-    { type: "withdraw", date: "2024-07-20 19:55", success: "success", amount: 40 },
-    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
+    {
+      type: "withdraw",
+      date: "2024-07-20 19:55",
+      success: "success",
+      amount: 40,
+    },
+    {
+      type: "withdraw",
+      date: "2024-08-20 14:30",
+      success: "cancel",
+      amount: 20,
+    },
     { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
   ];
 
@@ -117,7 +137,9 @@ function Header_wallet() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">กระเป๋าเงิน</p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">
+        กระเป๋าเงิน
+      </p>
     </div>
   );
 }
@@ -131,7 +153,11 @@ function Profile_wallet({
   return (
     <div className="h-[162px] w-[366px] bg-white rounded-[30px] shadow-md mt-8 p-4 flex items-center">
       <img
-        src={profile_picture && profile_picture.trim() !== "" ? profile_picture : "/user.svg"}
+        src={
+          profile_picture && profile_picture.trim() !== ""
+            ? profile_picture
+            : "/user.svg"
+        }
         alt="icon"
         className="h-[130px] w-[130px] rounded-full object-cover ml-3"
       />
@@ -211,7 +237,9 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
   return (
     <div className="w-[366px] h-[370px] bg-white mt-3 rounded-t-[20px] overflow-y-auto shadow-sm ring-1 ring-[#D6E7E2]">
       {history.length === 0 ? (
-        <div className="p-6 text-xl text-center text-gray-900">ยังไม่มีประวัติรายการ</div>
+        <div className="p-6 text-xl text-center text-gray-900">
+          ยังไม่มีประวัติรายการ
+        </div>
       ) : (
         <div className="flex flex-col">
           {history.map((item, idx) => {
@@ -225,19 +253,31 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
             const labelStatus = isSuccess ? "สำเร็จ" : "ยกเลิก";
 
             return (
-              <div key={idx} className="px-4 py-3 border-b-[2px] border-[#CFE3DE]">
+              <div
+                key={idx}
+                className="px-4 py-3 border-b-[2px] border-[#CFE3DE]"
+              >
                 {/* แถวบน: ชื่อรายการซ้าย / จำนวนเงินขวา */}
                 <div className="flex items-start justify-between">
                   <p className="text-xl font-semibold">{labelType}</p>
                   <p className="text-xl font-semibold">
-                    {(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}
+                    {item.type === "withdraw" || item.type === "paid"
+                      ? "-"
+                      : ""}
+                    ฿{item.amount.toFixed(2)}
                   </p>
                 </div>
 
                 <div className="mt-1 text-sm flex items-center">
-                  <span className={isSuccess ? "text-green-600" : "text-red-600"}>{labelStatus}</span>
+                  <span
+                    className={isSuccess ? "text-green-600" : "text-red-600"}
+                  >
+                    {labelStatus}
+                  </span>
                   <span className="mx-2 text-gray-300">|</span>
-                  <span className="text-gray-500">{formatThaiDate(item.date)}</span>
+                  <span className="text-gray-500">
+                    {formatThaiDate(item.date)}
+                  </span>
                 </div>
               </div>
             );

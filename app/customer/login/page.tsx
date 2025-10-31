@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import Link from "next/link";
 import axios from "axios";
 
@@ -14,39 +14,78 @@ export default function LoginPage() {
   const [passwordError, setPasswordError] = useState("");
   const [serverError, setServerError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // ✅ รับ token กลับมาทาง query (?token=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const err = params.get("error");
+
+    if (err)
+      setServerError(
+        err === "access_denied" ? "ผู้ใช้ยกเลิกการเข้าสู่ระบบ" : err
+      );
+    if (!token) return;
+
+    localStorage.setItem("token", token);
+    window.history.replaceState({}, "", window.location.pathname); // ล้าง query
+
+    (async () => {
+      try {
+        const prof = await axios.get("/api/User/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        });
+
+        const nameVal = String(prof.data?.name ?? "");
+        const isBanned = nameVal.startsWith("[BANNED]");
+        if (isBanned) return window.location.replace("/customer/ban");
+
+        // (ทางเลือก) บังคับโดเมนเมล
+        if (
+          prof.data?.email &&
+          !String(prof.data.email).endsWith("@kmitl.ac.th")
+        ) {
+          localStorage.removeItem("token");
+          setServerError("อนุญาตเฉพาะอีเมล @kmitl.ac.th เท่านั้น");
+          return;
+        }
+
+        window.location.replace("/customer/home");
+      } catch {
+        setServerError("ไม่สามารถอ่านข้อมูลผู้ใช้หลังเข้าสู่ระบบได้");
+      }
+    })();
+  }, []);
+
+  // ✅ Email/Password login เดิม
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    let isValid = true;
-
-    // reset error
     setEmailError("");
     setPasswordError("");
     setServerError("");
 
-    // ✅ ตรวจ input
+    let ok = true;
     if (!email) {
       setEmailError("กรุณากรอกอีเมล");
-      isValid = false;
+      ok = false;
     } else if (!email.endsWith("@kmitl.ac.th")) {
       setEmailError("กรุณากรอกอีเมล @kmitl.ac.th เท่านั้น");
-      isValid = false;
+      ok = false;
     }
     if (!password) {
       setPasswordError("กรุณากรอกรหัสผ่าน");
-      isValid = false;
+      ok = false;
     }
-    if (!isValid) return;
+    if (!ok) return;
 
     setIsLoading(true);
-
     try {
       interface LoginResponse {
         token: string;
         user: string;
       }
-
-      // ✅ Login
       const res = await axios.post<LoginResponse>(
         "/api/User/login",
         { email, password },
@@ -56,61 +95,42 @@ export default function LoginPage() {
         }
       );
 
-      // ✅ เก็บ token
       const token = res.data.token;
       if (!token) throw new Error("Token not found in response");
       localStorage.setItem("token", token);
 
-      // ✅ ดึงข้อมูลโปรไฟล์เพื่อเช็คสถานะแบน (วิธีที่ 1: ใช้ prefix [BANNED] ที่ name)
       const prof = await axios.get("/api/User/profile", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
 
-      const nameVal = (prof.data?.name ?? "") as string;
-      const isBanned =
-        typeof nameVal === "string" && nameVal.startsWith("[BANNED]");
+      const nameVal = String(prof.data?.name ?? "");
+      if (nameVal.startsWith("[BANNED]"))
+        return (window.location.href = "/customer/ban");
 
-      if (isBanned) {
-        // // ถูกแบน → ล้าง token แล้วโยนไปหน้าแบน
-        // localStorage.removeItem("token");
-        window.location.href = "/customer/ban";
-        return;
-      }
-
-      // ไม่ถูกแบน → ไปหน้า home ปกติ
       window.location.href = "/customer/home";
     } catch (err: any) {
-      console.error("❌ Error:", {
-        status: err.response?.status,
-        data: err.response?.data || "(no body)",
-      });
-
-      if (err.response) {
-        const status = err.response.status;
-        let errorMsg = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
-        switch (status) {
-          case 400:
-            errorMsg = "ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่อีกครั้ง";
-            break;
-          case 401:
-            errorMsg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
-            break;
-          case 500:
-            errorMsg = "เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
-            break;
-          default:
-            errorMsg = err.response.data?.message || errorMsg;
-        }
-        setServerError(errorMsg);
-      } else if (err.request) {
-        setServerError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
-      } else {
-        setServerError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
-      }
+      const status = err?.response?.status;
+      const apiMsg = err?.response?.data?.message;
+      let msg = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+      if (status === 400) msg = "ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่อีกครั้ง";
+      else if (status === 401)
+        msg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
+      else if (status === 500) msg = "เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
+      setServerError(apiMsg || msg);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ✅ ปุ่ม Google → ใช้ path สัมพัทธ์ (proxy ไป backend ตาม rewrites)
+  const handleGoogleLogin = () => {
+    setServerError("");
+    setIsGoogleLoading(true);
+    const returnTo = window.location.origin + "/customer/login";
+    window.location.href = `/auth/google/login?redirect=${encodeURIComponent(
+      returnTo
+    )}`;
   };
 
   return (
@@ -137,7 +157,6 @@ export default function LoginPage() {
           </h1>
 
           <div style={{ width: 318 }}>
-            {/* Email */}
             <label
               className="block text-[#191919] pt-6"
               style={{ fontSize: baseSize }}
@@ -149,7 +168,7 @@ export default function LoginPage() {
                 src="/email.svg"
                 alt=""
                 aria-hidden="true"
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
               />
               <input
                 type="email"
@@ -166,7 +185,6 @@ export default function LoginPage() {
             </div>
             {emailError && <p className="text-red-500 text-sm">{emailError}</p>}
 
-            {/* Password */}
             <label
               className="block text-[#191919] mt-2"
               style={{ fontSize: baseSize }}
@@ -178,7 +196,7 @@ export default function LoginPage() {
                 src="/password.svg"
                 alt=""
                 aria-hidden="true"
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
               />
               <input
                 type="password"
@@ -197,12 +215,10 @@ export default function LoginPage() {
               <p className="text-red-500 text-sm">{passwordError}</p>
             )}
 
-            {/* Server error message */}
             {serverError && (
               <p className="text-red-500 text-sm mt-2">{serverError}</p>
             )}
 
-            {/* Button */}
             <div className="flex justify-center mb-4 mt-4">
               <button
                 type="submit"
@@ -231,12 +247,23 @@ export default function LoginPage() {
               หรือ
             </div>
 
-            {/* Google button */}
             <button
               type="button"
-              className="w-full h-12 bg-white border border-gray-200 rounded-2xl mb-6 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+              onClick={handleGoogleLogin}
+              disabled={isGoogleLoading}
+              className="w-full h-12 bg-white border border-gray-200 rounded-2xl mb-6 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors disabled:opacity-60"
             >
-              <span>เข้าสู่ระบบด้วย Google</span>
+              <img
+                src="/google.svg"
+                alt=""
+                aria-hidden="true"
+                className="w-5 h-5"
+              />
+              <span>
+                {isGoogleLoading
+                  ? "กำลังไปยัง Google..."
+                  : "เข้าสู่ระบบด้วย Google"}
+              </span>
             </button>
 
             <div
@@ -255,12 +282,11 @@ export default function LoginPage() {
           </div>
 
           <div style={{ flex: 1 }} />
-
           <img
             src="/login.svg"
             alt=""
             aria-hidden="true"
-            className="absolute bottom-0 left-1/2 transform -translate-x-1/2 pointer-events-none z-0"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0"
             style={{ width: 390, height: "auto", userSelect: "none" }}
           />
         </form>

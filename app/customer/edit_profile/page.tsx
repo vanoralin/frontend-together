@@ -16,10 +16,29 @@ export default function EditProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [birthday, setBirthday] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // ---------- utils: แปลงและตรวจเบอร์ ----------
+  const normalizeThaiMobile = (raw: string) => {
+    // ตัดทุกอย่างที่ไม่ใช่ตัวเลข
+    let digits = raw.replace(/\D/g, "");
+    // แปลง +66XXXXXXXXX -> 0XXXXXXXXX
+    if (digits.startsWith("66")) {
+      digits = "0" + digits.slice(2);
+    }
+    return digits;
+  };
+
+  const validateThaiMobile = (raw: string) => {
+    const digits = normalizeThaiMobile(raw);
+    // มือถือไทย 10 หลัก เริ่มต้น 06/08/09
+    const ok = /^0[6-9]\d{8}$/.test(digits);
+    return { ok, digits };
+  };
 
   // ---------- โหลดข้อมูลโปรไฟล์เดิม ----------
   useEffect(() => {
@@ -102,6 +121,22 @@ export default function EditProfilePage() {
     };
   }, [preview]);
 
+  // ---------- handle เบอร์โทร ----------
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setPhone(raw);
+
+    // validate แบบ realtime เบา ๆ (ไม่บังคับให้เตือนถ้าช่องว่าง)
+    if (!raw.trim()) {
+      setPhoneError("");
+      return;
+    }
+    const { ok } = validateThaiMobile(raw);
+    setPhoneError(
+      ok ? "" : "กรุณากรอกเบอร์มือถือ 10 หลัก (ขึ้นต้น 06/08/09) หรือ +66..."
+    );
+  };
+
   // ---------- handle submit ----------
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -110,6 +145,20 @@ export default function EditProfilePage() {
     if (!token) {
       setMessage("❌ ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
       return;
+    }
+
+    // ✅ ตรวจเบอร์ก่อนส่ง
+    if (phone.trim()) {
+      const { ok, digits } = validateThaiMobile(phone);
+      if (!ok) {
+        setPhoneError(
+          "กรุณากรอกเบอร์มือถือ 10 หลัก (ขึ้นต้น 06/08/09) หรือ +66..."
+        );
+        setIsLoading(false);
+        return;
+      }
+      // setPhone เป็นรูปแบบมาตรฐาน 0XXXXXXXXX เพื่อให้ UI sync ด้วย
+      if (digits !== phone) setPhone(digits);
     }
 
     try {
@@ -289,10 +338,18 @@ export default function EditProfilePage() {
             <label className="block text-[#191919] mb-2">เบอร์โทรศัพท์</label>
             <input
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="เช่น 0812345678 หรือ +66812345678"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full h-12 bg-white pl-4 pr-4 rounded-[20px] border-2 border-[#D9D9D9] shadow-sm outline-none mb-4"
+              onChange={handlePhoneChange}
+              className={`w-full h-12 bg-white pl-4 pr-4 rounded-[20px] border-2 shadow-sm outline-none mb-1 ${
+                phoneError ? "border-red-400" : "border-[#D9D9D9]"
+              }`}
             />
+            {phoneError && (
+              <p className="text-red-600 text-sm mb-3">{phoneError}</p>
+            )}
 
             {/* เพศ */}
             <div className="mb-4">

@@ -241,7 +241,9 @@ function Block_profileuser({
           </div>
         </div>
 
-        <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+        <Link href="/driver/edit_profile">
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+        </Link>
       </div>
     </div>
   );
@@ -249,10 +251,19 @@ function Block_profileuser({
 
 function Block_Driver_info() {
   return (
-    <div>
+    <div className="flex flex-col items-center">
+      {/*บล็อกข้อมูลคนขับ */}
       <Link href="/driver/driver_info">
-        <div className="h-[82px] w-[366px] bg-white rounded-[20px] shadow-md mt-5 flex items-center justify-between px-4">
-          <p className="text-xl">ข้อมูลคนขับ,ยานพาหนะ</p>
+        <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center justify-between px-4">
+          <p className="text-xl">ข้อมูลคนขับ, ยานพาหนะ</p>
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+        </div>
+      </Link>
+
+      {/*บล็อกบัญชีธนาคาร */}
+      <Link href="/driver/bank">
+        <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center justify-between px-4">
+          <p className="text-xl">บัญชีธนาคาร</p>
           <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
         </div>
       </Link>
@@ -293,7 +304,9 @@ function Block_listitem_profile({ coin }: ListItemProps) {
           <p className="text-xl">แจ้งปัญหา</p>
           <img src="/help.svg" alt="help" className="h-6 w-6 ml-2" />
         </div>
-        <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+        <Link href="/driver/help">
+          <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+        </Link>
       </div>
     </div>
   );
@@ -339,7 +352,9 @@ function Popup_logout({
         className="relative h-[164px] w-[366px] bg-white rounded-[30px] shadow-md p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-lg text-center mt-2">แน่ใจไหมว่าต้องการออกจากระบบ?</p>
+        <p className="text-lg text-center mt-2">
+          แน่ใจไหมว่าต้องการออกจากระบบ?
+        </p>
         <div className="flex justify-center space-x-6 mt-5">
           <button
             onClick={onCancel}

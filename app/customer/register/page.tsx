@@ -5,6 +5,7 @@ import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 
 export default function RegisterPage() {
   const titleSize = 40;
@@ -24,38 +25,63 @@ export default function RegisterPage() {
   const [serverError, setServerError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
-  // สมมติ state ของคุณชื่อ birthday
 
+  // ---------- Validate ----------
   const validatePassword = (pw: string) => {
     if (!pw) return "กรุณากรอกรหัสผ่าน";
     if (pw.length < 6) return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
-    // ถ้าต้องการกฎเพิ่ม ให้เปิดคอมเมนต์ด้านล่าง
-    // if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
-    //   return "ต้องมีทั้งตัวอักษรและตัวเลขอย่างน้อยอย่างละ 1 ตัว";
     return "";
   };
-
   const isPasswordValid = validatePassword(password) === "";
   const isConfirmValid = password === confirmPassword && confirmPassword !== "";
 
-  // เพิ่มตรวจสอบก่อนแปลง
   const formattedBirthday =
     birthday && !isNaN(new Date(birthday).getTime())
       ? new Date(birthday).toISOString().split("T")[0]
       : null;
 
-  // ✅ Preview avatar
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ---------- เลือกรูป + บีบอัด ----------
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
+
+    try {
+      const validTypes = ["image/jpeg", "image/png", "image/webp"];
+      if (!validTypes.includes(file.type)) {
+        setServerError("รองรับเฉพาะไฟล์ .jpg .png หรือ .webp");
+        return;
+      }
+
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      };
+      const compressedBlob = await imageCompression(file, options);
+      const compressedFile = new File([compressedBlob], file.name, {
+        type: file.type,
+        lastModified: Date.now(),
+      });
+
+      const url = URL.createObjectURL(compressedFile);
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+
+      if (fileRef.current) {
+        const dt = new DataTransfer();
+        dt.items.add(compressedFile);
+        fileRef.current.files = dt.files;
+      }
+    } catch (error) {
+      console.error("❌ Error compressing image:", error);
+      setServerError("❌ บีบอัดรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    }
   };
 
   useEffect(() => {
@@ -64,100 +90,74 @@ export default function RegisterPage() {
     };
   }, [preview]);
 
-  // ✅ Register submit
+  // ---------- Submit ----------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
     setServerError("");
 
-    // 🧩 ตรวจสอบเฉพาะฟิลด์ที่จำเป็น
     if (!name || !email || !password) {
       setServerError("กรุณากรอกชื่อผู้ใช้ อีเมล และรหัสผ่าน");
       return;
     }
-
     if (!email.endsWith("@kmitl.ac.th")) {
       setServerError("กรุณาใช้อีเมล @kmitl.ac.th เท่านั้น");
       return;
     }
-
     const pwErr = validatePassword(password);
     if (pwErr) {
       setPasswordError(pwErr);
       return;
     }
-
-    if (password !== confirmPassword) {
+    if (!isConfirmValid) {
       setPasswordError("รหัสผ่านไม่ตรงกัน กรุณากรอกใหม่อีกครั้ง");
       return;
     }
 
     setIsLoading(true);
-
     try {
-      const payload: any = {
-        name,
-        email,
-        password,
-        confirm_password: confirmPassword,
-        phone,
-        gender,
-      };
+      const form = new FormData();
+      form.append("name", name);
+      form.append("email", email);
+      form.append("password", password);
+      form.append("confirm_password", confirmPassword);
+      if (phone) form.append("phone", phone);
+      if (gender) form.append("gender", gender);
+      if (formattedBirthday) form.append("birthdate", formattedBirthday);
+      const file = fileRef.current?.files?.[0];
+      if (file) form.append("profile_picture", file);
 
-      if (formattedBirthday) {
-        payload.birthdate = formattedBirthday;
-      }
+      await axios.post("/api/User/register", form, { withCredentials: true });
 
-      const res = await axios.post("/api/User/register", payload, {
-        headers: { "Content-Type": "application/json" },
-      });
-
-      console.log("✅ Register success:", res.data);
-      alert("🎉 สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ");
-      router.push("/customer/login");
+      // ✅ แสดง popup เมื่อสำเร็จ (ไม่ redirect ทันที)
+      setShowPopup(true);
     } catch (err: any) {
-      console.error("❌ Register error:", err.response?.data);
-
-      if (err.response) {
-        const data = err.response.data || {};
-        const status = err.response.status;
-        const dataText = typeof data === "string" ? data : JSON.stringify(data);
-        let errorMsg = "";
-
-        // ✅ ตรวจข้อความจาก backend (เช่น duplicate key)
-        if (
-          dataText.includes("duplicate key value") &&
-          dataText.includes("idx_users_email")
-        ) {
-          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
-        } else if (status === 400) {
-          errorMsg = "⚠️ ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
-        } else if (status === 401) {
-          errorMsg = "❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-        } else if (status === 409) {
-          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
-        } else if (status >= 500) {
-          errorMsg = "🚨 เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
-        } else {
-          errorMsg =
-            data.message ||
-            data.error ||
-            "❌ ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง";
-        }
-
-        setServerError(errorMsg);
-      } else if (err.request) {
-        setServerError(
-          "📡 ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต"
-        );
-      } else {
-        setServerError("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ กรุณาลองใหม่");
-      }
+      const data = err.response?.data || {};
+      const status = err.response?.status;
+      const text = typeof data === "string" ? data : JSON.stringify(data);
+      let msg = "";
+      if (
+        text.includes("duplicate key value") &&
+        text.includes("idx_users_email")
+      )
+        msg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
+      else if (status === 400) msg = "⚠️ ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
+      else if (status === 401) msg = "❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+      else if (status === 409)
+        msg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
+      else if (status >= 500) msg = "🚨 เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
+      else
+        msg =
+          (data as any).message ||
+          (data as any).error ||
+          "❌ ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง";
+      setServerError(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ---------- UI ----------
   return (
     <div className="min-h-screen w-full bg-theme-customer flex items-center justify-center">
       <div
@@ -214,7 +214,6 @@ export default function RegisterPage() {
                     className="w-12 h-12 text-gray-400"
                     viewBox="0 0 24 24"
                     fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
                     aria-hidden
                   >
                     <path
@@ -234,7 +233,6 @@ export default function RegisterPage() {
                   className="w-4 h-4 text-gray-600"
                   viewBox="0 0 24 24"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
                   aria-hidden
                 >
                   <path
@@ -250,15 +248,15 @@ export default function RegisterPage() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/webp"
               className="hidden"
               onChange={handleFileChange}
             />
           </div>
 
-          {/* Input Fields */}
+          {/* Inputs */}
           <div style={{ width: 318 }}>
-            {/* Username */}
+            {/* Name */}
             <label className="block text-[#191919] mb-2">ชื่อผู้ใช้</label>
             <div className="relative mb-4">
               <img
@@ -379,17 +377,16 @@ export default function RegisterPage() {
                   className="w-full h-12 bg-white shadow-sm pl-4 pr-4 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
                 />
               </div>
-
               <div className="w-28">
                 <label className="block text-[#191919] mb-2">เพศ</label>
                 <div className="flex space-x-2">
                   <button
                     type="button"
                     onClick={() => setGender("male")}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center border transition ${
+                    className={`w-12 h-12 rounded-full border transition ${
                       gender === "male"
-                        ? "bg-[#77C4E5] border-black text-black shadow-md font-bold"
-                        : "bg-white border-[#D9D9D9] text-[#8B8B8B] shadow-md"
+                        ? "bg-[#77C4E5] border-black text-black font-bold"
+                        : "bg-white border-[#D9D9D9] text-[#8B8B8B]"
                     }`}
                   >
                     ♂
@@ -397,10 +394,10 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setGender("female")}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center border transition ${
+                    className={`w-12 h-12 rounded-full border transition ${
                       gender === "female"
-                        ? "bg-[#FFA6E0] border-black text-black shadow-md"
-                        : "bg-white border-[#D9D9D9] text-[#8B8B8B] shadow-md"
+                        ? "bg-[#FFA6E0] border-black text-black font-bold"
+                        : "bg-white border-[#D9D9D9] text-[#8B8B8B]"
                     }`}
                   >
                     ♀
@@ -409,22 +406,18 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Server Error */}
             {serverError && (
               <p className="text-red-500 text-sm mb-2 text-center">
                 {serverError}
               </p>
             )}
 
-            {/* Submit */}
             <div className="flex justify-center mb-4">
               <button
                 type="submit"
-                disabled={
-                  isLoading || !isPasswordValid || password !== confirmPassword
-                }
+                disabled={isLoading || !isPasswordValid || !isConfirmValid}
                 className={`inline-flex items-center justify-center h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-6 rounded-[25px] border-2 border-[#B55C32] ${
-                  isLoading || !isPasswordValid || password !== confirmPassword
+                  isLoading || !isPasswordValid || !isConfirmValid
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
@@ -434,7 +427,6 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* Login link */}
             <div
               className="text-center text-[#191919]"
               style={{ fontSize: baseSize }}
@@ -445,10 +437,29 @@ export default function RegisterPage() {
               </Link>
             </div>
           </div>
-
-          <div style={{ flex: 1 }} />
         </form>
       </div>
+
+      {/* ✅ Popup หลังสมัครสำเร็จ */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-72 text-center">
+            <h2 className="text-lg font-semibold text-[#B55C32] mb-3">
+              ลงทะเบียนสำเร็จ ✅
+            </h2>
+            <p className="text-gray-700 mb-5">กรุณาเข้าสู่ระบบ</p>
+            <button
+              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black rounded-3xl transition-colors"
+              onClick={() => {
+                setShowPopup(false);
+                router.push("/customer/login");
+              }}
+            >
+              ตกลง
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
