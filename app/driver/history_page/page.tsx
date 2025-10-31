@@ -271,7 +271,7 @@ function PopupOverlay({ onClose, children }: { onClose: () => void; children: Re
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center" role="dialog" aria-modal="true">
-      <button aria-label="ปิดหน้าต่าง" onClick={onClose} className="absolute inset-0 bg-[#C5DEDA]/20" tabIndex={-1} />
+      <button aria-label="ปิดหน้าต่าง" onClick={onClose} className="absolute inset-0 bg-[#000000]/20" tabIndex={-1} />
       <div
         className="relative z-10 w-full max-w-[390px] mx-auto rounded-t-[30px] bg-[#EFEFEF] shadow-xl border-t border-[#D9D9D9] transition-[height] duration-200 ease-out overflow-hidden bottom-0"
         style={{ height: `min(calc(${heightRatio * 100}vh), 700px)` }}

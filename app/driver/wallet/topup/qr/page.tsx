@@ -1,11 +1,10 @@
-// ทำงานเหมือนโค้ดตัวอย่างด้านล่างครบ
 "use client";
 
 import React from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/app/components/share_component";
 
-const API_CONFIRM = "/api/topup/confirm"; // API ยืนยัน
+const API_CONFIRM = "/api/topup/confirm";
 
 /* ================= Types ================= */
 type DetailProps = {
@@ -16,7 +15,7 @@ type DetailProps = {
   expired?: boolean;
 };
 
-type ConfirmResp = unknown; // หากมี schema เฉพาะ สามารถระบุได้
+type ConfirmResp = unknown;
 
 /* ================= API ================= */
 async function confirmTopup(txId: number): Promise<ConfirmResp> {
@@ -43,7 +42,6 @@ async function confirmTopup(txId: number): Promise<ConfirmResp> {
 function Background() {
   const router = useRouter();
 
-  // อ่านค่าเก็บไว้ (เหมือนตัวอย่างที่ให้มา)
   const amountInput =
     (typeof window !== "undefined" && localStorage.getItem("topupAmount")) || "0";
   const base64 =
@@ -51,7 +49,6 @@ function Background() {
   const txId =
     (typeof window !== "undefined" && localStorage.getItem("topupTxId")) || "";
 
-  // ถ้าไม่มีข้อมูลที่จำเป็น → แจ้งเตือนและย้อนกลับไปหน้า topup
   React.useEffect(() => {
     if (!base64 || !txId) {
       alert("ไม่พบข้อมูล QR / transaction_id");
@@ -59,7 +56,6 @@ function Background() {
     }
   }, [base64, txId, router]);
 
-  // ทำ data URL จาก base64; ถ้าไม่มี ใช้ภาพ fallback
   const dataUrl = base64 ? `data:image/png;base64,${base64}` : "/QR.png";
   const [expired, setExpired] = React.useState(false);
 
@@ -83,8 +79,11 @@ function Background() {
         expired={expired}
       />
 
-      {/* ปุ่มยืนยัน (ยิง /api/topup/confirm) */}
+      {/* ปุ่มยืนยัน */}
       <Goto_payment expired={expired} />
+
+      {/* ป็อปอัปหมดเวลา */}
+      {expired && <ExpiredPopup />}
     </div>
   );
 }
@@ -108,13 +107,11 @@ function Detail({
   const [secondsLeft, setSecondsLeft] = React.useState(initialSeconds);
   const firedRef = React.useRef(false);
 
-  // รีเซ็ตทุกครั้งที่ amount/initialSeconds เปลี่ยน
   React.useEffect(() => {
     firedRef.current = false;
     setSecondsLeft(initialSeconds);
   }, [initialSeconds, amount]);
 
-  // เรียก onExpire ครั้งเดียวเมื่อนับถึง 0
   React.useEffect(() => {
     if (secondsLeft === 0 && !firedRef.current) {
       firedRef.current = true;
@@ -122,7 +119,6 @@ function Detail({
     }
   }, [secondsLeft, onExpire]);
 
-  // นับถอยหลัง
   React.useEffect(() => {
     if (secondsLeft <= 0) return;
     const id = setInterval(() => {
@@ -161,13 +157,11 @@ function Goto_payment({ expired }: { expired: boolean }) {
       setLoading(true);
       await confirmTopup(Number(txIdStr));
 
-      // ล้างข้อมูล localStorage หลังยืนยันสำเร็จ
       localStorage.removeItem("topupAmount");
       localStorage.removeItem("topupMessage");
       localStorage.removeItem("topupQrBase64");
       localStorage.removeItem("topupTxId");
 
-      // กลับหน้า wallet (ยึดตามตัวอย่าง)
       router.replace("/driver/wallet");
     } catch (e: any) {
       if (e?.message === "401") {
@@ -203,5 +197,69 @@ function Goto_payment({ expired }: { expired: boolean }) {
   );
 }
 
+/* ================= Expired Popup ================= */
+/** ป็อปอัปสไตล์ “Oh snap!” เด้งเมื่อหมดเวลา */
+function ExpiredPopup() {
+  const router = useRouter();
+
+  // ปิดด้วยปุ่ม Esc ได้
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") router.replace("/driver/wallet");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [router]);
+
+  return (
+    <div
+  className="fixed inset-0 z-50 flex items-center justify-center"
+  role="dialog"
+  aria-modal="true"
+>
+  {/* backdrop */}
+  <div className="absolute inset-0 bg-black/40" />
+
+  {/* card */}
+  <div className="relative w-[85%] max-w-sm rounded-xl shadow-xl overflow-hidden scale-95">
+    {/* ส่วนหัวพื้นหลังแดง */}
+    <div className="bg-[#E9777A] px-4 py-5 text-center">
+      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/30">
+        {/* ไอคอนกากบาท */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </div>
+      <h2 className="text-xl font-semibold text-white">หมดเวลาแล้ว</h2>
+      <p className="mt-1 text-white/90 text-sm leading-snug">
+        ไม่ได้ชำระเงินในเวลาที่กำหนด<br />
+        กรุณาทำรายการใหม่อีกครั้ง
+      </p>
+    </div>
+
+    {/* ปุ่ม */}
+    <div className="bg-white px-4 py-4 flex justify-center">
+      <button
+        onClick={() => router.replace("/driver/wallet")}
+        className="inline-flex items-center gap-2 rounded-full border border-[#B55C32] px-5 py-2 text-base font-medium shadow-sm hover:shadow active:scale-[0.98]"
+        autoFocus
+      >
+        กลับไปที่กระเป๋าเงิน
+      </button>
+    </div>
+  </div>
+</div>
+
+  );
+}
+
 export default Background;
-export { Header, Detail, Goto_payment };
+export { Header, Detail, Goto_payment, ExpiredPopup };

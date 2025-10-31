@@ -24,9 +24,19 @@ interface ProfileData {
   gender?: Gender;
 }
 
+/** RAW response from /api/transactions/history */
+interface TransactionDTO {
+  id: number;
+  user_id: number;
+  amount: number;
+  type: "topup" | "withdraw" | "paid";
+  status: "success" | "failed" | "cancel";
+  created_at: string; // ISO: "2025-10-11T12:46:20.693141Z"
+}
+
 interface HistoryBlockProps {
   type: "topup" | "withdraw" | "paid";
-  date: string; // "YYYY-MM-DD HH:mm"
+  date: string; // accepts ISO or "YYYY-MM-DD HH:mm"
   success: "success" | "cancel";
   amount: number;
 }
@@ -34,23 +44,13 @@ interface HistoryBlockProps {
 function Background() {
   const router = useRouter();
 
-  const historyData: HistoryBlockProps[] = [
-    { type: "topup", date: "2024-08-24 22:01", success: "success", amount: 50 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "topup", date: "2024-08-15 09:15", success: "cancel", amount: 100 },
-    { type: "withdraw", date: "2024-08-10 18:45", success: "success", amount: 30 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "withdraw", date: "2024-07-30 16:20", success: "success", amount: 10 },
-    { type: "topup", date: "2024-07-25 08:10", success: "cancel", amount: 150 },
-    { type: "withdraw", date: "2024-07-20 19:55", success: "success", amount: 40 },
-    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-  ];
-
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
+  const [history, setHistory] = useState<HistoryBlockProps[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const openLogout = useCallback(() => setIsLogoutOpen(true), []);
   const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
 
@@ -58,7 +58,6 @@ function Background() {
     (async () => {
       try {
         setLoading(true);
-        // ดึงข้อมูล “เหมือนเดิม”
         const res = await axios.get<ProfileData>("/api/User/profile", {
           withCredentials: true,
           headers: { "Content-Type": "application/json" },
@@ -70,7 +69,6 @@ function Background() {
           router.replace("/customer/login");
           return;
         }
-        // fallback type ตรงกับที่ใช้ด้านล่าง
         setProfile({
           balance: 0,
           name: "ผู้ใช้",
@@ -83,6 +81,39 @@ function Background() {
     })();
   }, [router]);
 
+  useEffect(() => {
+  (async () => {
+    try {
+      setHistoryLoading(true);
+      const res = await axios.get<TransactionDTO[]>("/api/transactions/history", {
+        withCredentials: true,
+        headers: { "Content-Type": "application/json" },
+      });
+
+      // ✅ define & use 'mapped' in same block
+      const mapped: HistoryBlockProps[] = (res.data ?? []).map((tx) => {
+  const success: HistoryBlockProps["success"] =
+    tx.status === "success" ? "success" : "cancel";
+
+  return {
+    type: tx.type,
+    date: tx.created_at,
+    success,
+    amount: tx.amount,
+  };
+});
+
+      setHistory(mapped);
+    } catch (err) {
+      console.error(err);
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  })();
+}, []);
+
+
   return (
     <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
       <Header_wallet />
@@ -91,7 +122,6 @@ function Background() {
         <div className="h-[162px] w-[366px] bg-white/70 rounded-[30px] shadow-md mt-8 animate-pulse" />
       ) : profile ? (
         <>
-          {/* ใช้ข้อมูลจริงที่ดึงมา แทนของเดิมที่ hardcode */}
           <Profile_wallet
             profile_picture={profile.profile_picture}
             username={profile.name}
@@ -99,7 +129,11 @@ function Background() {
             coin={profile.balance}
           />
           <Topup />
-          <History history={historyData} />
+          {historyLoading ? (
+            <div className="w-[366px] h-[370px] bg-white/70 mt-10 rounded-[20px] animate-pulse" />
+          ) : (
+            <History history={history ?? []} />
+          )}
         </>
       ) : (
         <div className="h-[162px] w-[366px] bg-white rounded-[30px] shadow-md mt-8 flex items-center justify-center">
@@ -144,7 +178,7 @@ function Profile_wallet({
             className="h-7 w-7 ml-2"
           />
         </div>
-        <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
+        <div className="mt-3 h-[51px] w-fit px-2 bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
           <img src="/coin.svg" alt="icon" className="h-6 w-6 mr-2" />
           <p className="text-xl">{coin.toFixed(2)}</p>
         </div>
@@ -156,7 +190,6 @@ function Profile_wallet({
 function Topup() {
   return (
     <div className="flex gap-10">
-      {/* path เดิมฝั่ง driver คงไว้เหมือนเดิม */}
       <Link href="/driver/wallet/topup">
         <div className="h-[51px] w-[155px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
           <p className="text-center text-xl font-medium">เติมเงิน</p>
@@ -180,9 +213,12 @@ function History({ history }: { history: HistoryBlockProps[] }) {
   );
 }
 
-/** helper: แปลง "YYYY-MM-DD HH:mm" => "24 ส.ค. 2568, 22.01" */
+/** helper: แปลง Date เป็นฟอร์แมตไทย เช่น "24 ส.ค. 2568, 22.01"
+ * รองรับ input เป็น ISO หรือ "YYYY-MM-DD HH:mm"
+ */
 function formatThaiDate(input: string) {
-  const d = new Date(input.replace(" ", "T"));
+  const normalized = input.includes("T") ? input : input.replace(" ", "T");
+  const d = new Date(normalized);
   if (isNaN(d.getTime())) return input;
   const months = [
     "ม.ค.",
@@ -225,7 +261,6 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
 
             return (
               <div key={idx} className="px-4 py-3 border-b-[2px] border-[#CFE3DE]">
-                {/* แถวบน: ชื่อรายการซ้าย / จำนวนเงินขวา */}
                 <div className="flex items-start justify-between">
                   <p className="text-xl font-semibold">{labelType}</p>
                   <p className="text-xl font-semibold">
@@ -233,7 +268,6 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
                   </p>
                 </div>
 
-                {/* แถวล่าง: สถานะ (สี) | วันที่ (เทา) */}
                 <div className="mt-1 text-sm flex items-center">
                   <span className={isSuccess ? "text-green-600" : "text-red-600"}>{labelStatus}</span>
                   <span className="mx-2 text-gray-300">|</span>
