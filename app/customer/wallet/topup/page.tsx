@@ -1,52 +1,106 @@
-// ยังไม่เสร็จ
 "use client";
-import { BackButton } from "@/app/components/share_component";
 import React from "react";
-import Link from "next/link";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { BackButton } from "@/app/components/share_component";
 
-/** Helper: ทำความสะอาดอินพุตให้รองรับทศนิยม
- * - แทน , เป็น .
- * - เก็บไว้เฉพาะตัวเลขและจุด
- * - อนุญาตให้มีจุดได้แค่ 1 จุด
- * - ถ้าขึ้นต้นด้วย . ให้เติม 0 นำหน้า (".5" -> "0.5")
- * - (ตัวเลือก) หากอยากบังคับทศนิยมไม่เกิน 2 หลัก ให้ปลดคอมเมนต์ส่วนท้าย
- */
+/* ============== Types ============== */
+type TopupResponse = {
+  message: string;
+  qr_code: string;         // base64
+  transaction_id: number | string;
+};
+
+interface ProfileData {
+  balance: number;
+}
+
+/* ============== API Callers ============== */
+async function postTopup(amount: number) {
+  const res = await axios.post<TopupResponse>(
+    "/api/topup",
+    { amount: Math.round(amount) },
+    {
+      withCredentials: true,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+  return res.data;
+}
+
+async function getProfile() {
+  const res = await axios.get<ProfileData>("/api/User/profile", {
+    withCredentials: true,
+    headers: { "Content-Type": "application/json" },
+  });
+  return res.data;
+}
+
+/* ============== Utils ============== */
 function sanitizeDecimal(input: string) {
-  let s = input.replace(/,/g, ".");      // รองรับผู้ใช้ที่พิมพ์คอมมา
-  s = s.replace(/[^\d.]/g, "");          // เก็บเฉพาะตัวเลขกับจุด
-
+  let s = input.replace(/,/g, ".");
+  s = s.replace(/[^\d.]/g, "");
   const parts = s.split(".");
-  if (parts.length > 2) {
-    // รวมจุดให้เหลือแค่จุดแรก
-    s = parts[0] + "." + parts.slice(1).join("");
-  }
-
-  if (s.startsWith(".")) s = "0" + s;    // ".5" -> "0.5"
-
-  // // จำกัดทศนิยมไม่เกิน 2 หลัก (ถ้าต้องการ ให้ปลดคอมเมนต์)
-  // const [intPart, decPart = ""] = s.split(".");
-  // if (decPart.length > 2) s = intPart + "." + decPart.slice(0, 2);
-
+  if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
+  if (s.startsWith(".")) s = "0" + s;
   return s;
 }
 
+/* ============== Page ============== */
 function Background() {
-  const [amountInput, setAmountInput] = React.useState<string>("");
+  const router = useRouter();
+  const [amountInput, setAmountInput] = React.useState("");
+  const [currentBalance, setCurrentBalance] = React.useState<number | null>(null);
+  const [loadingProfile, setLoadingProfile] = React.useState(true);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        setLoadingProfile(true);
+        const profile = await getProfile();
+        setCurrentBalance(profile.balance ?? 0);
+      } catch (e: any) {
+        console.error("[/api/User/profile] error", e);
+        if (e?.response?.status === 401) {
+          router.replace("/customer/login");
+          return;
+        }
+        // กรณีเออร์เรอร์อื่น ๆ แสดง 0 ไปก่อนก็ได้
+        setCurrentBalance(0);
+      } finally {
+        setLoadingProfile(false);
+      }
+    })();
+  }, [router]);
 
   return (
-    <div className="min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center pb-[120px]">
+    <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center pb-[120px]">
       <Header_topup />
-      <Detail amountInput={amountInput} setAmountInput={setAmountInput} />
-      <Goto_payment amountInput={amountInput} />
+
+      {loadingProfile ? (
+        <div className="w-full max-w-[640px] px-5 mt-6">
+          <div className="h-[120px] bg-white/60 rounded-2xl animate-pulse" />
+          <div className="h-[180px] bg-white/60 rounded-2xl animate-pulse mt-6" />
+        </div>
+      ) : (
+        <>
+          <Detail
+            amountInput={amountInput}
+            setAmountInput={setAmountInput}
+            currentBalance={currentBalance ?? 0}
+          />
+          <Goto_payment amountInput={amountInput} />
+        </>
+      )}
     </div>
   );
 }
 
 function Header_topup() {
   return (
-    <div className="flex flex-col items-center mt-8">
+    <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg">เติมเงิน</p>
+      <p className="text-[32px] font-bold mt-10.5">เติมเงิน</p>
     </div>
   );
 }
@@ -54,23 +108,21 @@ function Header_topup() {
 function Detail({
   amountInput,
   setAmountInput,
+  currentBalance,
 }: {
   amountInput: string;
   setAmountInput: React.Dispatch<React.SetStateAction<string>>;
+  currentBalance: number;
 }) {
-  const currentBalance = 20;
-
   const [selected, setSelected] = React.useState<number | null>(null);
-  const amounts: number[] = [20, 50, 100, 200];
+  const amounts = [20, 50, 100, 200];
 
-  // ถ้าเป็นค่าว่าง หรือเป็น "." ให้ตีเป็น 0 ชั่วคราวเพื่อคำนวณ
-  const parsedAmount = amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
-  const safeAmount = isNaN(parsedAmount) ? 0 : parsedAmount;
-  const afterTopup = currentBalance + safeAmount;
+  const parsedAmount =
+    amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
+  const afterTopup = currentBalance + (isNaN(parsedAmount) ? 0 : parsedAmount);
 
   const handleClickAmount = (amount: number) => {
     if (selected === amount) {
-      // toggle: ถ้ากดซ้ำให้กลับเป็นค่าเริ่มต้น
       setSelected(null);
       setAmountInput("");
     } else {
@@ -82,8 +134,6 @@ function Detail({
   const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const cleaned = sanitizeDecimal(e.target.value);
     setAmountInput(cleaned);
-
-    // เลือกปุ่มอัตโนมัติเมื่อค่าตรงกับตัวเลือกแบบจำนวนเต็มเท่านั้น
     if (cleaned && !cleaned.includes(".")) {
       const n = Number(cleaned);
       setSelected(amounts.includes(n) ? n : null);
@@ -94,48 +144,43 @@ function Detail({
 
   return (
     <div className="w-full max-w-[640px] px-5">
-      {/* ยอดเงิน */}
       <div className="grid grid-cols-2 gap-6 mt-5">
-        <div className="flex flex-col">
-          <p className="text-xl text-left">ยอดเงินปัจจุบัน</p>
-          <p className="text-xl font-semibold text-left">฿{currentBalance.toFixed(2)}</p>
+        <div>
+          <p className="text-xl">ยอดเงินปัจจุบัน</p>
+          <p className="text-xl font-semibold">฿{currentBalance.toFixed(2)}</p>
         </div>
-        <div className="flex flex-col">
-          <p className="text-xl text-left">ยอดเงินหลังเติม</p>
-          <p className="text-xl font-semibold text-left">฿{afterTopup.toFixed(2)}</p>
+        <div>
+          <p className="text-xl">ยอดเงินหลังเติม</p>
+          <p className="text-xl font-semibold">฿{afterTopup.toFixed(2)}</p>
         </div>
       </div>
 
-      {/* ช่องกรอกจำนวนเงิน */}
       <div className="flex flex-col mt-8">
-        <p className="text-xl text-left">จำนวนเงินที่ต้องการเติม</p>
+        <p className="text-xl">จำนวนเงินที่ต้องการเติม</p>
         <input
           type="text"
           inputMode="decimal"
-          // หมายเหตุ: pattern ใช้ตอน validate ตอน submit ไม่ได้บล็อกตอนพิมพ์
           pattern="^[0-9]+([.][0-9]*)?$"
           value={amountInput}
           onChange={handleChangeInput}
-          className="w-full rounded-[30px] bg-white mt-2 pl-5 py-2 border border-gray-300
-                     focus:outline-none focus:ring-0"
+          className="w-full rounded-[30px] bg-white mt-2 pl-5 py-2 border border-gray-300 focus:outline-none"
           placeholder="กรอกจำนวนเงิน"
         />
       </div>
 
-      {/* ปุ่มเลือกจำนวน */}
       <div className="grid grid-cols-2 gap-4 mt-8">
-        {amounts.map((amount) => {
+        {([20, 50, 100, 200] as const).map((amount) => {
           const isSelected = selected === amount;
           return (
             <button
               key={amount}
               type="button"
-              aria-pressed={isSelected}
               onClick={() => handleClickAmount(amount)}
-              className={`w-full h-[51px] rounded-[30px] border transition
-                ${isSelected ? "bg-[#E6A88A] border-[#B55C32] text-black"
-                             : "bg-white border-transparent text-black"}
-                hover:opacity-95 active:scale-[0.98] focus:outline-none focus:ring-0 cursor-pointer shadow-md`}
+              className={`w-full h-[51px] rounded-[30px] border transition ${
+                isSelected
+                  ? "bg-[#E6A88A] border-[#B55C32]"
+                  : "bg-white border-transparent"
+              } shadow-md`}
             >
               <span className="text-xl">฿{amount}</span>
             </button>
@@ -146,45 +191,69 @@ function Detail({
   );
 }
 
-function Goto_payment({
-  amountInput,
-}: {
-  amountInput: string;
-}) {
-  // อนุญาตเฉพาะจำนวนเงิน > 0 เท่านั้น
-  const parsed = amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
+function Goto_payment({ amountInput }: { amountInput: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = React.useState(false);
+
+  const parsed =
+    amountInput === "" || amountInput === "." ? 0 : Number(amountInput);
   const canProceed = !isNaN(parsed) && parsed > 0;
+
+  const handleTopup = async () => {
+    if (!canProceed || loading) return;
+    try {
+      setLoading(true);
+      const amountInt = Math.round(Number(parsed));
+
+      const res = await postTopup(amountInt);
+      console.log("[/api/Wallet/topup]", res);
+
+      localStorage.setItem("topupAmount", String(amountInt));
+      localStorage.setItem("topupMessage", res.message ?? "");
+      localStorage.setItem("topupQrBase64", res.qr_code ?? "");
+      localStorage.setItem("topupTxId", String(res.transaction_id ?? ""));
+
+      // ไปหน้าแสดง QR
+      router.push("/customer/wallet/topup/qr");
+    } catch (e: any) {
+      console.error(e);
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data ||
+        e?.message ||
+        "เกิดข้อผิดพลาดในการสร้าง QR";
+      if (e?.response?.status === 401) {
+        alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง");
+        router.replace("/customer/login");
+        return;
+      }
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="absolute w-full bottom-0">
-      <div className="h-[120px] w-full bg-white rounded-t-2xl shadow-md flex flex-col items-center justify-center">
-        {/* กันที่ข้อความเตือนคงที่ ไม่ให้ปุ่มขยับ */}
-        <div className="h-5 mb-2" aria-live="polite">
-          {!canProceed && (
-            <p className="text-center text-sm text-gray-600 leading-5">
-              กรุณากรอกจำนวนเงินให้ถูกต้องเพื่อดำเนินการต่อ
-            </p>
-          )}
-        </div>
-
-        <Link
-          href={canProceed ? "/customer/wallet/topup/qr" : "#"}
-          aria-disabled={!canProceed}
-          className={canProceed ? "" : "pointer-events-none"}
+      <div className="h-[120px] bg-white rounded-t-2xl shadow-md flex flex-col items-center justify-center">
+        {!canProceed && (
+          <p className="text-sm text-gray-600 mb-2">
+            กรุณากรอกจำนวนเงินให้ถูกต้องเพื่อดำเนินการต่อ
+          </p>
+        )}
+        <div
+          onClick={handleTopup}
+          className={`h-[60px] w-80 bg-[#E6A88A] border-2 border-[#B55C32] rounded-[30px] shadow-md flex justify-center items-center ${
+            canProceed ? "cursor-pointer" : "opacity-60 pointer-events-none"
+          }`}
         >
-          <div
-            className={`relative h-[60px] w-80 bg-[#E6A88A] border-[#B55C32] border-2 rounded-[30px] shadow-md flex justify-center items-center
-                       ${canProceed ? "opacity-100" : "opacity-60"}`}
-            role="button"
-            aria-label="ยืนยันเติมเงิน"
-          >
-            <p className="text-center text-2xl font-medium">เติมเงิน</p>
-          </div>
-        </Link>
+          <p className="text-2xl font-medium">
+            {loading ? "กำลังสร้าง QR..." : "เติมเงิน"}
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
 export default Background;
-export { Header_topup, Detail, Goto_payment };

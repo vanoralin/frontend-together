@@ -78,7 +78,7 @@ function Background() {
             userRole={profile.userRole || "user"}
             gender={profile.gender || "male"}
             email={profile.email || "-"}
-            pageRole="customer" // <— ตั้งค่าให้ชัด (ปรับตามระบบจริงของคุณได้)
+            pageRole="user" // <— ตั้งค่าให้ชัด (ปรับตามระบบจริงของคุณได้)
           />
           <Block_listitem_profile coin={Number(profile.balance) || 0} />
         </>
@@ -161,6 +161,7 @@ function Block_profileuser({
 
           <p className="text-lg break-all">{email}</p>
         </div>
+
         <Link href="/customer/edit_profile">
           <img src="/vector_next.svg" alt="next" className="h-6 w-6 mr-2" />
         </Link>

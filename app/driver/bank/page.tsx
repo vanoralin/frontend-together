@@ -3,6 +3,7 @@
 import type React from "react";
 import { useEffect, useState, useRef } from "react";
 import { BackButton } from "@/app/components/share_component";
+import axios from "axios";
 
 export default function RegisterPage() {
   const titleSize = 30;
@@ -10,6 +11,12 @@ export default function RegisterPage() {
   const baseSize = 16;
 
   const [preview, setPreview] = useState<string | null>(null);
+  const [bankCode, setBankCode] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,6 +35,52 @@ export default function RegisterPage() {
     };
   }, [preview]);
 
+  // ✅ ฟังก์ชันส่งข้อมูลไป backend
+  const handleSubmit = async () => {
+    if (!bankName || !bankCode || !accountNumber || !accountName) {
+      setMessage("⚠️ กรุณากรอกข้อมูลให้ครบทุกช่อง");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setMessage("");
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setMessage("⚠️ ไม่พบ token กรุณาเข้าสู่ระบบใหม่");
+        setIsLoading(false);
+        return;
+      }
+
+      const res = await axios.post(
+        "https://your-api-url.com/api/driver/linkbank",
+        {
+          bank_account_name: accountName,
+          bank_account_number: accountNumber,
+          bank_code: bankCode,
+          bank_name: bankName,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setMessage("✅ ผูกบัญชีธนาคารสำเร็จ!");
+      console.log("response:", res.data);
+    } catch (err: any) {
+      console.error(err);
+      setMessage(
+        err.response?.data?.message ||
+          "❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#C5D4E8] flex items-center justify-center">
       <div
@@ -40,11 +93,7 @@ export default function RegisterPage() {
           fontFamily: "'Mitr', sans-serif",
         }}
       >
-        {/* ทำ flex column สูงเต็มจอ */}
-        <div
-          className="px-6 pt-6 pb-6 flex flex-col relative z-10 h-full"
-          style={{ boxSizing: "border-box" }}
-        >
+        <div className="px-6 pt-6 pb-6 flex flex-col relative z-10 h-full">
           {/* Header */}
           <div className="w-full flex items-center mb-4">
             <BackButton href="/driver/register" className="mr-2" />
@@ -82,6 +131,12 @@ export default function RegisterPage() {
                     borderRadius: 20,
                     fontSize: baseSize,
                     boxSizing: "border-box",
+                  }}
+                  onChange={(e) => {
+                    setBankCode(e.target.value);
+                    if (e.target.value === "kbank") setBankName("กสิกรไทย");
+                    if (e.target.value === "scb") setBankName("ไทยพาณิชย์");
+                    if (e.target.value === "bbl") setBankName("กรุงเทพ");
                   }}
                 >
                   <option value="">เลือกธนาคาร</option>
@@ -121,6 +176,8 @@ export default function RegisterPage() {
                   boxSizing: "border-box",
                 }}
                 placeholder="กรอกเลขบัญชี"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
               />
 
               <label
@@ -139,16 +196,19 @@ export default function RegisterPage() {
                   boxSizing: "border-box",
                 }}
                 placeholder="กรอกชื่อ-นามสกุล"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
               />
             </div>
           </div>
 
           {/* ปุ่มด้านล่าง */}
           <div className="flex flex-col items-center mb-6">
-            {/* ✅ รูปอยู่เหนือปุ่ม */}
             <img src="/bank.svg" alt="bank logo" className="w-86 h-86 mb-3" />
 
             <button
+              onClick={handleSubmit}
+              disabled={isLoading}
               className="w-fit h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-5 inline-flex items-center justify-center"
               style={{
                 boxSizing: "border-box",
@@ -159,8 +219,17 @@ export default function RegisterPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              ผูกบัญชีธนาคาร
+              {isLoading ? "กำลังผูกบัญชี..." : "ผูกบัญชีธนาคาร"}
             </button>
+
+            {message && (
+              <p
+                className="text-center mt-3 text-[#191919]"
+                style={{ fontSize: baseSize }}
+              >
+                {message}
+              </p>
+            )}
           </div>
         </div>
       </div>

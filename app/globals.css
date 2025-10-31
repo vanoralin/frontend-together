@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
   --color-theme-customer: #C5DEDA;
@@ -30,3 +31,10 @@
 ::-webkit-scrollbar {
   display: none;
 }
+
+.rdp-caption_label,
+.rdp-dropdown {
+  font-weight: 300 !important; 
+}
+
+

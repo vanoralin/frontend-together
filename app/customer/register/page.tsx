@@ -23,17 +23,29 @@ export default function RegisterPage() {
   const [passwordError, setPasswordError] = useState("");
   const [serverError, setServerError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   // สมมติ state ของคุณชื่อ birthday
+
+  const validatePassword = (pw: string) => {
+    if (!pw) return "กรุณากรอกรหัสผ่าน";
+    if (pw.length < 6) return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+    // ถ้าต้องการกฎเพิ่ม ให้เปิดคอมเมนต์ด้านล่าง
+    // if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
+    //   return "ต้องมีทั้งตัวอักษรและตัวเลขอย่างน้อยอย่างละ 1 ตัว";
+    return "";
+  };
+
+  const isPasswordValid = validatePassword(password) === "";
+  const isConfirmValid = password === confirmPassword && confirmPassword !== "";
 
   // เพิ่มตรวจสอบก่อนแปลง
   const formattedBirthday =
     birthday && !isNaN(new Date(birthday).getTime())
       ? new Date(birthday).toISOString().split("T")[0]
       : null;
-  [0];
 
   // ✅ Preview avatar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,6 +78,12 @@ export default function RegisterPage() {
 
     if (!email.endsWith("@kmitl.ac.th")) {
       setServerError("กรุณาใช้อีเมล @kmitl.ac.th เท่านั้น");
+      return;
+    }
+
+    const pwErr = validatePassword(password);
+    if (pwErr) {
+      setPasswordError(pwErr);
       return;
     }
 
@@ -111,13 +129,13 @@ export default function RegisterPage() {
           dataText.includes("duplicate key value") &&
           dataText.includes("idx_users_email")
         ) {
-          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น";
+          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
         } else if (status === 400) {
           errorMsg = "⚠️ ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
         } else if (status === 401) {
           errorMsg = "❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
         } else if (status === 409) {
-          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น";
+          errorMsg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
         } else if (status >= 500) {
           errorMsg = "🚨 เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
         } else {
@@ -276,7 +294,7 @@ export default function RegisterPage() {
 
             {/* Password */}
             <label className="block text-[#191919] mb-2">รหัสผ่าน</label>
-            <div className="relative mb-4">
+            <div className="relative mb-1">
               <img
                 src="/password.svg"
                 alt="password"
@@ -285,14 +303,31 @@ export default function RegisterPage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (!passwordTouched) setPasswordTouched(true);
+                  // อัปเดต error ทันทีเมื่อพิมพ์
+                  const msg = validatePassword(e.target.value);
+                  setPasswordError(msg);
+                }}
+                onBlur={() => {
+                  setPasswordTouched(true);
+                  setPasswordError(validatePassword(password));
+                }}
+                className={`w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 rounded-[20px] ${
+                  passwordTouched && !isPasswordValid
+                    ? "border-red-400"
+                    : "border-[#D9D9D9]"
+                }`}
               />
             </div>
+            {passwordTouched && passwordError && (
+              <p className="text-red-500 text-sm mb-3">{passwordError}</p>
+            )}
 
             {/* Confirm Password */}
             <label className="block text-[#191919] mb-2">ยืนยันรหัสผ่าน</label>
-            <div className="relative mb-4">
+            <div className="relative mb-1">
               <img
                 src="/password.svg"
                 alt="confirm"
@@ -302,12 +337,20 @@ export default function RegisterPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
+                onBlur={() => {
+                  if (password !== confirmPassword) {
+                    setPasswordError("รหัสผ่านไม่ตรงกัน กรุณากรอกใหม่อีกครั้ง");
+                  } else if (!validatePassword(password)) {
+                    setPasswordError("");
+                  }
+                }}
+                className={`w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 rounded-[20px] ${
+                  confirmPassword && password !== confirmPassword
+                    ? "border-red-400"
+                    : "border-[#D9D9D9]"
+                }`}
               />
             </div>
-            {passwordError && (
-              <p className="text-red-500 text-sm mb-2">{passwordError}</p>
-            )}
 
             {/* Phone */}
             <label className="block text-[#191919] mb-2">เบอร์โทรศัพท์</label>
@@ -377,9 +420,13 @@ export default function RegisterPage() {
             <div className="flex justify-center mb-4">
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={
+                  isLoading || !isPasswordValid || password !== confirmPassword
+                }
                 className={`inline-flex items-center justify-center h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-6 rounded-[25px] border-2 border-[#B55C32] ${
-                  isLoading ? "opacity-50" : ""
+                  isLoading || !isPasswordValid || password !== confirmPassword
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
                 style={{ fontSize: buttonSize }}
               >

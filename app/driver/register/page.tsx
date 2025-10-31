@@ -102,7 +102,7 @@ export default function RegisterPage() {
       // ... (บีบอัดภาพและส่ง API เหมือนเดิม)
 
       alert("✅ สมัครคนขับสำเร็จ!");
-      router.push("/driver/success");
+      router.push("/driver/home");
     } catch (error: any) {
       console.error("❌ สมัครคนขับไม่สำเร็จ:", error);
       setErrorMessage("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง");

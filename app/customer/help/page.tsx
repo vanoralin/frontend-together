@@ -48,7 +48,7 @@ export default function ReportProblemPage() {
       }
 
       const res = await axios.post(
-        "/api/reports", // ✅ เปลี่ยนให้ตรงกับ backend จริง
+        "/api/report", // ✅ เปลี่ยนให้ตรงกับ backend จริง
         {
           detail: message,
           trip_id: 0, // ถ้ายังไม่ผูกกับ trip
