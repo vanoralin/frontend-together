@@ -51,7 +51,7 @@ export default function ReportProblemPage() {
         "/api/report", // ✅ เปลี่ยนให้ตรงกับ backend จริง
         {
           detail: message,
-          trip_id: 0, // ถ้ายังไม่ผูกกับ trip
+          trip_id: null, // ถ้ายังไม่ผูกกับ trip
         },
         {
           headers: {

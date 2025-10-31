@@ -24,7 +24,7 @@ export default function LoginPage() {
     setPasswordError("");
     setServerError("");
 
-    // ✅ ตรวจสอบความถูกต้องของ input
+    // ✅ ตรวจ input
     if (!email) {
       setEmailError("กรุณากรอกอีเมล");
       isValid = false;
@@ -32,12 +32,10 @@ export default function LoginPage() {
       setEmailError("กรุณากรอกอีเมล @kmitl.ac.th เท่านั้น");
       isValid = false;
     }
-
     if (!password) {
       setPasswordError("กรุณากรอกรหัสผ่าน");
       isValid = false;
     }
-
     if (!isValid) return;
 
     setIsLoading(true);
@@ -48,7 +46,7 @@ export default function LoginPage() {
         user: string;
       }
 
-      // ✅ ใช้ URL จริงของ backend
+      // ✅ Login
       const res = await axios.post<LoginResponse>(
         "/api/User/login",
         { email, password },
@@ -58,19 +56,30 @@ export default function LoginPage() {
         }
       );
 
-      console.log("✅ Login success:", res.data);
-
-      // ✅ เก็บ token ลง localStorage
+      // ✅ เก็บ token
       const token = res.data.token;
-      if (token) {
-        localStorage.setItem("token", token);
-        console.log("Token saved:", token);
-      } else {
-        console.warn("⚠️ ไม่พบ token จาก response");
+      if (!token) throw new Error("Token not found in response");
+      localStorage.setItem("token", token);
+
+      // ✅ ดึงข้อมูลโปรไฟล์เพื่อเช็คสถานะแบน (วิธีที่ 1: ใช้ prefix [BANNED] ที่ name)
+      const prof = await axios.get("/api/User/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      const nameVal = (prof.data?.name ?? "") as string;
+      const isBanned =
+        typeof nameVal === "string" && nameVal.startsWith("[BANNED]");
+
+      if (isBanned) {
+        // // ถูกแบน → ล้าง token แล้วโยนไปหน้าแบน
+        // localStorage.removeItem("token");
+        window.location.href = "/customer/ban";
+        return;
       }
 
-      // ✅ ไปหน้า customer/profile
-      window.location.href = "/customer/profile";
+      // ไม่ถูกแบน → ไปหน้า home ปกติ
+      window.location.href = "/customer/home";
     } catch (err: any) {
       console.error("❌ Error:", {
         status: err.response?.status,
@@ -80,7 +89,6 @@ export default function LoginPage() {
       if (err.response) {
         const status = err.response.status;
         let errorMsg = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
-
         switch (status) {
           case 400:
             errorMsg = "ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่อีกครั้ง";
@@ -94,7 +102,6 @@ export default function LoginPage() {
           default:
             errorMsg = err.response.data?.message || errorMsg;
         }
-
         setServerError(errorMsg);
       } else if (err.request) {
         setServerError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");

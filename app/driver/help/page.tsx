@@ -1,58 +1,108 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { BackButton } from "@/app/components/share_component";
 
 export default function ReportProblemPage() {
   const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
-  const [error, setError] = useState(""); // state สำหรับเก็บ error
+  const [error, setError] = useState("");
+  const [userName, setUserName] = useState("ผู้ใช้"); // ✅ เพิ่ม state สำหรับชื่อผู้ใช้
 
-  const handleSubmit = () => {
+  // ---------------- โหลดข้อมูลโปรไฟล์ ----------------
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await axios.get("/api/User/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        });
+
+        if (res.data?.name) {
+          setUserName(res.data.name);
+        }
+      } catch (err) {
+        console.error("โหลดข้อมูลโปรไฟล์ไม่สำเร็จ:", err);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // ---------------- ฟังก์ชันส่งรายงาน ----------------
+  const handleSubmit = async () => {
     if (message.trim() === "") {
-      setError("กรุณาเขียนข้อความก่อน"); // แจ้งเตือนถ้าไม่ได้พิมพ์
+      setError("กรุณาเขียนข้อความก่อน");
       return;
     }
-    console.log("Report message:", message);
-    setError(""); // ล้าง error
-    setShowPopup(true); // เปิด popup
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("กรุณาเข้าสู่ระบบก่อนส่งรายงาน");
+        return;
+      }
+
+      const res = await axios.post(
+        "/api/report", // ✅ เปลี่ยนให้ตรงกับ backend จริง
+        {
+          detail: message,
+          trip_id: null, // ถ้ายังไม่ผูกกับ trip
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+
+      console.log("Report success:", res.data);
+      setShowPopup(true);
+      setMessage("");
+      setError("");
+    } catch (err: any) {
+      console.error("Error:", err.response?.data || err.message);
+      if (err.response?.status === 401) {
+        setError("Token หมดอายุหรือไม่ถูกต้อง");
+      } else if (err.response?.status === 400) {
+        setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+      } else {
+        setError("เกิดข้อผิดพลาดในการส่งรายงาน");
+      }
+    }
   };
 
+  // ---------------- ส่วน UI ----------------
   return (
     <div className="relative min-h-screen bg-[#C5D4E8] flex flex-col">
       {/* Header */}
+      <BackButton href="/customer/profile" />
       <div className="relative flex items-center h-[60px] border-b border-gray-300">
-        {/* Back Button → ชิดซ้าย */}
-        <div className="absolute left-4">
-          <BackButton href="/customer/login" />
-        </div>
-
-        {/* Title + Help Icon → อยู่กลาง */}
         <div className="flex items-center gap-2 mx-auto pt-14">
           <h1 className="text-[32px] text-black">แจ้งปัญหา</h1>
           <img src="/help.svg" alt="Help" className="w-8 h-8 object-contain" />
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="flex flex-col items-center px-6 pt-8 flex-1">
-        {/* Greeting */}
         <h2 className="text-2xl text-black mb-4 text-center leading-snug">
-          สวัสดี คุณ เตา อั่งโล่ <br />
+          สวัสดี คุณ {userName} <br />
           เราพร้อมช่วยเหลือคุณ!
         </h2>
-
-        {/* Description */}
         <div className="text-center mb-8 px-6">
-          <p className="text-[#B55C32] text-[14px] leading-relaxed">
-            แจ้งปัญหาได้ทุกอย่าง
-          </p>
-          <p className="text-[#B55C32] text-[14px] leading-relaxed">
-            แอดมินจะพยายามติดต่อกลับอย่างรวดเร็ว
+          <p className="text-[#B55C32] text-[14px]">แจ้งปัญหาได้ทุกอย่าง</p>
+          <p className="text-[#B55C32] text-[14px]">
+            แอดมินจะติดต่อกลับอย่างรวดเร็ว
           </p>
         </div>
 
-        {/* Message Input */}
         <div className="w-full max-w-md mb-6">
           <textarea
             placeholder="ข้อความ"
@@ -66,7 +116,7 @@ export default function ReportProblemPage() {
         </div>
       </div>
 
-      {/* Bottom White Box */}
+      {/* Bottom */}
       <div className="w-full h-[120px] bg-white flex items-center justify-center shadow-inner px-6 rounded-tl-[20px] rounded-tr-[20px] border-t border-gray-300">
         <button
           onClick={handleSubmit}
@@ -83,7 +133,7 @@ export default function ReportProblemPage() {
         </button>
       </div>
 
-      {/* Popup Modal */}
+      {/* Popup */}
       {showPopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-lg p-6 w-72 text-center">
