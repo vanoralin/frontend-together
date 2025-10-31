@@ -339,9 +339,7 @@ function Popup_logout({
         className="relative h-[164px] w-[366px] bg-white rounded-[30px] shadow-md p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-lg text-center mt-2">
-          แน่ใจไหมว่าต้องการออกจากระบบ?
-        </p>
+        <p className="text-lg text-center mt-2">แน่ใจไหมว่าต้องการออกจากระบบ?</p>
         <div className="flex justify-center space-x-6 mt-5">
           <button
             onClick={onCancel}

@@ -30,6 +30,15 @@ interface HistoryBlockProps {
   amount: number;
 }
 
+interface TransactionDTO {
+  id: number;
+  user_id: number;
+  amount: number;
+  type: "topup" | "withdraw" | "paid";
+  status: "success" | "pending" | "cancel";
+  created_at: string; // ISO: "2025-10-11T12:46:20.693141Z"
+}
+
 function Background() {
   const router = useRouter();
 
@@ -135,9 +144,9 @@ function Profile_wallet({ profile_picture, username, gender = "male", coin }: Pr
             className="h-7 w-7 ml-2"
           />
         </div>
-        <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
+        <div className="mt-3 h-[51px] w-fit px-2 bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
           <img src="/coin.svg" alt="icon" className="h-6 w-6 mr-2" />
-          <p className="text-2xl">{coin.toFixed(2)}</p>
+          <p className="text-xl">{coin.toFixed(2)}</p>
         </div>
       </div>
     </div>

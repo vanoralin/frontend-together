@@ -203,5 +203,69 @@ function Goto_payment({ expired }: { expired: boolean }) {
   );
 }
 
+/* ================= Expired Popup ================= */
+/** ป็อปอัปสไตล์ “Oh snap!” เด้งเมื่อหมดเวลา */
+function ExpiredPopup() {
+  const router = useRouter();
+
+  // ปิดด้วยปุ่ม Esc ได้
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") router.replace("/driver/wallet");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [router]);
+
+  return (
+    <div
+  className="fixed inset-0 z-50 flex items-center justify-center"
+  role="dialog"
+  aria-modal="true"
+>
+  {/* backdrop */}
+  <div className="absolute inset-0 bg-black/40" />
+
+  {/* card */}
+  <div className="relative w-[85%] max-w-sm rounded-xl shadow-xl overflow-hidden scale-95">
+    {/* ส่วนหัวพื้นหลังแดง */}
+    <div className="bg-[#E9777A] px-4 py-5 text-center">
+      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/30">
+        {/* ไอคอนกากบาท */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </div>
+      <h2 className="text-xl font-semibold text-white">หมดเวลาแล้ว</h2>
+      <p className="mt-1 text-white/90 text-sm leading-snug">
+        ไม่ได้ชำระเงินในเวลาที่กำหนด<br />
+        กรุณาทำรายการใหม่อีกครั้ง
+      </p>
+    </div>
+
+    {/* ปุ่ม */}
+    <div className="bg-white px-4 py-4 flex justify-center">
+      <button
+        onClick={() => router.replace("/driver/wallet")}
+        className="inline-flex items-center gap-2 rounded-full border border-[#B55C32] px-5 py-2 text-base font-medium shadow-sm hover:shadow active:scale-[0.98]"
+        autoFocus
+      >
+        กลับไปที่กระเป๋าเงิน
+      </button>
+    </div>
+  </div>
+</div>
+
+  );
+}
+
 export default Background;
 export { Header, Detail, Goto_payment };

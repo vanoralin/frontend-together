@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import axios from "axios";
 import { BackButton } from "@/app/components/share_component";
 
 type Vehicle = {
@@ -18,7 +19,122 @@ const EMPTY_VEHICLE: Vehicle = {
   previewUrl: null,
 };
 
-function Background() {
+/* ===================== Types ===================== */
+type VehicleType = "car" | "suv" | "motorcycle";
+type VehicleTypeWithEmpty = "" | VehicleType;
+
+const VEHICLE_TYPES: VehicleType[] = ["car", "suv", "motorcycle"];
+const MAX = 3; 
+
+export type Vehicle = {
+  id?: number | string;
+  vehicleType: VehicleTypeWithEmpty;
+  model: string;            // model_vehicle
+  exterior: string;         // description
+  licensePlate: string;     // license_plate
+  seats: string;            // แสดงใน input
+  previewUrl: string | null;// พาธรูปจาก server (relative) หรือ blob URL
+  file?: File | null;       // ไฟล์จริงที่ผู้ใช้อัปโหลด (ส่งขึ้นเซิร์ฟเวอร์)
+  readonlyFromApi: boolean; // true ถ้ามาจาก API → ล็อก select + รูปดูอย่างเดียว
+};
+
+const EMPTY_VEHICLE = (): Vehicle => ({
+  id: undefined,
+  vehicleType: "",
+  model: "",
+  exterior: "",
+  licensePlate: "",
+  seats: "",
+  previewUrl: null,
+  file: null,
+  readonlyFromApi: false,
+});
+
+/* Optional: profile (for header name/email) */
+interface ProfileData {
+  name?: string;
+  email?: string;
+}
+
+/* API response shape for vehicle */
+interface ApiVehicle {
+  id?: number | string;
+  driver_id?: number;
+  vehicle_type?: string;
+  model_vehicle?: string;
+  model?: string;
+  license_plate?: string;
+  seats?: number;
+  description?: string;
+  exterior?: string;
+  is_active?: boolean;
+  driving_license_url?: string; // ex: "uploads/licenses/xxx.png"
+  image_url?: string;
+}
+
+/* ===== helpers: sort by numeric id ===== */
+function idNum(v: { id?: number | string }) {
+  return v?.id != null && !Number.isNaN(Number(v.id))
+    ? Number(v.id)
+    : Number.POSITIVE_INFINITY;
+}
+function sortById<T extends { id?: number | string }>(arr: T[]) {
+  return [...arr].sort((a, b) => idNum(a) - idNum(b));
+}
+const labelByType: Record<VehicleType, string> = {
+  car: "รถยนต์",
+  suv: "รถยนต์ขนาดใหญ่",
+  motorcycle: "รถจักรยานยนต์",
+};
+
+/* ===================== Toast (success/error/info) ===================== */
+type ToastType = "success" | "error" | "info";
+function Toast({
+  open,
+  type = "success",
+  title,
+  message,
+  onClose,
+  autoHideMs = 1600,
+}: {
+  open: boolean;
+  type?: ToastType;
+  title: string;
+  message?: string;
+  onClose?: () => void;
+  autoHideMs?: number;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => onClose?.(), autoHideMs);
+    return () => clearTimeout(t);
+  }, [open, autoHideMs, onClose]);
+
+  if (!open) return null;
+
+  const circleClass =
+    type === "success"
+      ? "bg-green-100 border-green-200"
+      : type === "error"
+      ? "bg-red-100 border-red-200"
+      : "bg-blue-100 border-blue-200";
+
+  const icon =
+    type === "success" ? (
+      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+        <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ) : type === "error" ? (
+      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+        <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
+        <path d="M12 8h.01M11 12h1v4h1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+
   return (
     <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
       <Header />

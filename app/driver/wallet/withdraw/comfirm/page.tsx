@@ -58,9 +58,9 @@ export default function ConfirmWithdrawPage() {
           <DisplayAmount amount={amountDisplay} />
 
           <div className="flex items-center justify-between">
-            <p className="text-base">เข้าบัญชีหมายเลข</p>
+            <p className="text-base">เข้าบัญชีของ</p>
             <p className="text-base font-medium tracking-wider">
-              {maskAccount(account)}
+              {loadingProfile ? "กำลังโหลด..." : profile?.name ?? "-"}
             </p>
           </div>
         </section>

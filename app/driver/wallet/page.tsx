@@ -144,7 +144,7 @@ function Profile_wallet({
             className="h-7 w-7 ml-2"
           />
         </div>
-        <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
+        <div className="mt-3 h-[51px] w-fit px-2 bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
           <img src="/coin.svg" alt="icon" className="h-6 w-6 mr-2" />
           <p className="text-xl">{coin.toFixed(2)}</p>
         </div>
@@ -182,7 +182,8 @@ function History({ history }: { history: HistoryBlockProps[] }) {
 
 /** helper: แปลง "YYYY-MM-DD HH:mm" => "24 ส.ค. 2568, 22.01" */
 function formatThaiDate(input: string) {
-  const d = new Date(input.replace(" ", "T"));
+  const normalized = input.includes("T") ? input : input.replace(" ", "T");
+  const d = new Date(normalized);
   if (isNaN(d.getTime())) return input;
   const months = [
     "ม.ค.",
@@ -233,7 +234,6 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
                   </p>
                 </div>
 
-                {/* แถวล่าง: สถานะ (สี) | วันที่ (เทา) */}
                 <div className="mt-1 text-sm flex items-center">
                   <span className={isSuccess ? "text-green-600" : "text-red-600"}>{labelStatus}</span>
                   <span className="mx-2 text-gray-300">|</span>

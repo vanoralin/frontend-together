@@ -88,7 +88,7 @@ function Header() {
 function Detail({
   amount,
   currencyLabel = "บาท",
-  initialSeconds = 300,
+  initialSeconds = 300, // 5 นาที
   onExpire,
   expired = false,
 }: DetailProps) {
