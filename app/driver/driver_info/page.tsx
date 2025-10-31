@@ -8,7 +8,7 @@ type VehicleType = "car" | "suv" | "motorcycle";
 type VehicleTypeWithEmpty = "" | VehicleType;
 
 const VEHICLE_TYPES: VehicleType[] = ["car", "suv", "motorcycle"];
-const MAX = 3; // รวมทุกประเภทไม่เกิน 3 คัน
+const MAX = 3; 
 
 export type Vehicle = {
   id?: number | string;
