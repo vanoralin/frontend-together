@@ -5,7 +5,7 @@ import { BackButton } from "@/app/components/share_component";
 import Navbar from "../components/navbar";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Gender = "male" | "female";
 
@@ -24,41 +24,50 @@ interface ProfileData {
   gender?: Gender;
 }
 
+/** RAW response from /api/transactions/history */
+interface TransactionDTO {
+  id: number;
+  user_id: number;
+  amount: number;
+  type:
+    | "topup"
+    | "withdraw"
+    | "refund_to_user"
+    | "driver_penalty"
+    | "payment_to_escrow"
+    | "release_to_driver"
+    | "passenger_cancellation_compensation";
+  status: "success" | "pending" | "cancelled";
+  created_at: string; // ISO string เช่น "2025-10-30T04:50:53.080238Z"
+}
+
 interface HistoryBlockProps {
-  type: "topup" | "withdraw" | "paid";
-  date: string; // "YYYY-MM-DD HH:mm"
-  success: "success" | "cancel";
+  type:
+    | "topup"
+    | "withdraw"
+    | "refund_to_user"
+    | "driver_penalty"
+    | "payment_to_escrow"
+    | "release_to_driver"
+    | "passenger_cancellation_compensation";
+  date: string; // จะแปลงเป็น DD/MM/YYYY
+  status: "success" | "pending" | "cancelled"; // ← เพิ่ม cancelled
   amount: number;
 }
 
 function Background() {
   const router = useRouter();
 
-  const historyData: HistoryBlockProps[] = [
-    { type: "topup", date: "2024-08-24 22:01", success: "success", amount: 50 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "topup", date: "2024-08-15 09:15", success: "cancel", amount: 100 },
-    { type: "withdraw", date: "2024-08-10 18:45", success: "success", amount: 30 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "withdraw", date: "2024-07-30 16:20", success: "success", amount: 10 },
-    { type: "topup", date: "2024-07-25 08:10", success: "cancel", amount: 150 },
-    { type: "withdraw", date: "2024-07-20 19:55", success: "success", amount: 40 },
-    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-  ];
-
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
-  const openLogout = useCallback(() => setIsLogoutOpen(true), []);
-  const closeLogout = useCallback(() => setIsLogoutOpen(false), []);
+  const [history, setHistory] = useState<HistoryBlockProps[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        // ดึงข้อมูล “เหมือนเดิม”
         const res = await axios.get<ProfileData>("/api/User/profile", {
           withCredentials: true,
           headers: { "Content-Type": "application/json" },
@@ -70,7 +79,7 @@ function Background() {
           router.replace("/customer/login");
           return;
         }
-        // fallback type ตรงกับที่ใช้ด้านล่าง
+        // fallback ป้องกัน UI ว่างเปล่า
         setProfile({
           balance: 0,
           name: "ผู้ใช้",
@@ -83,6 +92,45 @@ function Background() {
     })();
   }, [router]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        setHistoryLoading(true);
+        const res = await axios.get<TransactionDTO[]>("/api/transactions/history", {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        });
+
+        const mapped: HistoryBlockProps[] = (res.data ?? []).map((tx) => {
+          // กำหนดสถานะสำหรับ topup: cancel -> cancelled, pending -> pending, success -> success
+          let status: HistoryBlockProps["status"];
+          if (tx.type === "topup") {
+            if (tx.status === "cancelled") status = "cancelled";
+            else if (tx.status === "pending") status = "pending";
+            else status = "success";
+          } else {
+            // รายการอื่น ๆ ให้ถือว่า success ตามระบบปัจจุบัน
+            status = "success";
+          }
+
+          return {
+            type: tx.type,
+            date: formatShortDate(tx.created_at),
+            status,
+            amount: tx.amount,
+          };
+        });
+
+        setHistory(mapped);
+      } catch (err) {
+        console.error(err);
+        setHistory([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    })();
+  }, []);
+
   return (
     <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
       <Header_wallet />
@@ -91,7 +139,6 @@ function Background() {
         <div className="h-[162px] w-[366px] bg-white/70 rounded-[30px] shadow-md mt-8 animate-pulse" />
       ) : profile ? (
         <>
-          {/* ใช้ข้อมูลจริงที่ดึงมา แทนของเดิมที่ hardcode */}
           <Profile_wallet
             profile_picture={profile.profile_picture}
             username={profile.name}
@@ -99,7 +146,11 @@ function Background() {
             coin={profile.balance}
           />
           <Topup />
-          <History history={historyData} />
+          {historyLoading ? (
+            <div className="w-[366px] h-[370px] bg-white/70 mt-10 rounded-[20px] animate-pulse" />
+          ) : (
+            <History history={history ?? []} />
+          )}
         </>
       ) : (
         <div className="h-[162px] w-[366px] bg-white rounded-[30px] shadow-md mt-8 flex items-center justify-center">
@@ -144,7 +195,7 @@ function Profile_wallet({
             className="h-7 w-7 ml-2"
           />
         </div>
-        <div className="mt-3 h-[51px] w-[145px] bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
+        <div className="mt-3 h-[51px] w-fit px-2 bg-[rgba(181,91,50,0.8)] rounded-[20px] flex justify-center items-center">
           <img src="/coin.svg" alt="icon" className="h-6 w-6 mr-2" />
           <p className="text-xl">{coin.toFixed(2)}</p>
         </div>
@@ -156,7 +207,6 @@ function Profile_wallet({
 function Topup() {
   return (
     <div className="flex gap-10">
-      {/* path เดิมฝั่ง driver คงไว้เหมือนเดิม */}
       <Link href="/driver/wallet/topup">
         <div className="h-[51px] w-[155px] bg-white rounded-[30px] shadow-md mt-5 flex justify-center items-center">
           <p className="text-center text-xl font-medium">เติมเงิน</p>
@@ -180,30 +230,22 @@ function History({ history }: { history: HistoryBlockProps[] }) {
   );
 }
 
-/** helper: แปลง "YYYY-MM-DD HH:mm" => "24 ส.ค. 2568, 22.01" */
-function formatThaiDate(input: string) {
-  const d = new Date(input.replace(" ", "T"));
+/** ✅ helper: แปลง ISO → DD/MM/YYYY */
+function formatShortDate(input: string): string {
+  const d = new Date(input);
   if (isNaN(d.getTime())) return input;
-  const months = [
-    "ม.ค.",
-    "ก.พ.",
-    "มี.ค.",
-    "เม.ย.",
-    "พ.ค.",
-    "มิ.ย.",
-    "ก.ค.",
-    "ส.ค.",
-    "ก.ย.",
-    "ต.ค.",
-    "พ.ย.",
-    "ธ.ค.",
-  ];
-  const dd = d.getDate();
-  const mm = months[d.getMonth()];
-  const yyyy = d.getFullYear() + 543;
-  const hh = String(d.getHours()).padStart(2, "0");
-  const min = String(d.getMinutes()).padStart(2, "0");
-  return `${dd} ${mm} ${yyyy}, ${hh}.${min}`;
+
+  const parts = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(d);
+
+  const dd = parts.find(p => p.type === "day")?.value ?? "";
+  const mm = parts.find(p => p.type === "month")?.value ?? "";
+  const yyyy = parts.find(p => p.type === "year")?.value ?? "";
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function Block_history({ history }: { history: HistoryBlockProps[] }) {
@@ -214,30 +256,59 @@ function Block_history({ history }: { history: HistoryBlockProps[] }) {
       ) : (
         <div className="flex flex-col">
           {history.map((item, idx) => {
-            const isSuccess = item.success === "success";
             const labelType =
               item.type === "topup"
                 ? "เติมเงิน"
                 : item.type === "withdraw"
                 ? "ถอนเงิน"
-                : "ชำระเงิน";
-            const labelStatus = isSuccess ? "สำเร็จ" : "ยกเลิก";
+                : item.type === "refund_to_user"
+                ? "คืนเงินให้ผู้โดยสาร"
+                : item.type === "driver_penalty"
+                ? "หักค่าปรับคนขับ"
+                : item.type === "payment_to_escrow"
+                ? "ชำระเงิน"
+                : item.type === "release_to_driver"
+                ? "เงินเข้าคนขับ"
+                : "ค่าชดเชยจากผู้โดยสาร";
+
+            const isSuccess = item.status === "success";
+            const isPending = item.status === "pending";
+            const isCancelled = item.status === "cancelled";
+
+            const labelStatus = isSuccess
+              ? "สำเร็จ"
+              : isPending
+              ? "รอดำเนินการ"
+              : "ยกเลิก";
+
+            // เลือกสีสถานะ
+            const statusClass = isSuccess
+              ? "text-green-600"
+              : isPending
+              ? "text-amber-600"
+              : "text-red-600"; // ถ้าอยากเป็นสีเทา: "text-gray-500"
+
+            // เดบิต/เครดิตเหมือนเดิม
+            const isDebit = [
+              "withdraw",
+              "driver_penalty",
+              "payment_to_escrow",
+              "refund_to_user",
+            ].includes(item.type);
 
             return (
               <div key={idx} className="px-4 py-3 border-b-[2px] border-[#CFE3DE]">
-                {/* แถวบน: ชื่อรายการซ้าย / จำนวนเงินขวา */}
                 <div className="flex items-start justify-between">
                   <p className="text-xl font-semibold">{labelType}</p>
                   <p className="text-xl font-semibold">
-                    {(item.type === "withdraw" || item.type === "paid") ? "-" : ""}฿{item.amount.toFixed(2)}
+                    {isDebit ? "-" : ""}฿{item.amount.toFixed(2)}
                   </p>
                 </div>
 
-                {/* แถวล่าง: สถานะ (สี) | วันที่ (เทา) */}
                 <div className="mt-1 text-sm flex items-center">
-                  <span className={isSuccess ? "text-green-600" : "text-red-600"}>{labelStatus}</span>
+                  <span className={statusClass}>{labelStatus}</span>
                   <span className="mx-2 text-gray-300">|</span>
-                  <span className="text-gray-500">{formatThaiDate(item.date)}</span>
+                  <span className="text-gray-500">{item.date}</span>
                 </div>
               </div>
             );
