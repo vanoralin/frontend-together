@@ -4,89 +4,50 @@ import { useEffect, useRef, useState } from "react";
 import { BackButton } from "@/app/components/share_component";
 import Navbar from "../components/navbar";
 
-/** -------- Types & Demo Data -------- */
+/** -------- Types & API Shapes -------- */
 interface Review {
   name?: string;
   index?: number;
-  rating: number;       // 1..5
+  rating: number; // 1..5
   comment?: string;
 }
 
 interface HistoryItem {
   fare: number;
   pax: number;
-  date: string;        // e.g., "12/12/2023"
-  startTime: string;   // e.g., "10:00" (24-hr)
-  endTime: string;     // e.g., "10:40"
-  stops: string[];     // stops[0] = start, stops[last] = end
+  date: string; // DD/MM/YYYY
+  startTime: string; // HH:MM (24-hr)
+  endTime: string; // HH:MM (24-hr)
+  stops: string[]; // stops[0] = start, stops[last] = end
   reviews?: Review[];
 }
 
-const historyItems: HistoryItem[] = [
-  {
-    fare: 100,
-    pax: 3,
-    date: "12/12/2023",
-    startTime: "10:00",
-    endTime: "10:40",
-    stops: ["ฝั่งตรงข้ามเกกี4", "สนามกีฬา", "คณะ IT", "หน้าตึก ECC"],
-    reviews: [
-      { index: 1, rating: 5, comment: "ขับดีมาก ถึงไว" },
-      { index: 2, rating: 4, comment: "สุภาพค่ะ" },
-      { index: 3, rating: 5, comment: "เส้นทางลื่นไหล" },
-    ],
-  },
-  {
-    fare: 75,
-    pax: 1,
-    date: "05/01/2024",
-    startTime: "08:15",
-    endTime: "08:32",
-    stops: ["สนามกีฬา", "อาคารเรียนรวม", "หอพัก A"],
-    reviews: [{ index: 1, rating: 5, comment: "ประทับใจบริการ" }],
-  },
-  {
-    fare: 55,
-    pax: 2,
-    date: "13/01/2024",
-    startTime: "13:05",
-    endTime: "13:37",
-    stops: ["คณะ IT", "โรงอาหารกลาง", "ลานจอดรถ", "คณะวิศวะ"],
-    reviews: [
-      { index: 1, rating: 4 },
-      { index: 2, rating: 4, comment: "รถสะอาด" },
-    ],
-  },
-  {
-    fare: 40,
-    pax: 1,
-    date: "20/02/2024",
-    startTime: "18:55",
-    endTime: "19:10",
-    stops: ["อาคารเรียนรวม", "สนามฟุตบอล", "ประตูหน้า"],
-  },
-  {
-    fare: 90,
-    pax: 4,
-    date: "03/03/2024",
-    startTime: "23:40",
-    endTime: "00:20", // ข้ามเที่ยงคืน
-    stops: ["คณะวิทย์", "คณะ IT", "หน้าตึก ECC", "ตึก ECC"],
-    reviews: [
-      { index: 1, rating: 5 },
-      { index: 2, rating: 5, comment: "บริการดีมาก" },
-      { index: 3, rating: 4 },
-      { index: 4, rating: 5, comment: "ให้ 5 ดาวครับ" },
-    ],
-  },
-];
+// ----- API response (based on the sample payload in the prompt) -----
+interface ApiLocation { name: string; lat: number; lng: number }
+interface ApiReservation { id: number; passenger_id: number; seats: number; status: string; amount: number }
+interface ApiDriver { id: number; name: string; email: string; profile_picture?: string }
+interface ApiDriverVehicle { driver_id: number; vehicle_type: string; model_vehicle: string; license_plate: string; seats: number; description?: string }
+interface ApiTrip {
+  trip_id: number;
+  status: string;
+  path_locations: ApiLocation[];
+  capacity: number;
+  driver: ApiDriver;
+  driver_vehicle: ApiDriverVehicle;
+  amount: number; // fare per trip
+  reservations: ApiReservation[];
+  reviews?: { score: number; comment?: string }[]; // <-- reviews from API
+  distance_km: number;
+  duration_sec: number; // duration in seconds
+  scheduled_start_time: string; // ISO string
+}
+interface ApiHistoryResponse { message: string; trips: ApiTrip[] }
 
 /* ---------------- Utils ---------------- */
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
 const SNAP_POINTS = [0.33, 0.66] as const;
 
 function timeToMinutes(t: string): number {
-  // รองรับ "H:MM" หรือ "HH:MM"
   const [h, m] = t.split(":").map((x) => parseInt(x, 10));
   if (Number.isNaN(h) || Number.isNaN(m)) return 0;
   return h * 60 + m;
@@ -95,8 +56,7 @@ function timeToMinutes(t: string): number {
 function diffMinutes(start: string, end: string): number {
   const s = timeToMinutes(start);
   let e = timeToMinutes(end);
-  // ถ้า end < start ให้ถือว่าข้ามเที่ยงคืน (เพิ่ม 24 ชม.)
-  if (e < s) e += 24 * 60;
+  if (e < s) e += 24 * 60; // cross-midnight support
   return e - s;
 }
 
@@ -107,10 +67,64 @@ function formatDuration(mins: number): string {
   return m === 0 ? `${h} ชม.` : `${h} ชม. ${m} นาที`;
 }
 
+function pad2(n: number) { return n.toString().padStart(2, "0"); }
+function formatDateDMY(date: Date) { return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`; }
+function formatHHMM(date: Date) { return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`; }
+
+// Transform API trip -> HistoryItem used by UI
+function mapTripToHistoryItem(t: ApiTrip): HistoryItem {
+  const start = new Date(t.scheduled_start_time);
+  const end = new Date(start.getTime() + (t.duration_sec || 0) * 1000);
+
+  // Round to minute precision
+  const startRounded = new Date(start); startRounded.setSeconds(0, 0);
+  const endRounded = new Date(end); endRounded.setSeconds(0, 0);
+
+  const pax = (t.reservations || []).reduce((acc, r) => acc + (r.seats || 0), 0);
+  const stops = (t.path_locations || []).map((p) => p.name).filter(Boolean);
+
+  // map reviews -> HistoryItem.reviews (label as ผู้โดยสารคนที่ 1..)
+  const reviews: Review[] | undefined = Array.isArray(t.reviews)
+    ? t.reviews.map((rv, i) => ({ index: i + 1, rating: rv.score, comment: rv.comment }))
+    : undefined;
+
+  return {
+    fare: Number.isFinite(t.amount) ? Number(t.amount) : 0,
+    pax,
+    date: formatDateDMY(start),
+    startTime: formatHHMM(startRounded),
+    endTime: formatHHMM(endRounded),
+    stops: stops.length > 0 ? stops : ["-"],
+    reviews,
+  };
+}
+
+
+function resolveToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const cookieStr = document.cookie || "";
+  if (!cookieStr) return null;
+  const pairs = cookieStr.split(";");
+  for (const raw of pairs) {
+    const [rawName, ...rest] = raw.trim().split("=");
+    const name = rawName?.trim();
+    const value = rest.join("=");
+    if (!name) continue;
+    if (name === "AuthToken") {
+      try { return decodeURIComponent(value); } catch { return value; }
+    }
+  }
+  return null;
+}
+
 /* ---------------- Page ---------------- */
 function Background() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<HistoryItem | null>(null);
+
+  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -126,21 +140,81 @@ function Background() {
     }
   }, [open]);
 
+  useEffect(() => {
+    let aborted = false;
+    async function fetchHistory() {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = resolveToken();
+        if (!token) throw new Error("ไม่พบ token ใน cookies");
+
+        const res = await fetch("/api/driver/history", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`เรียก API ไม่สำเร็จ (${res.status}) ${text || ""}`);
+        }
+
+        const json: ApiHistoryResponse = await res.json();
+        const trips = Array.isArray(json?.trips) ? json.trips : [];
+        const mapped = trips.map(mapTripToHistoryItem);
+        if (!aborted) setItems(mapped);
+      } catch (e: any) {
+        if (!aborted) setError(e?.message || "เกิดข้อผิดพลาด");
+      } finally {
+        if (!aborted) setLoading(false);
+      }
+    }
+    fetchHistory();
+    return () => { aborted = true; };
+  }, []);
+
   const openPopup = (item: HistoryItem) => { setSelected(item); setOpen(true); };
   const closePopup = () => setOpen(false);
 
   return (
-    <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center">
+    <div className="min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center pb-20">
       <Header_history onClose={open ? closePopup : undefined} />
-      <div className="mt-5"></div>
-      {historyItems.map((item, idx) => (
+      <div className="mt-5" />
+
+      {loading && (
+        <div className="w-[366px] animate-pulse">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-[141px] w-[366px] bg-white/70 rounded-[30px] shadow-sm mt-5" />
+          ))}
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="w-[366px] bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3 mt-4">
+          <p className="font-medium">โหลดข้อมูลไม่สำเร็จ</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && items.length === 0 && (
+        <div className="w-[366px] bg-white rounded-[30px] shadow-md mt-5 p-4 text-center text-gray-600">
+          ไม่พบทริปที่ผ่านมา
+        </div>
+      )}
+
+      {!loading && !error && items.map((item, idx) => (
         <Block_history key={idx} item={item} onClick={() => openPopup(item)} />
       ))}
+
       {open && selected && (
         <PopupOverlay onClose={closePopup}>
           <Popup_detail item={selected} onClose={closePopup} />
         </PopupOverlay>
       )}
+
       <Navbar />
     </div>
   );
@@ -302,7 +376,7 @@ function StopsCard({ item }: { item: HistoryItem }) {
   const stops = item.stops;
 
   return (
-    <div className="w-[363px] bg-white rounded-[30px] shadow-md mt-4 p-4">
+    <div className="W-[363px] w-[363px] bg-white rounded-[30px] shadow-md mt-4 p-4">
       <p className="text-center text-xl font-semibold">จุดรับส่งทั้งหมด</p>
 
       <div className="mt-3 space-y-2.5">
@@ -320,12 +394,7 @@ function StopsCard({ item }: { item: HistoryItem }) {
               {/* เส้นเชื่อมระหว่างจุด (เฉพาะถ้าไม่ใช่จุดสุดท้าย) */}
               {!isLast && (
                 <div
-                  className="
-                    absolute left-[9px]
-                    top-[22px]
-                    bottom-[-10px]
-                    w-px bg-gray-500
-                  "
+                  className="absolute left-[9px] top-[22px] bottom-[-10px] w-px bg-gray-500"
                 />
               )}
 
@@ -431,15 +500,7 @@ function Popup_detail({ item }: { item: HistoryItem; onClose?: () => void; }) {
 }
 
 /** ---- ดาวรูปภาพแบบแสดงผล ---- */
-function StarRatingDisplay({
-  value,
-  outOf = 5,
-  size = 18,
-}: {
-  value: number;
-  outOf?: number;
-  size?: number;
-}) {
+function StarRatingDisplay({ value, outOf = 5, size = 18 }: { value: number; outOf?: number; size?: number; }) {
   const clamped = Math.max(0, Math.min(outOf, value));
   const filled = Math.floor(clamped);
   const empty = outOf - filled;
