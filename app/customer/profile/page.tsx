@@ -1,7 +1,6 @@
 'use client';
 
 import RoleBar from "@/app/components/user_components";
-import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -140,7 +139,6 @@ const genderIconMap: Record<Gender, string> = {
 function Header_profile() {
   return (
     <div className="flex flex-col items-center ">
-      <BackButton />
       <p className="text-[32px] font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );

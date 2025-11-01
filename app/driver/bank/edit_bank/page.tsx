@@ -2,14 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { BackButton } from "@/app/components/share_component";
 import { useRouter } from "next/navigation";
+import { BackButton } from "@/app/components/share_component";
 import { useBankAccount } from "@/lib/useBankAccount";
 
 /* ----------------- Types & Utils ----------------- */
 type BankCode = "" | "kbank" | "scb" | "bbl";
 
-// โลโก้/ชื่อ/สีของแต่ละธนาคาร (ต้องมีไฟล์ใน /public)
+// โลโก้/ชื่อ/สีของแต่ละธนาคาร (ไฟล์อยู่ใน /public)
 const BANKS: Record<
   Exclude<BankCode, "">,
   { name: string; logo: string; bg: string; accent: string }
@@ -29,7 +29,7 @@ const BANKS: Record<
   bbl: { name: "กรุงเทพ", logo: "/bbl.jpg", bg: "#EEF4FF", accent: "#1E3A8A" },
 };
 
-// แปลง code จาก BE → code ภายใน
+// map code จาก BE → code ภายในฟรอนต์
 const normalizeBankCode = (raw?: string): BankCode => {
   const v = String(raw || "")
     .trim()
@@ -83,7 +83,8 @@ const maskWithHyphen = (formatted: string) => {
   return res;
 };
 
-export default function BankPage() {
+/* ----------------- Page ----------------- */
+export default function EditBankPage() {
   const router = useRouter();
 
   const titleSize = 35;
@@ -91,7 +92,7 @@ export default function BankPage() {
   const baseSize = 16;
   const buttonSize = 24;
 
-  // ดึงสถานะ/ข้อมูลปัจจุบันจาก hook
+  // ดึงสถานะ/ข้อมูลปัจจุบัน
   const { loading: loadingBank, hasLinked, data } = useBankAccount();
 
   const [saving, setSaving] = useState(false);
@@ -103,41 +104,45 @@ export default function BankPage() {
   const [accountName, setAccountName] = useState("");
 
   const [errorMsg, setErrorMsg] = useState("");
+
   const [successOpen, setSuccessOpen] = useState(false);
 
-  // พรีฟิลเมื่อ hook ส่งข้อมูลมา (ถ้า BE บอกว่ายังไม่ผูก จะว่างไว้เพื่อให้ผูก)
   useEffect(() => {
-    if (loadingBank) return;
+    if (!successOpen) return;
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setSuccessOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [successOpen]);
 
-    if (hasLinked && data) {
-      const code = normalizeBankCode(
-        (data as any).bank_code || (data as any).bankCode || (data as any).code
-      );
-      const name =
-        (data as any).bank_name ||
-        (code ? BANKS[code]?.name : "") ||
-        (data as any).bankName ||
-        "";
+  // ถ้ายังไม่เคยผูก → พาไปหน้า /driver/bank
+  useEffect(() => {
+    if (!loadingBank && !hasLinked) router.replace("/driver/bank");
+  }, [loadingBank, hasLinked, router]);
 
-      const digits = only10Digits(
-        (data as any).bank_account_number || (data as any).account_number || ""
-      );
-      setBankCode(code);
-      setBankName(name);
-      setAccountName(
-        (data as any).bank_account_name || (data as any).account_name || ""
-      );
-      setAccountNumberRaw(digits);
-      setAccountNumberView(formatAccount(digits, code));
-    } else {
-      // ยังไม่ผูก: เคลียร์ค่า
-      setBankCode("");
-      setBankName("");
-      setAccountName("");
-      setAccountNumberRaw("");
-      setAccountNumberView("");
-    }
-  }, [loadingBank, hasLinked, data]);
+  // พรีฟิลเมื่อ hook ส่งข้อมูลมา
+  useEffect(() => {
+    if (loadingBank || !data) return;
+    const code = normalizeBankCode(
+      (data as any).bank_code || (data as any).bankCode || (data as any).code
+    );
+    const name =
+      (data as any).bank_name ||
+      (code ? BANKS[code]?.name : "") ||
+      (data as any).bankName ||
+      "";
+
+    const digits = only10Digits(
+      (data as any).bank_account_number || (data as any).account_number || ""
+    );
+    setBankCode(code);
+    setBankName(name);
+    setAccountName(
+      (data as any).bank_account_name || (data as any).account_name || ""
+    );
+    setAccountNumberRaw(digits);
+    setAccountNumberView(formatAccount(digits, code));
+  }, [loadingBank, data]);
 
   // เปลี่ยนธนาคาร → ปรับชื่อ/รูปแบบขีดทันที
   useEffect(() => {
@@ -155,7 +160,6 @@ export default function BankPage() {
   const validateAccountNumber = (numDigits: string) =>
     /^\d{10}$/.test(only10Digits(numDigits));
 
-  // ผูก/อัปเดตบัญชี
   const onSave = async () => {
     setErrorMsg("");
 
@@ -176,6 +180,7 @@ export default function BankPage() {
         return;
       }
 
+      // /driver/linkbank: ใช้สำหรับทั้งผูกครั้งแรกและอัปเดต
       await axios.post(
         "/api/driver/linkbank",
         {
@@ -203,7 +208,6 @@ export default function BankPage() {
       setSuccessOpen(true);
       setTimeout(() => {
         setSuccessOpen(false);
-        router.replace("/driver/bank/edit_bank");
       }, 1500);
     } catch (err: any) {
       const status = err?.response?.status;
@@ -271,12 +275,12 @@ export default function BankPage() {
               className="px-[50px] py-[5px] text-[#191919] font-medium"
               style={{ fontSize: titleSize, lineHeight: 1.3 }}
             >
-              ผูก
+              แก้ไข
               <span
                 className="block font-normal"
                 style={{ fontSize: titleSmallSize }}
               >
-                บัญชีธนาคาร
+                ข้อมูลบัญชีธนาคาร
               </span>
             </h1>
           </div>
@@ -359,7 +363,7 @@ export default function BankPage() {
                 </svg>
               </div>
 
-              {/* เลขบัญชี */}
+              {/* เลขบัญชี (มีขีดอัตโนมัติ) */}
               <label
                 className="block text-[#191919] mb-2"
                 style={{ fontSize: baseSize }}
@@ -439,7 +443,7 @@ export default function BankPage() {
           <div className="flex flex-col items-center">
             <button
               onClick={onSave}
-              disabled={saving}
+              disabled={saving || loadingBank}
               className="w-fit h-12 bg-[#E6A88A] hover:bg-[#B55C32] transition-colors px-5 inline-flex items-center justify-center disabled:opacity-60"
               style={{
                 boxSizing: "border-box",
@@ -450,15 +454,10 @@ export default function BankPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              {saving
-                ? "กำลังบันทึก..."
-                : hasLinked
-                ? "อัปเดตบัญชี"
-                : "ผูกบัญชีธนาคาร"}
+              {saving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
             </button>
           </div>
 
-          {/* Popup เครื่องหมายถูก */}
           {successOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
               <div
@@ -466,6 +465,7 @@ export default function BankPage() {
                 aria-live="assertive"
                 className="bg-white rounded-2xl shadow-lg w-[320px] p-6 text-center"
                 style={{ fontFamily: "'Mitr', sans-serif" }}
+                onClick={(e) => e.stopPropagation()}
               >
                 <div className="mx-auto mb-3 flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
                   {/* ไอคอนเครื่องหมายถูก */}
@@ -487,18 +487,11 @@ export default function BankPage() {
                   </svg>
                 </div>
 
-                <h2
-                  className="font-medium text-[#191919] "
-                  style={{ fontSize: titleSmallSize }}
-                >
-                  ผูกบัญชีสำเร็จ!
+                <h2 className="font-medium text-[#191919] text-[26px]">
+                  บันทึกข้อมูลบัญชีสำเร็จ
                 </h2>
-
-                <p
-                  className="text-[#4b5563] mt-4 mb-4"
-                  style={{ fontSize: baseSize }}
-                >
-                  บันทึกข้อมูลบัญชีของคุณเรียบร้อยแล้ว
+                <p className="text-[#4b5563] mt-4 text-[16px]">
+                  อัปเดตบัญชีของคุณเรียบร้อยแล้ว
                 </p>
               </div>
             </div>

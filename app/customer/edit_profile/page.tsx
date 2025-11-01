@@ -134,7 +134,7 @@ export default function EditProfilePage() {
     }
     const { ok } = validateThaiMobile(raw);
     setPhoneError(
-      ok ? "" : "กรุณากรอกเบอร์มือถือ 10 หลัก (ขึ้นต้น 06/08/09) หรือ +66..."
+      ok ? "" : "กรุณากรอกเบอร์มือถือ 10 หลัก (ขึ้นต้น 06/08/09)"
     );
   };
 
@@ -225,7 +225,6 @@ export default function EditProfilePage() {
         setSuccessOpen(false);
         router.push("/customer/profile");
       }, 1500);
-
     } catch (err: any) {
       console.error("❌ Update error:", err);
       if (err.response?.status === 401)
@@ -344,7 +343,6 @@ export default function EditProfilePage() {
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              placeholder="เช่น 0812345678 หรือ +66812345678"
               value={phone}
               onChange={handlePhoneChange}
               className={`w-full h-12 bg-white pl-4 pr-4 rounded-[20px] border-2 shadow-sm outline-none mb-1 ${
@@ -441,20 +439,7 @@ export default function EditProfilePage() {
                   >
                     บันทึกโปรไฟล์สำเร็จ
                   </h2>
-                  {/* <p
-                    className="text-[#191919] mt-1"
-                    style={{ fontSize: baseSize }}
-                  >
-                    กำลังพาไปหน้าโฮมของคนขับ...
-                  </p>
-
-                  <button
-                    onClick={() => router.push("/driver/home")}
-                    className="mt-4 w-full h-12 bg-[#E6A88A] hover:bg-[#B55C32] text-[#191919] border-2 border-[#B55C32] rounded-2xl transition-colors"
-                    style={{ fontSize: buttonSize }}
-                  >
-                    ไปตอนนี้เลย
-                  </button> */}
+                
                 </div>
               </div>
             )}

@@ -1,12 +1,12 @@
 "use client";
 
 import RoleBar from "@/app/components/user_components";
-import { BackButton } from "@/app/components/share_component";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Navbar from "../components/navbar";
+import { useBankAccount } from "@/lib/useBankAccount";
 
 // --- Types ---
 type Gender = "male" | "female";
@@ -189,7 +189,6 @@ const genderIconMap: Record<Gender, string> = {
 function Header_profile() {
   return (
     <div className="flex flex-col items-center">
-      <BackButton />
       <p className="text-[32px] font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );
@@ -250,6 +249,14 @@ function Block_profileuser({
 }
 
 function Block_Driver_info() {
+  const router = useRouter();
+  const { hasLinked, loading } = useBankAccount();
+
+  const goBank = () => {
+    if (loading) return; // กันกดระหว่างโหลด
+    router.push(hasLinked ? "/driver/bank/edit_bank" : "/driver/bank");
+  };
+
   return (
     <div className="flex flex-col items-center">
       {/*บล็อกข้อมูลคนขับ */}
@@ -261,12 +268,16 @@ function Block_Driver_info() {
       </Link>
 
       {/*บล็อกบัญชีธนาคาร */}
-      <Link href="/driver/bank">
-        <div className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center justify-between px-4">
-          <p className="text-xl">บัญชีธนาคาร</p>
-          <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
-        </div>
-      </Link>
+      <button
+        onClick={goBank}
+        disabled={loading}
+        className="h-[82px] w-[366px] bg-white rounded-b-[20px] shadow-md mt-1 flex items-center justify-between px-4 disabled:opacity-60"
+      >
+        <p className="text-xl">
+          บัญชีธนาคาร {loading ? "(กำลังตรวจสอบ…)" : ""}
+        </p>
+        <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+      </button>
     </div>
   );
 }

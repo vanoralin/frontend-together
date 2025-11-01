@@ -439,19 +439,7 @@ export default function EditProfilePage() {
                   >
                     บันทึกโปรไฟล์สำเร็จ
                   </h2>
-                  {/* <p className="text-[#191919] mt-1">
-                    กำลังพากลับไปหน้าโปรไฟล์...
-                  </p>
-
-                  <button
-                    onClick={() => {
-                      setSuccessOpen(false);
-                      router.push("/customer/profile");
-                    }}
-                    className="mt-4 w-full h-12 bg-[#E6A88A] hover:bg-[#B55C32] text-[#191919] border-2 border-[#B55C32] rounded-2xl transition-colors"
-                  >
-                    ไปหน้าโปรไฟล์ตอนนี้
-                  </button> */}
+                  
                 </div>
               </div>
             )}

@@ -21,16 +21,29 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [serverError, setServerError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
-  // ---------- Validate ----------
+  /* ---------- utils: เบอร์โทรไทย ---------- */
+  const normalizeThaiMobile = (raw: string) => {
+    let digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("66")) digits = "0" + digits.slice(2);
+    return digits;
+  };
+  const validateThaiMobile = (raw: string) => {
+    const digits = normalizeThaiMobile(raw);
+    const ok = /^0[6-9]\d{8}$/.test(digits);
+    return { ok, digits };
+  };
+
+  /* ---------- validate password ---------- */
   const validatePassword = (pw: string) => {
     if (!pw) return "กรุณากรอกรหัสผ่าน";
     if (pw.length < 6) return "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
@@ -44,18 +57,16 @@ export default function RegisterPage() {
       ? new Date(birthday).toISOString().split("T")[0]
       : null;
 
-  // ---------- เลือกรูป + บีบอัด ----------
+  /* ---------- เลือกรูป + บีบอัด ---------- */
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       const validTypes = ["image/jpeg", "image/png", "image/webp"];
       if (!validTypes.includes(file.type)) {
         setServerError("รองรับเฉพาะไฟล์ .jpg .png หรือ .webp");
         return;
       }
-
       const options = {
         maxSizeMB: 1,
         maxWidthOrHeight: 1024,
@@ -66,13 +77,11 @@ export default function RegisterPage() {
         type: file.type,
         lastModified: Date.now(),
       });
-
       const url = URL.createObjectURL(compressedFile);
       setPreview((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
-
       if (fileRef.current) {
         const dt = new DataTransfer();
         dt.items.add(compressedFile);
@@ -90,7 +99,19 @@ export default function RegisterPage() {
     };
   }, [preview]);
 
-  // ---------- Submit ----------
+  /* ---------- ✅ ย้ายออกมาเป็นฟังก์ชันระดับคอมโพเนนต์ ---------- */
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setPhone(raw);
+    if (!raw.trim()) {
+      setPhoneError("");
+      return;
+    }
+    const { ok } = validateThaiMobile(raw);
+    setPhoneError(ok ? "" : "กรุณากรอกเบอร์ 10 หลัก (ขึ้นต้น 06/08/09)");
+  };
+
+  /* ---------- Submit ---------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
@@ -121,7 +142,13 @@ export default function RegisterPage() {
       form.append("email", email);
       form.append("password", password);
       form.append("confirm_password", confirmPassword);
-      if (phone) form.append("phone", phone);
+
+      // ✅ ส่งเบอร์ที่ normalize แล้ว
+      if (phone) {
+        const { digits } = validateThaiMobile(phone);
+        form.append("phone", digits);
+      }
+
       if (gender) form.append("gender", gender);
       if (formattedBirthday) form.append("birthdate", formattedBirthday);
       const file = fileRef.current?.files?.[0];
@@ -129,8 +156,11 @@ export default function RegisterPage() {
 
       await axios.post("/api/User/register", form, { withCredentials: true });
 
-      // ✅ แสดง popup เมื่อสำเร็จ (ไม่ redirect ทันที)
-      setShowPopup(true);
+      setSuccessOpen(true);
+
+      setTimeout(() => {
+        router.push("/customer/login");
+      }, 1500);
     } catch (err: any) {
       const data = err.response?.data || {};
       const status = err.response?.status;
@@ -157,7 +187,7 @@ export default function RegisterPage() {
     }
   };
 
-  // ---------- UI ----------
+  /* ---------- UI ---------- */
   return (
     <div className="min-h-screen w-full bg-theme-customer flex items-center justify-center">
       <div
@@ -168,7 +198,6 @@ export default function RegisterPage() {
           backgroundColor: "#EAFCFC",
           boxShadow: "rgba(0,0,0,0.1) 0 0 10px",
           fontFamily: "'Mitr', sans-serif",
-          borderRadius: 20,
         }}
       >
         <form
@@ -256,22 +285,6 @@ export default function RegisterPage() {
 
           {/* Inputs */}
           <div style={{ width: 318 }}>
-            {/* Name */}
-            <label className="block text-[#191919] mb-2">ชื่อผู้ใช้</label>
-            <div className="relative mb-4">
-              <img
-                src="/user.svg"
-                alt="user"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
-              />
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
-              />
-            </div>
-
             {/* Email */}
             <label className="block text-[#191919] mb-2">
               อีเมล (@kmitl.ac.th)
@@ -280,12 +293,28 @@ export default function RegisterPage() {
               <img
                 src="/email.svg"
                 alt="email"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
+              />
+            </div>
+
+            {/* Name */}
+            <label className="block text-[#191919] mb-2">ชื่อผู้ใช้</label>
+            <div className="relative mb-4">
+              <img
+                src="/user.svg"
+                alt="user"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5"
+              />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
               />
             </div>
@@ -296,7 +325,7 @@ export default function RegisterPage() {
               <img
                 src="/password.svg"
                 alt="password"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="password"
@@ -304,9 +333,7 @@ export default function RegisterPage() {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   if (!passwordTouched) setPasswordTouched(true);
-                  // อัปเดต error ทันทีเมื่อพิมพ์
-                  const msg = validatePassword(e.target.value);
-                  setPasswordError(msg);
+                  setPasswordError(validatePassword(e.target.value));
                 }}
                 onBlur={() => {
                   setPasswordTouched(true);
@@ -329,7 +356,7 @@ export default function RegisterPage() {
               <img
                 src="/password.svg"
                 alt="confirm"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5"
               />
               <input
                 type="password"
@@ -352,19 +379,19 @@ export default function RegisterPage() {
 
             {/* Phone */}
             <label className="block text-[#191919] mb-2">เบอร์โทรศัพท์</label>
-            <div className="relative mb-4">
-              <img
-                src="/phone.svg"
-                alt="phone"
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5"
-              />
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-12 bg-white shadow-sm pl-4 pr-10 outline-none border-2 border-[#D9D9D9] rounded-[20px]"
-              />
-            </div>
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={handlePhoneChange}
+              className={`w-full h-12 bg-white pl-4 pr-4 rounded-[20px] border-2 shadow-sm outline-none mb-1 ${
+                phoneError ? "border-red-400" : "border-[#D9D9D9]"
+              }`}
+            />
+            {phoneError && (
+              <p className="text-red-600 text-sm mb-3">{phoneError}</p>
+            )}
 
             {/* Birthday & Gender */}
             <div className="flex space-x-4 mb-4">
@@ -436,30 +463,54 @@ export default function RegisterPage() {
                 เข้าสู่ระบบ
               </Link>
             </div>
+
+            {successOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div
+                  role="alertdialog"
+                  aria-live="assertive"
+                  className="bg-white rounded-2xl shadow-lg w-[320px] p-6 text-center"
+                  style={{ fontFamily: "'Mitr', sans-serif" }}
+                >
+                  <div className="mx-auto mb-3 flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+                    {/* ไอคอนเครื่องหมายถูก */}
+                    <svg viewBox="0 0 24 24" className="w-10 h-10">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="currentColor"
+                        className="text-green-200"
+                      />
+                      <path
+                        d="M8.5 12.5l2.5 2.5 4.5-5.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        className="text-green-700"
+                      />
+                    </svg>
+                  </div>
+
+                  <h2
+                    className="font-medium text-[#191919]"
+                    style={{ fontSize: titleSmallSize }}
+                  >
+                    ลงทะเบียนสำเร็จ
+                  </h2>
+
+                  <p
+                    className="text-gray-600 mt-1 mb-4"
+                    style={{ fontSize: baseSize }}
+                  >
+                    กรุณาเข้าสู่ระบบ...
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </div>
-
-      {/* ✅ Popup หลังสมัครสำเร็จ */}
-      {showPopup && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg p-6 w-72 text-center">
-            <h2 className="text-lg font-semibold text-[#B55C32] mb-3">
-              ลงทะเบียนสำเร็จ ✅
-            </h2>
-            <p className="text-gray-700 mb-5">กรุณาเข้าสู่ระบบ</p>
-            <button
-              className="w-full h-10 bg-[#E6A88A] hover:bg-[#B55C32] text-black rounded-3xl transition-colors"
-              onClick={() => {
-                setShowPopup(false);
-                router.push("/customer/login");
-              }}
-            >
-              ตกลง
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
