@@ -184,7 +184,7 @@ const genderIconMap: Record<Gender, string> = {
 function Header_profile() {
   return (
     <div className="flex flex-col items-center">
-      <BackButton />
+      {/* <BackButton /> */}
       <p className="text-[32px] font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );

@@ -12,9 +12,11 @@ type WithdrawResponse = {
   transaction_id?: number | string;
 };
 
-interface ProfileData {
-  name?: string;
-  email?: string;
+interface BankAccountData {
+  bank_account_name: string;
+  bank_account_number: string;
+  bank_code?: string;
+  bank_name: string;
 }
 
 /* ============== API Caller ============== */
@@ -36,9 +38,9 @@ export default function ConfirmWithdrawPage() {
   const nextHref = "/driver/wallet";
 
   const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
-  const [profile, setProfile] = React.useState<ProfileData | null>(null);
-  const [loadingProfile, setLoadingProfile] = React.useState<boolean>(true);
-
+  const [bankInfo, setBankInfo] = React.useState<BankAccountData | null>(null);
+  const [loadingBank, setLoadingBank] = React.useState<boolean>(true);
+    
   React.useEffect(() => {
     const s = localStorage.getItem("withdrawAmount") || "0";
     const n = Number(s);
@@ -49,18 +51,18 @@ export default function ConfirmWithdrawPage() {
     let mounted = true;
     (async () => {
       try {
-        setLoadingProfile(true);
-        const res = await axios.get<ProfileData>("/api/User/profile", {
+        setLoadingBank(true);
+        const res = await axios.get<BankAccountData>("/api/driver/bank-account", {
           withCredentials: true,
           headers: { "Content-Type": "application/json" },
         });
         if (!mounted) return;
-        setProfile(res.data ?? null);
+        setBankInfo(res.data ?? null);
       } catch {
         if (!mounted) return;
-        setProfile(null);
+        setBankInfo(null);
       } finally {
-        if (mounted) setLoadingProfile(false);
+        if (mounted) setLoadingBank(false);
       }
     })();
     return () => {
@@ -69,24 +71,68 @@ export default function ConfirmWithdrawPage() {
   }, []);
 
   return (
-    <div className="relative bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
-      <HeaderWithdraw />
+<div className="relative min-h-screen w-full flex flex-col items-center bg-[#C5D4E8] pb-[140px]">
+  <HeaderWithdraw />
 
-      <main className="w-full max-w-[640px] px-5 mt-6">
-        <section className="space-y-6">
-          <DisplayAmount amount={amountDisplay} />
+  <main className="w-full max-w-[640px] px-5 mt-6">
+    <section className="space-y-6">
+      <DisplayAmount amount={amountDisplay} />
 
-          <div className="flex items-center justify-between">
-            <p className="text-base">เข้าบัญชีของ</p>
-            <p className="text-base font-medium tracking-wider">
-              {loadingProfile ? "กำลังโหลด..." : profile?.name ?? "-"}
-            </p>
+      {/* Card: Bank destination */}
+      <div className="rounded-2xl bg-white backdrop-blur border border-white shadow-[0_8px_30px_rgba(0,0,0,0.05)] px-5 py-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            {/* bank icon */}
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M3 10.5 12 4l9 6.5V12H3v-1.5Zm0 3.5h18v6H3v-6Zm2 1.5v3h3v-3H5Zm5 0v3h4v-3h-4Zm6 0v3h3v-3h-3Z" />
+            </svg>
+            <p className="text-base font-semibold tracking-wide">เข้าบัญชีธนาคาร</p>
           </div>
-        </section>
-      </main>
 
-      <GotoPayment nextHref={nextHref} />
-    </div>
+        </div>
+
+        {loadingBank ? (
+          // Skeleton loading
+          <div className="animate-pulse space-y-3">
+          </div>
+        ) : bankInfo ? (
+          <div className="mt-1 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-base text-slate-500">ธนาคาร</span>
+              <div className="text-base tracking-wide">
+                {bankInfo.bank_name}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-base text-slate-500">ชื่อบัญชี</span>
+              <span className="text-base tracking-wide">
+                {bankInfo.bank_account_name}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-ิฟหำ text-slate-500">เลขที่บัญชี</span>
+              <span className="text-base tracking-wider">
+                {bankInfo.bank_account_number}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-base text-red-500">ไม่พบบัญชีธนาคาร</p>
+        )}
+      </div>
+    </section>
+  </main>
+
+  <GotoPayment nextHref={nextHref} />
+</div>
+
   );
 }
 
@@ -126,14 +172,8 @@ export function GotoPayment({ nextHref }: { nextHref: string }) {
 
     try {
       setLoading(true);
-
-      // ยิง API ถอน
       await postWithdraw(amount);
-
-      // เคลียร์ค่าเมื่อสำเร็จ
       localStorage.removeItem("withdrawAmount");
-
-      // กลับไปหน้ากระเป๋า
       router.replace(nextHref);
     } catch (e: any) {
       const msg =
@@ -163,9 +203,6 @@ export function GotoPayment({ nextHref }: { nextHref: string }) {
             {loading ? "กำลังดำเนินการ..." : "ยืนยัน"}
           </p>
         </button>
-
-        {/* เผื่ออยากให้กลับหน้า wallet แบบลิงก์ */}
-        {/* <Link href={nextHref} className="mt-3 text-sm underline">กลับไปหน้ากระเป๋าเงิน</Link> */}
       </div>
     </div>
   );
