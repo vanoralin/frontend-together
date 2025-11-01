@@ -140,17 +140,17 @@ export default function RegisterPage() {
         text.includes("duplicate key value") &&
         text.includes("idx_users_email")
       )
-        msg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
-      else if (status === 400) msg = "⚠️ ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
-      else if (status === 401) msg = "❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+        msg = "อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
+      else if (status === 400) msg = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
+      else if (status === 401) msg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
       else if (status === 409)
-        msg = "❌ อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
+        msg = "อีเมลนี้มีอยู่ในระบบแล้ว กรุณาเข้าสู่ระบบ";
       else if (status >= 500) msg = "🚨 เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
       else
         msg =
           (data as any).message ||
           (data as any).error ||
-          "❌ ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง";
+          "ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง";
       setServerError(msg);
     } finally {
       setIsLoading(false);

@@ -1,17 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { usePathname, useRouter } from "next/navigation";
+import { checkBannedFromProfile, markBannedLocal } from "@/lib/ban";
 
 export default function BanNotificationPage() {
   const [message, setMessage] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [error, setError] = useState("");
   const [userName, setUserName] = useState("ผู้ใช้");
+  const [checking, setChecking] = useState(false);
 
-  // โหลดชื่อ user จาก profile (ถ้ามี token)
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // หาเส้นทาง home ตาม role จาก path ปัจจุบัน
+  const homePath = pathname.startsWith("/driver")
+    ? "/driver/home"
+    : "/customer/home";
+
+  // โหลดชื่อ user
   useEffect(() => {
-    const fetchProfile = async () => {
+    (async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
@@ -23,29 +34,55 @@ export default function BanNotificationPage() {
       } catch (err) {
         console.error("โหลดข้อมูลโปรไฟล์ไม่สำเร็จ:", err);
       }
-    };
-    fetchProfile();
+    })();
   }, []);
 
+  // เช็คว่ายังโดนแบนอยู่ไหม → ถ้าพ้นแบนให้กลับหน้า home
+  const checkUnban = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      setChecking(true);
+      const { ok, banned } = await checkBannedFromProfile(token);
+      if (ok && !banned) {
+        markBannedLocal(false); // ล้าง flag
+        router.replace(homePath); // เด้งกลับหน้า home ตาม role
+      }
+    } catch (e) {
+      // เงียบๆ พอ ไม่ต้องรบกวนผู้ใช้
+      console.debug("checkUnban failed:", e);
+    } finally {
+      setChecking(false);
+    }
+  }, [homePath, router]);
+
+  // เช็คครั้งแรก + โฟกัสแท็บ + โพลทุก 20 วิ
+  useEffect(() => {
+    checkUnban(); // ครั้งแรกเมื่อเข้าหน้า
+    const onFocus = () => checkUnban();
+    window.addEventListener("focus", onFocus);
+    const t = setInterval(checkUnban, 20000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(t);
+    };
+  }, [checkUnban]);
+
+  // ส่งคำร้อง
   const handleSubmit = async () => {
     if (message.trim() === "") {
       setError("กรุณาเขียนข้อความก่อน");
       return;
     }
-
     try {
       const token = localStorage.getItem("token");
       if (!token) {
         setError("กรุณาเข้าสู่ระบบก่อนส่งคำร้อง");
         return;
       }
-
-      const res = await axios.post(
+      await axios.post(
         "/api/report",
-        {
-          detail: `[BAN_APPEAL] ${message}`,
-          trip_id: null, // ✅ ใช้ค่านี้เป็น default
-        },
+        { detail: `[BAN_APPEAL] ${message}`, trip_id: null },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -54,20 +91,15 @@ export default function BanNotificationPage() {
           withCredentials: true,
         }
       );
-
-      console.log("Appeal sent:", res.data);
       setShowPopup(true);
       setMessage("");
       setError("");
     } catch (err: any) {
       console.error("Error:", err.response?.data || err.message);
-      if (err.response?.status === 401) {
-        setError("Token หมดอายุหรือไม่ถูกต้อง");
-      } else if (err.response?.status === 400) {
+      if (err.response?.status === 401) setError("Token หมดอายุหรือไม่ถูกต้อง");
+      else if (err.response?.status === 400)
         setError("กรุณากรอกข้อมูลให้ครบถ้วน");
-      } else {
-        setError("เกิดข้อผิดพลาดในการส่งคำร้อง");
-      }
+      else setError("เกิดข้อผิดพลาดในการส่งคำร้อง");
     }
   };
 
@@ -75,7 +107,9 @@ export default function BanNotificationPage() {
     <div className="relative min-h-screen bg-[#C5DEDA] flex flex-col">
       {/* เนื้อหา */}
       <div className="flex flex-col items-center px-6 pt-14 flex-1">
-        <h1 className="text-[32px] text-black mb-4 text-center">คุณโดนแบน!!</h1>
+        <h1 className="text-[32px] text-black font-semibold mb-4 text-center">
+          คุณถูกระงับการใช้งาน
+        </h1>
         <img
           src="/alarm sign.svg"
           alt="Warning"
@@ -83,20 +117,18 @@ export default function BanNotificationPage() {
         />
 
         <div className="text-center mb-8 px-4">
-          {/* <p className="text-[#B55C32] text-[14px] leading-relaxed">
-            สวัสดีคุณ {userName}
-          </p> */}
-          <p className="text-[#B55C32] text-[14px] leading-relaxed">
-            เนื่องจากระบบตรวจพบการยกเลิกทริปบ่อยครั้ง
+          {/* <p className="text-[#B55C32] text-[14px] leading-relaxed">สวัสดีคุณ {userName}</p> */}
+          <p className="text-[#B55C32] text-[15px] leading-relaxed">
+            ระบบตรวจพบพฤติกรรมที่ละเมิดเงื่อนไขการใช้งาน
           </p>
-          <p className="text-[#B55C32] text-[14px] leading-relaxed">
-            กรุณาระบุเหตุผลด้านล่าง เพื่อส่งคำร้องขอปลดแบน
+          <p className="text-[#B55C32] text-[15px] leading-relaxed">
+            โปรดกรอกคำร้องขอปลดแบนด้านล่าง
           </p>
         </div>
 
         <div className="w-full max-w-md mb-2">
           <textarea
-            placeholder="ข้อความ"
+            placeholder="ระบุเหตุผลหรือคำชี้แจง..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="w-full min-h-[300px] bg-white border-0 rounded-2xl shadow-sm text-gray-700 placeholder:text-gray-400 resize-none text-base p-4 focus:outline-none focus:ring-2 focus:ring-[#B55C32]"
@@ -105,6 +137,8 @@ export default function BanNotificationPage() {
         {error && (
           <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
         )}
+
+        
       </div>
 
       {/* ปุ่มส่ง */}
@@ -120,7 +154,7 @@ export default function BanNotificationPage() {
             fontSize: "20px",
           }}
         >
-          ยืนยัน
+          ส่งคำร้อง
         </button>
       </div>
 
@@ -135,11 +169,10 @@ export default function BanNotificationPage() {
             <h2 className="text-lg font-bold text-[#B55C32] mb-2">
               ส่งแล้ว ✅
             </h2>
-            <p className="text-gray-700">ระบบได้รับข้อความของคุณแล้ว</p>
-            <p className="text-gray-700 mt-1">
-              <strong>คุณสามารถกลับมาตรวจสอบสถานะได้ภายหลัง</strong>
+            <p className="text-gray-700">ระบบได้รับคำร้องของคุณแล้ว</p>
+            <p className="text-gray-700 mt-6">
+              <strong>ระบบจะพากลับอัตโนมัติเมื่อปลดแบนแล้ว</strong>
             </p>
-
             <button
               className="w-full h-10 mt-4 bg-[#E6A88A] hover:bg-[#B55C32] text-black font-semibold rounded-xl transition-colors"
               onClick={() => setShowPopup(false)}

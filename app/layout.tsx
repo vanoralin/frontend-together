@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 import { Mitr } from "next/font/google";
 import "./globals.css";
+import BanWatcher from "./banwatcher"; // ✅ import เข้ามา
 
 const mitr = Mitr({
   subsets: ["thai", "latin"],
@@ -16,14 +17,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body
         className={`${mitr.className} text-[color:var(--color-theme-black)] h-screen w-screen bg-black flex items-center justify-center`}
       >
+        {/* ✅ ตัวตรวจจับ ban ทำงานตลอด */}
+        {/* ✅ เฝ้าฝั่งลูกค้า */}
+        <BanWatcher redirectTo="/customer/ban" scopePrefix="/customer" />
+        {/* ✅ เฝ้าฝั่งคนขับ */}
+        <BanWatcher redirectTo="/driver/ban" scopePrefix="/driver" />
+
         {/* จอ mockup มือถือ */}
         <div className="relative aspect-[1170/2532] h-full w-[390px] bg-white shadow-lg">
           {/* phone bar */}

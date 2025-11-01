@@ -84,7 +84,7 @@ export default function ReportProblemPage() {
       {/* Header */}
       <BackButton href="/customer/profile" />
       <div className="relative flex items-center h-[60px] border-b border-gray-300">
-        <div className="flex items-center gap-2 mx-auto pt-14">
+        <div className="flex items-center gap-2 mx-auto pt-18">
           <h1 className="text-[32px] text-black">แจ้งปัญหา</h1>
           <img src="/help.svg" alt="Help" className="w-8 h-8 object-contain" />
         </div>
@@ -92,7 +92,7 @@ export default function ReportProblemPage() {
 
       {/* Main */}
       <div className="flex flex-col items-center px-6 pt-8 flex-1">
-        <h2 className="text-2xl text-black mb-4 text-center leading-snug">
+        <h2 className="text-2xl text-black mt-18 mb-4 text-center leading-snug">
           สวัสดี คุณ {userName} <br />
           เราพร้อมช่วยเหลือคุณ!
         </h2>

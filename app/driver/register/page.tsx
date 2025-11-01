@@ -37,6 +37,7 @@ export default function RegisterPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successOpen, setSuccessOpen] = useState(false);
 
   // โหลดข้อมูลโปรไฟล์
   useEffect(() => {
@@ -144,10 +145,11 @@ export default function RegisterPage() {
       });
 
       if (res.status === 201) {
-        alert("✅ สมัครคนขับสำเร็จ!");
-        router.push("/driver/home");
-      } else {
-        setErrorMessage(res.data?.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+        setSuccessOpen(true); // ✅ เปิด Popup
+        setTimeout(() => {
+          router.push("/driver/home"); // ✅ เด้งไปหน้าโฮมอัตโนมัติ
+        }, 1500);
+        return; // กันโค้ดด้านล่างรันต่อ
       }
     } catch (error: any) {
       const st = error?.response?.status;
@@ -370,7 +372,6 @@ export default function RegisterPage() {
 
             {/* Buttons */}
             <div className="flex flex-col space-y-4 mb-4">
-
               <div className="flex justify-center">
                 <button
                   onClick={handleSubmit}
@@ -392,6 +393,58 @@ export default function RegisterPage() {
                 </button>
               </div>
             </div>
+
+            {successOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div
+                  role="alertdialog"
+                  aria-live="assertive"
+                  className="bg-white rounded-2xl shadow-lg w-[320px] p-6 text-center"
+                  style={{ fontFamily: "'Mitr', sans-serif" }}
+                >
+                  <div className="mx-auto mb-3 flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+                    {/* ไอคอนเครื่องหมายถูก */}
+                    <svg viewBox="0 0 24 24" className="w-10 h-10">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="currentColor"
+                        className="text-green-200"
+                      />
+                      <path
+                        d="M8.5 12.5l2.5 2.5 4.5-5.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        className="text-green-700"
+                      />
+                    </svg>
+                  </div>
+
+                  <h2
+                    className="font-medium text-[#191919]"
+                    style={{ fontSize: titleSmallSize }}
+                  >
+                    สมัครคนขับสำเร็จ
+                  </h2>
+                  {/* <p
+                    className="text-[#191919] mt-1"
+                    style={{ fontSize: baseSize }}
+                  >
+                    กำลังพาไปหน้าโฮมของคนขับ...
+                  </p>
+
+                  <button
+                    onClick={() => router.push("/driver/home")}
+                    className="mt-4 w-full h-12 bg-[#E6A88A] hover:bg-[#B55C32] text-[#191919] border-2 border-[#B55C32] rounded-2xl transition-colors"
+                    style={{ fontSize: buttonSize }}
+                  >
+                    ไปตอนนี้เลย
+                  </button> */}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

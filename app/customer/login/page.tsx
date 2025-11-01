@@ -4,6 +4,14 @@ import { useState, useEffect, FormEvent } from "react";
 import Link from "next/link";
 import axios from "axios";
 
+//ban realtime
+import {
+  checkBannedFromProfile,
+  markBannedLocal,
+  readBannedLocal,
+  isBannedFromName,
+} from "@/lib/ban";
+
 export default function LoginPage() {
   const titleSize = 64;
   const baseSize = "16px";
@@ -38,9 +46,11 @@ export default function LoginPage() {
           withCredentials: true,
         });
 
-        const nameVal = String(prof.data?.name ?? "");
-        const isBanned = nameVal.startsWith("[BANNED]");
-        if (isBanned) return window.location.replace("/customer/ban");
+        const isBanned = isBannedFromName(prof.data?.name);
+        if (isBanned) {
+          markBannedLocal(true); // ✅ ตั้งค่า flag ใน localStorage และยิง event ให้แท็บอื่นรู้
+          return window.location.replace("/customer/ban");
+        }
 
         // (ทางเลือก) บังคับโดเมนเมล
         if (
@@ -52,6 +62,7 @@ export default function LoginPage() {
           return;
         }
 
+        markBannedLocal(false);
         window.location.replace("/customer/home");
       } catch {
         setServerError("ไม่สามารถอ่านข้อมูลผู้ใช้หลังเข้าสู่ระบบได้");
@@ -59,6 +70,7 @@ export default function LoginPage() {
     })();
   }, []);
 
+  // ✅ Email/Password login เดิม
   // ✅ Email/Password login เดิม
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -104,20 +116,39 @@ export default function LoginPage() {
         withCredentials: true,
       });
 
-      const nameVal = String(prof.data?.name ?? "");
-      if (nameVal.startsWith("[BANNED]"))
+      const isBanned = isBannedFromName(prof.data?.name);
+      if (isBanned) {
+        markBannedLocal(true); // ✅ บันทึกสถานะแบน
         return (window.location.href = "/customer/ban");
+      }
 
+      markBannedLocal(false); // ✅ ล้างสถานะแบน (เผื่อเคยโดนก่อนหน้า)
       window.location.href = "/customer/home";
     } catch (err: any) {
       const status = err?.response?.status;
-      const apiMsg = err?.response?.data?.message;
-      let msg = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
-      if (status === 400) msg = "ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่อีกครั้ง";
+
+      // ✅ รองรับทั้งกรณี backend ส่ง string ตรง ๆ หรือ { message: string }
+      const raw = err?.response?.data;
+      const apiMsg: string | undefined =
+        typeof raw === "string" ? raw : raw?.message;
+
+      // ✅ แปลข้อความอังกฤษเป็นไทย
+      const lower = (apiMsg || "").toLowerCase();
+      const translated =
+        lower.includes("invalid email or password") ||
+        lower.includes("invalid credentials")
+          ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง"
+          : apiMsg;
+
+      // ✅ ข้อความ fallback ตาม status code
+      let fallback = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+      if (status === 400) fallback = "ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่อีกครั้ง";
       else if (status === 401)
-        msg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
-      else if (status === 500) msg = "เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
-      setServerError(apiMsg || msg);
+        fallback = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง";
+      else if (status === 500)
+        fallback = "เซิร์ฟเวอร์มีปัญหา กรุณาลองใหม่ภายหลัง";
+
+      setServerError(translated || fallback);
     } finally {
       setIsLoading(false);
     }

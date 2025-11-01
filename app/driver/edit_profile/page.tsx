@@ -21,6 +21,7 @@ export default function EditProfilePage() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   // ---------- utils: แปลงและตรวจเบอร์ ----------
   const normalizeThaiMobile = (raw: string) => {
@@ -218,10 +219,12 @@ export default function EditProfilePage() {
       });
 
       console.log("✅ Profile updated:", res.data);
-      setMessage("✅ บันทึกข้อมูลสำเร็จ");
 
-      // ✅ รอ 1.5 วินาทีแล้วกลับไปหน้าโปรไฟล์
-      setTimeout(() => router.push("/driver/profile"), 1500);
+      setSuccessOpen(true);
+      setTimeout(() => {
+        setSuccessOpen(false);
+        router.push("/customer/profile");
+      }, 1500);
     } catch (err: any) {
       console.error("❌ Update error:", err);
       if (err.response?.status === 401)
@@ -401,6 +404,56 @@ export default function EditProfilePage() {
 
             {message && (
               <p className="mt-3 text-center text-red-700 text-sm">{message}</p>
+            )}
+
+            {successOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div
+                  role="alertdialog"
+                  aria-live="assertive"
+                  className="bg-white rounded-2xl shadow-lg w-[320px] p-6 text-center"
+                  style={{ fontFamily: "'Mitr', sans-serif" }}
+                >
+                  <div className="mx-auto mb-3 flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
+                    <svg viewBox="0 0 24 24" className="w-10 h-10">
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="currentColor"
+                        className="text-green-200"
+                      />
+                      <path
+                        d="M8.5 12.5l2.5 2.5 4.5-5.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        className="text-green-700"
+                      />
+                    </svg>
+                  </div>
+
+                  <h2
+                    className="font-medium text-[#191919]"
+                    style={{ fontSize: titleSmallSize }}
+                  >
+                    บันทึกโปรไฟล์สำเร็จ
+                  </h2>
+                  {/* <p className="text-[#191919] mt-1">
+                    กำลังพากลับไปหน้าโปรไฟล์...
+                  </p>
+
+                  <button
+                    onClick={() => {
+                      setSuccessOpen(false);
+                      router.push("/customer/profile");
+                    }}
+                    className="mt-4 w-full h-12 bg-[#E6A88A] hover:bg-[#B55C32] text-[#191919] border-2 border-[#B55C32] rounded-2xl transition-colors"
+                  >
+                    ไปหน้าโปรไฟล์ตอนนี้
+                  </button> */}
+                </div>
+              </div>
             )}
           </div>
         </div>
