@@ -40,7 +40,7 @@ export default function ConfirmWithdrawPage() {
   const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
   const [bankInfo, setBankInfo] = React.useState<BankAccountData | null>(null);
   const [loadingBank, setLoadingBank] = React.useState<boolean>(true);
-
+    
   React.useEffect(() => {
     const s = localStorage.getItem("withdrawAmount") || "0";
     const n = Number(s);
@@ -71,7 +71,7 @@ export default function ConfirmWithdrawPage() {
   }, []);
 
   return (
-<div className="relative min-h-screen w-full flex flex-col items-center bg-gradient-to-b from-[#C5D4E8] to-[#EAF0F8] pb-[140px]">
+<div className="relative min-h-screen w-full flex flex-col items-center bg-[#C5D4E8] pb-[140px]">
   <HeaderWithdraw />
 
   <main className="w-full max-w-[640px] px-5 mt-6">
@@ -79,7 +79,7 @@ export default function ConfirmWithdrawPage() {
       <DisplayAmount amount={amountDisplay} />
 
       {/* Card: Bank destination */}
-      <div className="rounded-2xl bg-white/90 backdrop-blur border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.05)] px-5 py-4">
+      <div className="rounded-2xl bg-white backdrop-blur border border-white shadow-[0_8px_30px_rgba(0,0,0,0.05)] px-5 py-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             {/* bank icon */}
@@ -110,14 +110,14 @@ export default function ConfirmWithdrawPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">ชื่อบัญชี</span>
+              <span className="text-base text-slate-500">ชื่อบัญชี</span>
               <span className="text-base tracking-wide">
                 {bankInfo.bank_account_name}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500">เลขที่บัญชี</span>
+              <span className="text-ิฟหำ text-slate-500">เลขที่บัญชี</span>
               <span className="text-base tracking-wider">
                 {bankInfo.bank_account_number}
               </span>

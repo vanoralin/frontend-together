@@ -104,24 +104,22 @@ function NotificationItem({ data, onConfirmClick }: {
 }) {
   return (
     <div className="group relative w-full rounded-2xl bg-white/80 shadow-sm ring-1 ring-black/5 p-4 flex flex-col gap-2 hover:shadow transition-shadow">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-gray-500">{data.title}</p>
-          <p className="mt-0.5 text-base font-medium text-gray-900 leading-snug">
-            {data.message}
-          </p>
-        </div>
-        {/* วันที่ & เวลา บรรทัดเดียวกัน */}
-        <div className="shrink-0 text-right text-sm text-gray-500">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center">
-              {/* ไม่ใช้ไอคอน ปล่อยเป็นข้อความล้วน */}
-              <span>{data.date}</span>
-            </div>
-            <span>{data.time}</span>
-          </div>
+      <div className="flex flex-col gap-1">
+      {/* บรรทัดบน: title + วันเวลา */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">{data.title}</p>
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          <span>{data.date}</span>
+          <span>{data.time}</span>
         </div>
       </div>
+
+      {/* บรรทัดล่าง: message */}
+      <p className="text-base font-medium text-gray-900 leading-snug">
+        {data.message}
+      </p>
+    </div>
+
 
       {/* Action area สำหรับ type = confirm เท่านั้น */}
       {data.type === "confirm" && (
