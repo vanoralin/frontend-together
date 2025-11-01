@@ -10,7 +10,7 @@ export default function Welcome({ username, userRole, pageRole = 'user' }: Heade
     const color = pageRole === 'user' ? "theme-customer" : "theme-driver";
 
     return (
-        <div className="relative mt-10 p-10 rounded-b-3xl bg-radial from-color to-white shadow-md">
+        <div className="relative pt-20 p-10 rounded-b-3xl bg-radial from-color to-white shadow-md">
             <div className="text-start">
                 <div className="mb-6">
                     <h3 className="text-2xl font-medium">เดินทางปลอดภัยนะ !</h3>

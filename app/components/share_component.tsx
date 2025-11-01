@@ -7,16 +7,70 @@ import { useEffect, ReactNode } from "react";
 
 import { useRouter } from "next/navigation";
 
-export function BackButton() {
+interface BackButtonProps {
+    onClick?: () => void;
+}
+
+export function BackButton({ onClick }: BackButtonProps) {
     const router = useRouter();
+
+    const handleClick = () => {
+        if (onClick) onClick();
+        else router.back();      
+    };
 
     return (
         <button
-            onClick={() => router.back()}
-            className="absolute top-10 left-2 z-50 p-2 hover:cursor-pointer"
+            onClick={handleClick}
+            className="absolute top-10 left-2 p-2 hover:cursor-pointer z-[1001]"
         >
             <img src="/icon_back_arrow.svg" alt="ย้อนกลับ" className="w-10" />
         </button>
+    );
+}
+
+interface HeaderBackButtonProps {
+    onClick?: () => void;
+}
+
+function HeaderBackButton({ onClick }: HeaderBackButtonProps) {
+    const router = useRouter();
+
+    const handleClick = () => {
+        if (onClick) onClick();
+        else router.back();
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            className="absolute top-10 left-2 z-50 p-2 hover:cursor-pointer"
+        >
+            <img src="/icon_back_arrow.svg" alt="ย้อนกลับ" className="w-8 h-8" />
+        </button>
+    );
+}
+
+interface HeaderProps {
+    title: string | ReactNode;
+    onBack?: () => void;
+    rightContent?: ReactNode;
+}
+
+export function Header({ title, onBack, rightContent }: HeaderProps) {
+    return (
+        <div className="relative mb-4 mt-12 flex items-center justify-center px-8">
+            {/* ปุ่มย้อนกลับ */}
+            <HeaderBackButton onClick={onBack} />
+
+            {/* ชื่อหัวข้อ */}
+            <h1 className="text-2xl font-medium text-center">{title}</h1>
+
+            {/* ช่องว่างด้านขวา */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                {rightContent || <div style={{ width: 32 }} />}
+            </div>
+        </div>
     );
 }
 
@@ -77,7 +131,7 @@ export function Popup({
                         <button
                             key={idx}
                             onClick={action.onClick}
-                            className={`px-6 py-2 rounded-full shadow-md transition text-base
+                            className={`px-6 py-2 rounded-xl shadow-md transition text-base
                                 ${action.variant === "primary"
                                     ? "bg-theme-second-orange border-2 border-theme-orange text-theme-black hover:bg-theme-orange hover:text-white"
                                     : "bg-white border-2 border-theme-gray text-theme-gray hover:bg-theme-light-gray"
