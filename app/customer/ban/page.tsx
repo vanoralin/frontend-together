@@ -137,8 +137,6 @@ export default function BanNotificationPage() {
         {error && (
           <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
         )}
-
-        
       </div>
 
       {/* ปุ่มส่ง */}
@@ -166,13 +164,13 @@ export default function BanNotificationPage() {
             aria-modal="true"
             className="bg-white rounded-2xl shadow-lg p-6 w-80 text-center"
           >
-            <h2 className="text-lg font-bold text-[#B55C32] mb-2">
+            <h2 className="text-[20px] font-bold text-[#B55C32] mb-2">
               ส่งแล้ว ✅
             </h2>
-            <p className="text-gray-700">ระบบได้รับคำร้องของคุณแล้ว</p>
-            <p className="text-gray-700 mt-6">
-              <strong>ระบบจะพากลับอัตโนมัติเมื่อปลดแบนแล้ว</strong>
+            <p className="text-gray-700 text-[16px]">
+              ระบบได้รับคำร้องของคุณแล้ว
             </p>
+
             <button
               className="w-full h-10 mt-4 bg-[#E6A88A] hover:bg-[#B55C32] text-black font-semibold rounded-xl transition-colors"
               onClick={() => setShowPopup(false)}

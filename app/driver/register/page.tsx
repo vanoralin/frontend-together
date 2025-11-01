@@ -87,7 +87,8 @@ export default function RegisterPage() {
   }, [preview]);
 
   // จำกัดจำนวนผู้โดยสารตามประเภทพาหนะ
-  const maxSeats = vehicleType === "motorcycle" ? 1 : 4;
+  const maxSeats =
+    vehicleType === "motorcycle" ? 1 : vehicleType === "suv" ? 6 : 4; // car (default)
 
   const validateSeats = (raw: string) => {
     const n = Number(raw);
@@ -95,9 +96,7 @@ export default function RegisterPage() {
       return "กรุณากรอกจำนวนผู้โดยสารเป็นเลขจำนวนเต็มตั้งแต่ 1 ขึ้นไป";
     }
     if (n > maxSeats) {
-      return vehicleType === "motorcycle"
-        ? "รถจักรยานยนต์รับผู้โดยสารได้ไม่เกิน 1 คน"
-        : "รถยนต์รับผู้โดยสารได้ไม่เกิน 4 คน";
+      return `ประเภทนี้รับผู้โดยสารได้ไม่เกิน ${maxSeats} คน`; // ✅ ข้อความอิง maxSeats
     }
     return ""; // ผ่าน
   };
@@ -304,6 +303,7 @@ export default function RegisterPage() {
               }}
             >
               <option value="car">รถยนต์</option>
+              <option value="suv">รถยนต์ขนาดใหญ่</option>
               <option value="motorcycle">รถจักรยานยนต์</option>
             </select>
 
@@ -395,9 +395,7 @@ export default function RegisterPage() {
               inputMode="numeric"
               min={1}
               max={maxSeats} // ✅ เปลี่ยนตาม vehicleType
-              placeholder={
-                vehicleType === "motorcycle" ? "สูงสุด 1 คน" : "สูงสุด 4 คน"
-              }
+              placeholder={`สูงสุด ${maxSeats} คน`}
               className="w-full h-12 bg-white shadow-sm pl-4 pr-4 outline-none mb-6"
               style={{
                 border: "2px solid #D9D9D9",
