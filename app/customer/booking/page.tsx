@@ -7,7 +7,7 @@ import MapComponent2 from "@/app/components/MapComponent2";
 import type { MapMarker } from "@/app/components/MapComponent2";
 import axios from "axios";
 import { BackButton2 } from "@/app/components/BackButton2";
-import { Calendar, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 /* ================== Axios (ผ่านพร็อกซี /api) ================== */
 const api = axios.create({
@@ -37,8 +37,11 @@ type BookRes = {
 };
 
 /* ================== Helpers ================== */
-const vehicleToApi = (v: "จักรยานยนต์" | "รถยนต์" | "รถยนต์ขนาดใหญ่") =>
-  (v === "จักรยานยนต์" ? "motorcycle" : "car");
+const vehicleToApi = (v: "จักรยานยนต์" | "รถยนต์" | "รถยนต์ขนาดใหญ่") => {
+  if (v === "จักรยานยนต์") return "motorcycle";
+  if (v === "รถยนต์ขนาดใหญ่") return "suv";
+  return "car";
+};
 
 /** แปลง DD/MM/YYYY (พ.ศ.) + HH:mm -> ISO local +07:00 (ไม่มีมิลลิวินาที) */
 const toApiLocalISO = (thaiDDMMYYYY: string, hhmm: string) => {
@@ -70,6 +73,8 @@ function getApiMessage(d: unknown, fallback = ""): string {
   }
   return fallback;
 }
+/** สุ่มไอดีสำหรับ Idempotency-Key (กันกดซ้ำ) */
+const rid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 /* ================== VehiclePicker ================== */
 function VehiclePicker({
@@ -134,18 +139,6 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * c;
 }
 
-/* ================== Icons (UI) ================== */
-const CalendarIcon = () => (
-  <svg className="w-5 h-5 text-[#b55c32]" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c-1.1 0-2-.9-2-2zm0 16H5V8h14v11z" />
-  </svg>
-);
-const ClockIcon = () => (
-  <svg className="w-5 h-5 text-[#b55c32]" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L12 13V7H12.5V12.2L17,14.7L16.2,16.2Z" />
-  </svg>
-);
-
 /* ================== Small UI ================== */
 function LocationBox({
   value,
@@ -197,7 +190,9 @@ function TimePicker({
         onClick={() => setOpen(!open)}
       >
         <span className="mr-2">{selectedTime}</span>
-        <ClockIcon />
+        <svg className="w-5 h-5 text-[#b55c32]" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L12 13V7H12.5V12.2L17,14.7L16.2,16.2Z" />
+        </svg>
       </button>
       {open && (
         <div className="absolute top-full mt-2 bg-white border rounded shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -260,11 +255,10 @@ export default function BookingMain() {
   const [errMsg, setErrMsg] = useState<string>("");
   const [showPopup, setShowPopup] = useState(false);
 
-  /* -------- Success Popup -------- */ // <-- ADD
+  /* -------- Success Popup -------- */
   const [showOk, setShowOk] = useState(false);
   const [okTitle, setOkTitle] = useState<string>("ทำรายการสำเร็จ");
   const [okMsg, setOkMsg] = useState<string>("");
-
 
   /* -------- เลือกจากแผนที่ -------- */
   const [mapMode, setMapMode] = useState<"pickup" | "dropoff">("pickup");
@@ -343,13 +337,13 @@ export default function BookingMain() {
   };
   const generateCalendarDays = () => {
     const firstDay = new Date(currentYear, currentMonth, 1);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    const startDateX = new Date(firstDay);
+    startDateX.setDate(startDateX.getDate() - firstDay.getDay());
     const days: any[] = [];
     const today = new Date();
     for (let i = 0; i < 42; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
+      const date = new Date(startDateX);
+      date.setDate(startDateX.getDate() + i);
       const day = date.getDate();
       const month = date.getMonth();
       const year = date.getFullYear();
@@ -400,7 +394,7 @@ export default function BookingMain() {
   const mapCenter = useMemo(() => {
     const p = typeof pickupId === "number" ? locs.find((l) => l.id === pickupId) : null;
     const d = typeof dropoffId === "number" ? locs.find((l) => l.id === dropoffId) : null;
-    return p ?? d ?? { lat: 13.736717, lng: 100.523186 };
+    return (p ?? d) ?? { lat: 13.736717, lng: 100.523186 };
   }, [pickupId, dropoffId, locs]);
 
   /* -------- Actions: estimate + book (one-time) -------- */
@@ -415,6 +409,7 @@ export default function BookingMain() {
         dropoff_location_id: dropoffId,
         seats_required: passengerCount,
         vehicle_type: vehicleToApi(selectedVehicle),
+        trip_type: "normal",
       });
       setEstim(res.data);
     } catch (e: any) {
@@ -429,30 +424,41 @@ export default function BookingMain() {
     if (!canEstimate) return setErr("ข้อมูลไม่ครบ");
     setLoading(true);
     try {
-      const res = await api.post<BookRes>("/trips/book", {
-        pickup_location_id: pickupId,
-        dropoff_location_id: dropoffId,
-        seats_required: passengerCount,
-        vehicle_type: vehicleToApi(selectedVehicle),
-        desired_departure_time: toApiLocalISO(selectedDate, selectedTime),
-      });
+      const res = await api.post<BookRes>(
+        "/trips/book",
+        {
+          pickup_location_id: pickupId,
+          dropoff_location_id: dropoffId,
+          seats_required: passengerCount,
+          vehicle_type: vehicleToApi(selectedVehicle),
+          desired_departure_time: toApiLocalISO(selectedDate, selectedTime),
+        },
+        { headers: { "Idempotency-Key": `book-${rid()}` } }
+      );
       const msg = getApiMessage(res?.data, "จองสำเร็จ");
       const tid = res?.data?.reservation?.trip_id ?? res?.data?.reservation?.id;
 
       setShowPopup(false);
 
-      // === SHOW SUCCESS POPUP ===
-      setOkTitle("จองสำเร็จ"); // หรือ "จับคู่สำเร็จ" ตามที่ต้องการ
+      // รีเฟรชยอดเงินหลังตัดเงินสำเร็จ
+      try {
+        const p = await api.get<UserProfile>("/User/profile");
+        setMe(p.data);
+      } catch {/* แค่อัปเดตยอดเงิน ถ้าล้มเหลวไม่ต้องบล็อค flow */}
+
+      setOkTitle("จองสำเร็จ");
       setOkMsg(tid ? `${msg}\nTrip ID: ${tid}` : msg);
       setShowOk(true);
-
-      // (ไม่ alert / ไม่ redirect ทันที - จะ redirect ตอนกดตกลงใน popup)
     } catch (e: any) {
       const code = e?.response?.status;
       let title = "เกิดข้อผิดพลาด";
       let m = getApiMessage(e?.response?.data) || e?.message || "จองไม่สำเร็จ";
       if (code === 404) { title = "ไม่พบทริปที่เหมาะสม"; m = "ขออภัย ไม่พบทริปที่ตรงกับเงื่อนไขของคุณในช่วงเวลานี้"; }
       else if (code === 409) { title = "ไม่สามารถจองได้"; m = "ทริปไม่พร้อมหรือยอดเงินไม่พอ กรุณาลองใหม่หรือเติมเงิน"; }
+      else if (code === 401 || code === 403) {
+        title = "ต้องเข้าสู่ระบบ";
+        m = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+      }
       setErrTitle(title); setErrMsg(String(m)); setShowPopup(false); setShowErr(true);
     } finally { setLoading(false); }
   };
@@ -467,7 +473,7 @@ export default function BookingMain() {
     setEndDate(toTH(sorted[sorted.length - 1]));
   }, [selectedDates]);
 
-  /* -------- Request daily package (LOOP POST /trips/book ทีละวัน) -------- */
+  /* -------- Request daily package (LOOP POST /trips/book ทีละวัน + refresh profile หลังจบ) -------- */
   const doRequestPackage = async () => {
     if (typeof pickupId !== "number" || typeof dropoffId !== "number") {
       setErrTitle("ข้อมูลไม่ครบ"); setErrMsg("กรุณาเลือกจุดรับและจุดส่ง"); setShowErr(true); return;
@@ -485,13 +491,17 @@ export default function BookingMain() {
       const results: { ok: boolean; at: string; msg?: string }[] = [];
       for (const dt of datesIso) {
         try {
-          await api.post("/trips/book", {
-            pickup_location_id: pickupId,
-            dropoff_location_id: dropoffId,
-            seats_required: Math.max(1, passengerCount),
-            vehicle_type: vtype,
-            desired_departure_time: dt,
-          });
+          await api.post(
+            "/trips/book",
+            {
+              pickup_location_id: pickupId,
+              dropoff_location_id: dropoffId,
+              seats_required: Math.max(1, passengerCount),
+              vehicle_type: vtype,
+              desired_departure_time: dt,
+            },
+            { headers: { "Idempotency-Key": `pkg-${dt}-${rid()}` } }
+          );
           results.push({ ok: true, at: dt });
         } catch (e: any) {
           results.push({
@@ -502,14 +512,19 @@ export default function BookingMain() {
         }
       }
 
+      // === สำคัญ: รีเฟรช /User/profile เพื่ออัปเดตยอดเงินทันทีหลังยิงครบ ===
+      try {
+        const p = await api.get<UserProfile>("/User/profile");
+        setMe(p.data);
+      } catch {/* แค่อัปเดตยอดเงิน ถ้าล้มเหลวไม่ต้องบล็อค flow */}
+
       setShowPopup(false);
       const okCount = results.filter(r => r.ok).length;
       const fail = results.filter(r => !r.ok);
 
       if (fail.length === 0) {
-        // === SHOW SUCCESS POPUP ===
         setOkTitle("ซื้อแพ็กเกจสำเร็จ");
-        setOkMsg(`สร้างการจองทั้งหมด ${okCount} รายการสำเร็จ`);
+        setOkMsg(`สร้างการจองทั้งหมด ${okCount} รายการสำเร็จ\nยอดเงินได้อัปเดตแล้ว`);
         setShowOk(true);
       } else if (okCount > 0) {
         setErrTitle("จองได้บางส่วน");
@@ -669,7 +684,7 @@ export default function BookingMain() {
 
       {/* Ride Details */}
       <div className="w-full max-w-md bg-white font-light rounded-2xl p-4 shadow-md shadow-black/50 mb-4">
-        {/* วันที่และเวลา */}
+        {/* วันที่ */}
         <div className="px-3">
           <div className="flex items-center mb-4 relative">
             <span className="text-[#191919] font-light text-base mr-3">วันที่</span>
@@ -678,7 +693,9 @@ export default function BookingMain() {
               onClick={() => setShowDatePicker(!showDatePicker)}
             >
               <span className="text-[#191919] font-light text-base mr-2">{selectedDate}</span>
-              <CalendarIcon />
+              <svg className="w-5 h-5 text-[#b55c32]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c-1.1 0-2-.9-2-2zm0 16H5V8h14v11z" />
+              </svg>
             </div>
 
             {showDatePicker && (
@@ -995,7 +1012,7 @@ export default function BookingMain() {
             <p className="text-[#191919] text-lg font-semibold mb-2">
               {errTitle || "เกิดข้อผิดพลาด"}
             </p>
-            <p className="text-[#191919] text-sm font-light mb-5">{errMsg}</p>
+            <p className="text-[#191919] text-sm font-light mb-5 whitespace-pre-wrap">{errMsg}</p>
 
             <div className="flex justify-between">
               <button
@@ -1005,12 +1022,42 @@ export default function BookingMain() {
                 ปิด
               </button>
               <button
-                onClick={() => {
-                  setShowErr(false);
-                }}
+                onClick={() => { setShowErr(false); }}
                 className="flex-1 bg-[#E6A88A] border border-[#B55C32] text-[#191919] py-2 rounded-3xl ml-2"
               >
                 ลองอีกครั้ง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === SUCCESS POPUP (one-time) === */}
+      {showOk && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center">
+            <p className="text-[#191919] text-lg font-semibold mb-2">
+              {okTitle || "ทำรายการสำเร็จ"}
+            </p>
+            <p className="text-[#191919] text-sm font-light mb-5 whitespace-pre-wrap">
+              {okMsg}
+            </p>
+
+            <div className="flex justify-between">
+              <button
+                onClick={() => setShowOk(false)}
+                className="flex-1 bg-white border border-[#B5B5B5] text-[#191919] py-2 rounded-3xl mr-2"
+              >
+                ปิด
+              </button>
+              <button
+                onClick={() => {
+                  setShowOk(false);
+                  router.replace("/customer/home");
+                }}
+                className="flex-1 bg-[#E6A88A] border border-[#B55C32] text-[#191919] py-2 rounded-3xl ml-2"
+              >
+                ตกลง
               </button>
             </div>
           </div>
@@ -1158,8 +1205,7 @@ export default function BookingMain() {
     </div>
   );
 
-
-  /* ---------- หน้าแพ็กเกจ 2/3: เลือกวัน + เวลา + แสดงราคาแบบเปลี่ยนตาม ---------- */
+  /* ---------- หน้าแพ็กเกจ 2/3: เลือกวัน + เวลา + จำนวนคนนั่ง + ประเภทรถ ---------- */
   const renderPackage2Page = () => (
     <div className="bg-[#C5DEDA] min-h-screen w-full flex flex-col items-center pb-[140px]">
       <div className="w-full flex flex-col items-center px-6 mt-10">
@@ -1191,7 +1237,7 @@ export default function BookingMain() {
           </p>
         </div>
 
-        {/* สรุป + เวลา */}
+        {/* สรุป + เวลา + จำนวนคนนั่ง + ยานพาหนะ */}
         <div className="w-full bg-white rounded-2xl shadow p-6 mb-6 text-center shadow-md shadow-black/5 font-light">
           <p className="text-black font-light mb-2">คุณเลือกไปแล้ว</p>
           <div className="flex justify-center items-center gap-2 text-[#B55C32] text-2xl font-light">
@@ -1205,8 +1251,39 @@ export default function BookingMain() {
             </div>
           </div>
 
+          {/* จำนวนคนนั่ง */}
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <span className="text-[#191919] font-light">จำนวนคนนั่ง</span>
+            <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
+              <img
+                src="/icon_nav_profile.svg"
+                alt="profile"
+                className="w-4 h-4 object-contain"
+                style={{ filter: "brightness(0) invert(0%)" }}
+              />
+              <span className="text-[#191919] font-light ml-2">{passengerCount}</span>
+              <div className="ml-2 flex flex-col">
+                <button
+                  className="h-4 w-4 p-0 flex items-center justify-center disabled:opacity-40"
+                  onClick={() => setPassengerCount((n) => Math.min(n + 1, 6))}
+                  disabled={passengerCount >= 6}
+                  aria-label="increase"
+                >
+                  <img src="/arrow-up.png" alt="up" className="h-3 w-3" />
+                </button>
+                <button
+                  className="h-4 w-4 p-0 flex items-center justify-center"
+                  onClick={() => setPassengerCount((n) => Math.max(1, n - 1))}
+                  aria-label="decrease"
+                >
+                  <img src="/arrow-down.png" alt="down" className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Vehicle Picker */}
-          <div className="pt-2 w-full">
+          <div className="pt-4 w-full">
             <span className="text-[#191919] font-light">ยานพาหนะ</span>
             <div className="mt-2">
               <VehiclePicker
@@ -1248,8 +1325,8 @@ export default function BookingMain() {
     </div>
   );
 
-  /* ---------- หน้าแพ็กเกจ 3/3: ยืนยัน + ยิง /daily-packages/request (READ-ONLY calendar & vehicle) ---------- */
-    const renderPackage3Page = () => (
+  /* ---------- หน้าแพ็กเกจ 3/3: ยืนยัน + ยิง LOOP /trips/book (READ-ONLY calendar & vehicle) ---------- */
+  const renderPackage3Page = () => (
     <div className="bg-[#C5DEDA] min-h-screen w-full flex flex-col items-center pb-[140px]">
       <div className="w-full flex flex-col items-center px-6 mt-10">
         <div className="w-full max-w-md flex items-center mt-2">
@@ -1278,21 +1355,20 @@ export default function BookingMain() {
           </div>
         </div>
 
-        {/* สรุป + ยานพาหนะ READ-ONLY */}
+        {/* สรุป + ยานพาหนะ READ-ONLY + จำนวนคนนั่ง */}
         <div className="w-full max-w-md bg-white rounded-2xl p-6 mb-6 text-center shadow-md shadow-black/50 font-light">
           <p className="text-black font-light mb-2">คุณเลือกไปแล้ว</p>
           <div className="flex justify-center items-center gap-2 text-[#B55C32] text-2xl font-light">
             {selectedDates.length} วัน
           </div>
-          <div className="pt-4 w-full">
-            <div className="flex items-center justify-between mb-2">
+          <div className="pt-4 w-full space-y-2">
+            <div className="flex items-center justify-between">
               <span className="text-[#191919] font-light">ยานพาหนะ</span>
+              <span className="text-[#191919] font-light">{selectedVehicle}</span>
             </div>
-            <div className="pointer-events-none select-none">
-              <VehiclePicker
-                selectedVehicle={selectedVehicle}
-                setSelectedVehicle={() => { /* read-only */ }}
-              />
+            <div className="flex items-center justify-between">
+              <span className="text-[#191919] font-light">จำนวนคนนั่ง</span>
+              <span className="text-[#191919] font-light">{passengerCount}</span>
             </div>
           </div>
         </div>
@@ -1337,7 +1413,7 @@ export default function BookingMain() {
                 </div>
               </div>
               <p className="text-[#191919] text-m font-regular mb-4">
-                เมื่อจองแล้วจะไม่สามารถแก้ไขได้<br />และเงินในกระเป๋าจะถูกหักทันที
+                เมื่อจองแล้วจะไม่สามารถแก้ไขได้<br />และเงินในกระเป๋าจะถูกหักตามการจองแต่ละวัน
               </p>
               <p className="text-[#191919] text-sm font-light mb-4">แน่ใจหรือไม่ว่าต้องการทำรายการจองนี้</p>
               <div className="flex justify-between mt-5">
@@ -1359,7 +1435,33 @@ export default function BookingMain() {
           </div>
         )}
 
-        {/* === SUCCESS POPUP === */}
+        {/* SUCCESS/ERROR POPUPS ใช้ชุดเดียวกับหน้าทั่วไป */}
+        {showErr && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center">
+              <p className="text-[#191919] text-lg font-semibold mb-2">
+                {errTitle || "เกิดข้อผิดพลาด"}
+              </p>
+              <p className="text-[#191919] text-sm font-light mb-5 whitespace-pre-wrap">{errMsg}</p>
+
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setShowErr(false)}
+                  className="flex-1 bg-white border border-[#B5B5B5] text-[#191919] py-2 rounded-3xl mr-2"
+                >
+                  ปิด
+                </button>
+                <button
+                  onClick={() => { setShowErr(false); }}
+                  className="flex-1 bg-[#E6A88A] border border-[#B55C32] text-[#191919] py-2 rounded-3xl ml-2"
+                >
+                  ลองอีกครั้ง
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showOk && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center">
@@ -1372,9 +1474,7 @@ export default function BookingMain() {
 
               <div className="flex justify-between">
                 <button
-                  onClick={() => {
-                    setShowOk(false);
-                  }}
+                  onClick={() => setShowOk(false)}
                   className="flex-1 bg-white border border-[#B5B5B5] text-[#191919] py-2 rounded-3xl mr-2"
                 >
                   ปิด

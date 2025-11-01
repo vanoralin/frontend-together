@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 import { Mitr } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "react-hot-toast";
 
 const mitr = Mitr({
   subsets: ["thai", "latin"],
@@ -38,6 +39,7 @@ export default function RootLayout({
           {/* เนื้อหาหลัก */}
           <div className="h-full overflow-y-auto">{children}</div>
         </div>
+        <Toaster position="top-center" />
       </body>
     </html>
   );
