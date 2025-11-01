@@ -24,7 +24,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  
   // ✅ รับ token กลับมาทาง query (?token=...)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
