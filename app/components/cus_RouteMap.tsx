@@ -1,5 +1,5 @@
 "use client";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import "leaflet-routing-machine";
@@ -7,8 +7,8 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 
 interface MapProps {
   tripId: number;
-  pickup: { lat: number; lng: number };
-  dropoff: { lat: number; lng: number };
+  pickup: { lat: number; lng: number; name?: string };
+  dropoff: { lat: number; lng: number; name?: string };
 }
 
 const customIcon = new L.Icon({
@@ -18,11 +18,21 @@ const customIcon = new L.Icon({
   popupAnchor: [0, -38],
 });
 
-const driverIcon = new L.Icon({
-    iconUrl: "/icon_car.svg",
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-});
+// Function to create driver icon with dynamic size based on zoom
+const createDriverIcon = (zoom: number) => {
+  const baseSize = 30;
+  const minZoom = 10;
+  const maxZoom = 20;
+  
+  const scale = Math.max(0.5, Math.min(2, (zoom - minZoom) / (maxZoom - minZoom) + 0.5));
+  const size = baseSize * scale;
+  
+  return new L.Icon({
+    iconUrl: "/map_car1.png",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+  });
+};
 
 function Routing({ pickup, dropoff }: { pickup: any; dropoff: any }) {
   const map = useMap();
@@ -30,7 +40,6 @@ function Routing({ pickup, dropoff }: { pickup: any; dropoff: any }) {
   useEffect(() => {
     if (!map) return;
 
-    // ลบ routing เดิมก่อนถ้ามี
     (map as any)._routingControl?.remove();
 
     const routingControl = L.Routing.control({
@@ -48,19 +57,15 @@ function Routing({ pickup, dropoff }: { pickup: any; dropoff: any }) {
       createMarker: () => null,
     }).addTo(map);
 
-    // Listen to the routesfound event
     routingControl.on("routesfound", (e: { routes: any; }) => {
       const routes = e.routes;
-      const route = routes[0]; // Get the first (best) route
+      const route = routes[0];
 
       console.log("Route found:");
       console.log("Distance:", route.summary.totalDistance, "meters");
       console.log("Duration:", route.summary.totalTime, "seconds");
       console.log("Distance (km):", (route.summary.totalDistance / 1000).toFixed(2), "km");
       console.log("Duration (minutes):", (route.summary.totalTime / 60).toFixed(2), "minutes");
-      console.log("Coordinates:", route.coordinates); // Array of all route coordinates
-      console.log("Instructions:", route.instructions); // Turn-by-turn instructions
-      console.log("Full route object:", route);
     });
 
     (map as any)._routingControl = routingControl;
@@ -71,6 +76,34 @@ function Routing({ pickup, dropoff }: { pickup: any; dropoff: any }) {
   }, [map, pickup, dropoff]);
 
   return null;
+}
+
+// Component to handle zoom-responsive driver marker
+function DriverMarker({ position }: { position: [number, number] }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    const handleZoom = () => {
+      setZoom(map.getZoom());
+    };
+
+    map.on('zoomend', handleZoom);
+    
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map]);
+
+  return (
+    <Marker position={position} icon={createDriverIcon(zoom)}>
+      <Tooltip permanent direction="top" offset={[0, -10]}>
+        <div style={{ fontSize: '12px', fontWeight: 'bold' }}>
+          ตำแหน่งคนขับ
+        </div>
+      </Tooltip>
+    </Marker>
+  );
 }
 
 export default function TripMap({ tripId, pickup, dropoff }: MapProps) {
@@ -100,15 +133,41 @@ export default function TripMap({ tripId, pickup, dropoff }: MapProps) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="&copy; OpenStreetMap"
       />
-      <Marker position={[pickup.lat, pickup.lng]} icon={customIcon} />
-      <Marker position={[dropoff.lat, dropoff.lng]} icon={customIcon} />
+      
+      {/* Pickup Marker with Tooltip */}
+      <Marker position={[pickup.lat, pickup.lng]} icon={customIcon}>
+        <Tooltip permanent direction="top" offset={[0, -40]}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#16a34a' }}>
+              จุดเริ่มต้น
+            </div>
+            <div style={{ fontSize: '12px', marginTop: '2px' }}>
+              {pickup.name || "จุดรับผู้โดยสาร"}
+            </div>
+          </div>
+        </Tooltip>
+      </Marker>
+
+      {/* Dropoff Marker with Tooltip */}
+      <Marker position={[dropoff.lat, dropoff.lng]} icon={customIcon}>
+        <Tooltip permanent direction="top" offset={[0, -40]}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#dc2626' }}>
+              จุดหมาย
+            </div>
+            <div style={{ fontSize: '12px', marginTop: '2px' }}>
+              {dropoff.name || "จุดส่งผู้โดยสาร"}
+            </div>
+          </div>
+        </Tooltip>
+      </Marker>
+
+      {/* Driver Marker */}
       {driverPos && (
-        <Marker
-          position={[driverPos.lat, driverPos.lng]}
-          icon={driverIcon}
-        />
+        <DriverMarker position={[driverPos.lat, driverPos.lng]} />
       )}
-      <Routing pickup={pickup} dropoff={dropoff} />
+
+      <Routing pickup={driverPos || pickup} dropoff={dropoff} />
     </MapContainer>
   );
 }

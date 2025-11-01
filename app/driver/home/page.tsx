@@ -147,7 +147,7 @@ export default function HomePage() {
                                     0
                                 ) || 0}
                                 price={trip.amount}
-                                mode="link"
+                                mode="today-dri"
                                 href={hrefLink}
                             />
                         );

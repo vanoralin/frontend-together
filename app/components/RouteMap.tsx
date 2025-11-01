@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMap, CircleMarker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
@@ -19,7 +19,8 @@ interface RouteMapProps {
     next: LocationType | null;
     isStarted: boolean;
     isDriver?: boolean;
-    onRouteData?: (distance: number, duration: number) => void;
+    onRouteData?: (distance: number, duration: number, instructions?: any[], currentInstruction?: any) => void;
+    allLocations?: LocationType[];
 }
 
 const customIcon = new L.Icon({
@@ -47,6 +48,28 @@ const createDriverIcon = () => {
     });
 };
 
+const interpolatePoints = (start: L.LatLng, end: L.LatLng, maxDistance: number = 300): L.LatLng[] => {
+    const points: L.LatLng[] = [start];
+
+    // Calculate distance in meters
+    const distance = start.distanceTo(end);
+
+    // If distance is greater than maxDistance, add intermediate points
+    if (distance > maxDistance) {
+        const numPoints = Math.ceil(distance / maxDistance);
+
+        for (let i = 1; i < numPoints; i++) {
+            const ratio = i / numPoints;
+            const lat = start.lat + (end.lat - start.lat) * ratio;
+            const lng = start.lng + (end.lng - start.lng) * ratio;
+            points.push(L.latLng(lat, lng));
+        }
+    }
+
+    points.push(end);
+    return points;
+};
+
 function RoutingLayer({
     from,
     to,
@@ -56,7 +79,7 @@ function RoutingLayer({
     from: [number, number];
     to: [number, number];
     controlRef: React.MutableRefObject<any>;
-    onRouteFound?: (distance: number, duration: number, coordinates: L.LatLng[]) => void;
+    onRouteFound?: (distance: number, duration: number, coordinates: L.LatLng[], instructions?: any[]) => void;
 }) {
     const map = useMap();
     const isMountedRef = useRef(true);
@@ -87,7 +110,7 @@ function RoutingLayer({
 
         const control = L.Routing.control({
             waypoints: [L.latLng(from[0], from[1]), L.latLng(to[0], to[1])],
-            routeWhileDragging: false,
+            routeWhileDragging: true,
             addWaypoints: false,
             draggableWaypoints: false,
             show: false,
@@ -113,16 +136,12 @@ function RoutingLayer({
 
                 const route = e.routes[0];
 
-                console.log("Route found:");
-                console.log("Distance (km):", (route.summary.totalDistance / 1000).toFixed(2), "km");
-                console.log("Duration (minutes):", (route.summary.totalTime / 60).toFixed(2), "minutes");
-                console.log("Total coordinates:", route.coordinates.length);
-
                 if (route && onRouteFound) {
                     onRouteFound(
                         route.summary.totalDistance,
                         route.summary.totalTime,
-                        route.coordinates
+                        route.coordinates,
+                        route.instructions
                     );
                 }
             });
@@ -149,7 +168,6 @@ function MapFollower({ position }: { position: [number, number] }) {
 
     useEffect(() => {
         const now = Date.now();
-        // Only update map position every 3 seconds to reduce shaking
         if (now - lastUpdateRef.current > 3000) {
             map.panTo(position, { animate: true, duration: 2 });
             lastUpdateRef.current = now;
@@ -165,75 +183,177 @@ export default function RouteMap({
     next,
     isStarted,
     isDriver = false,
-    onRouteData
+    onRouteData,
+    allLocations = []
 }: RouteMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const routingControlRef = useRef<any>(null);
     const wsRef = useRef<WebSocket | null>(null);
-    const routeCoordinatesRef = useRef<L.LatLng[]>([]);
-    const currentIndexRef = useRef(0);
+    const instructionsRef = useRef<any[]>([]);
+    const instructionPointsRef = useRef<L.LatLng[]>([]);
+    const currentInstructionIndexRef = useRef(0);
     const simulationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Store total route distance and time from Leaflet
+    const totalRouteDistanceRef = useRef<number>(0);
+    const totalRouteTimeRef = useRef<number>(0);
 
     const [driverPos, setDriverPos] = useState<{ lat: number; lng: number }>({
         lat: current.lat,
         lng: current.lng
     });
+    const [currentInstruction, setCurrentInstruction] = useState<any>(null);
 
-    // Handle route found - store coordinates and filter them
-    const handleRouteFound = (distance: number, duration: number, coordinates: L.LatLng[]) => {
+    // Determine if location is start or stop
+    const isStartLocation = (location: LocationType) => {
+        if (allLocations.length === 0) return false;
+        return location.id === allLocations[0].id;
+    };
+
+    const isStopLocation = (location: LocationType) => {
+        if (allLocations.length === 0) return false;
+        return location.id === allLocations[allLocations.length - 1].id;
+    };
+
+    // Handle route found - extract instruction waypoints
+    const handleRouteFound = (distance: number, duration: number, coordinates: L.LatLng[], instructions?: any[]) => {
         console.log("Route coordinates received:", coordinates.length);
+        console.log("Instructions received:", instructions?.length);
+        console.log("Total route distance from Leaflet:", distance, "meters");
+        console.log("Total route time from Leaflet:", duration, "seconds");
 
-        // Filter coordinates - only take every 5th point to skip many points
-        const filteredCoordinates = coordinates.filter((_, index) => index % 5 === 0);
+        // Store total distance and time from Leaflet routing
+        totalRouteDistanceRef.current = distance;
+        totalRouteTimeRef.current = duration;
 
-        // Make sure we include the last point
-        if (coordinates.length > 0 && filteredCoordinates[filteredCoordinates.length - 1] !== coordinates[coordinates.length - 1]) {
-            filteredCoordinates.push(coordinates[coordinates.length - 1]);
-        }
+        if (instructions && instructions.length > 0) {
+            instructionsRef.current = instructions;
 
-        console.log("Filtered to:", filteredCoordinates.length, "points");
-        routeCoordinatesRef.current = filteredCoordinates;
-        currentIndexRef.current = 0;
+            // Extract key waypoints and add interpolation for long distances
+            const keyPoints: L.LatLng[] = [];
 
-        // Start simulation immediately
-        if (isDriver) {
-            startSimulation();
-        }
+            for (let i = 0; i < instructions.length; i++) {
+                const instruction = instructions[i];
 
-        if (onRouteData) {
-            onRouteData(distance, duration);
+                if (instruction.index !== undefined && coordinates[instruction.index]) {
+                    const currentPoint = coordinates[instruction.index];
+
+                    // If we have a previous point, interpolate between them
+                    if (keyPoints.length > 0) {
+                        const lastPoint = keyPoints[keyPoints.length - 1];
+                        const distanceBetween = lastPoint.distanceTo(currentPoint);
+
+                        // If distance is more than 500m, add intermediate points
+                        if (distanceBetween > 500) {
+                            console.log(`Large gap detected: ${distanceBetween.toFixed(0)}m between instructions`);
+                            const interpolated = interpolatePoints(lastPoint, currentPoint, 500);
+                            // Add all except the first (already in keyPoints) and last (will be added below)
+                            for (let j = 1; j < interpolated.length - 1; j++) {
+                                keyPoints.push(interpolated[j]);
+                            }
+                        }
+                    }
+
+                    keyPoints.push(currentPoint);
+                    console.log(`Instruction ${i}: ${instruction.text} at index ${instruction.index}`);
+                }
+            }
+
+            // Make sure we include the final destination
+            if (keyPoints.length > 0 && coordinates.length > 0) {
+                const lastPoint = coordinates[coordinates.length - 1];
+                const lastKeyPoint = keyPoints[keyPoints.length - 1];
+                if (lastKeyPoint.lat !== lastPoint.lat || lastKeyPoint.lng !== lastPoint.lng) {
+                    // Check if we need interpolation to destination
+                    const distanceToEnd = lastKeyPoint.distanceTo(lastPoint);
+                    if (distanceToEnd > 500) {
+                        const interpolated = interpolatePoints(lastKeyPoint, lastPoint, 500);
+                        for (let j = 1; j < interpolated.length; j++) {
+                            keyPoints.push(interpolated[j]);
+                        }
+                    } else {
+                        keyPoints.push(lastPoint);
+                    }
+                }
+            }
+
+            console.log("Total waypoints (with interpolation):", keyPoints.length);
+            instructionPointsRef.current = keyPoints;
+            currentInstructionIndexRef.current = 0;
+
+            // Set first instruction
+            if (instructions.length > 0) {
+                setCurrentInstruction(instructions[0]);
+            }
+
+            if (isDriver) {
+                startSimulation();
+            }
+
+            // Send total distance and time from Leaflet routing
+            if (onRouteData) {
+                onRouteData(distance, duration, instructions, instructions[0]);
+            }
         }
     };
 
-    // Function to start driver simulation
     const startSimulation = () => {
-        // Clear any existing simulation
         if (simulationIntervalRef.current) {
             clearInterval(simulationIntervalRef.current);
         }
 
-        console.log("Starting driver simulation with", routeCoordinatesRef.current.length, "points");
+        console.log("Starting driver simulation with", instructionPointsRef.current.length, "instruction points");
 
         simulationIntervalRef.current = setInterval(() => {
-            const coordinates = routeCoordinatesRef.current;
+            const points = instructionPointsRef.current;
+            const instructions = instructionsRef.current;
 
-            if (currentIndexRef.current < coordinates.length) {
-                const currentCoord = coordinates[currentIndexRef.current];
+            if (currentInstructionIndexRef.current < points.length) {
+                const currentPoint = points[currentInstructionIndexRef.current];
                 const newPos = {
-                    lat: currentCoord.lat,
-                    lng: currentCoord.lng
+                    lat: currentPoint.lat,
+                    lng: currentPoint.lng
                 };
 
-                console.log(`Moving to point ${currentIndexRef.current + 1}/${coordinates.length}:`, newPos);
+                console.log(`Moving to instruction point ${currentInstructionIndexRef.current + 1}/${points.length}:`, newPos);
                 setDriverPos(newPos);
-                currentIndexRef.current++;
+
+                // Update current instruction display
+                // Find which instruction we're currently at
+                let currentInstructionForDisplay = instructions[0];
+                for (let i = 0; i < instructions.length; i++) {
+                    if (currentInstructionIndexRef.current >= i) {
+                        currentInstructionForDisplay = instructions[i];
+                    }
+                }
+
+                console.log("Current instruction:", currentInstructionForDisplay.text);
+                setCurrentInstruction(currentInstructionForDisplay);
+
+                // Calculate remaining distance and time based on progress
+                // Simple linear interpolation based on waypoint progress
+                const totalPoints = points.length;
+                const remainingPoints = totalPoints - currentInstructionIndexRef.current;
+                const progressRatio = remainingPoints / totalPoints;
+
+                const remainingDistance = totalRouteDistanceRef.current * progressRatio;
+                const remainingTime = totalRouteTimeRef.current * progressRatio;
+
+                console.log(`Remaining: ${(remainingDistance / 1000).toFixed(2)} km, ${(remainingTime / 60).toFixed(1)} min`);
+
+                // Send updated route data with total remaining distance and time
+                if (onRouteData) {
+                    onRouteData(remainingDistance, remainingTime, instructions, currentInstructionForDisplay);
+                }
+
+                currentInstructionIndexRef.current++;
             } else {
                 console.log("Reached end of route");
                 if (simulationIntervalRef.current) {
                     clearInterval(simulationIntervalRef.current);
                 }
             }
-        }, 1000);
+        }, 3000); // 3 seconds per instruction point (adjust as needed)
     };
 
     // WebSocket for receiving driver location (for passengers)
@@ -344,13 +464,60 @@ export default function RouteMap({
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {/* Smooth map following */}
             <MapFollower position={from} />
 
-            {/* Circular driver marker like Google Maps */}
-            <Marker position={from} icon={createDriverIcon()} />
+            {/* Driver marker */}
+            <Marker position={from} icon={createDriverIcon()}>
+                <Tooltip permanent direction="top" offset={[0, -10]}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', textAlign: 'center' }}>
+                        ตำแหน่งคนขับ
+                    </div>
+                </Tooltip>
+            </Marker>
 
-            {next && <Marker position={to} icon={customIcon} />}
+            {/* Current location marker */}
+            <Marker position={[current.lat, current.lng]} icon={customIcon}>
+                <Tooltip permanent direction="top" offset={[0, -40]}>
+                    <div style={{ textAlign: 'center' }}>
+                        {isStartLocation(current) && (
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#16a34a' }}>
+                                จุดเริ่มต้น
+                            </div>
+                        )}
+                        {isStopLocation(current) && (
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#dc2626' }}>
+                                จุดหมาย
+                            </div>
+                        )}
+                        <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                            {current.name}
+                        </div>
+                    </div>
+                </Tooltip>
+            </Marker>
+
+            {/* Next location marker */}
+            {next && (
+                <Marker position={[next.lat, next.lng]} icon={customIcon}>
+                    <Tooltip permanent direction="top" offset={[0, -40]}>
+                        <div style={{ textAlign: 'center' }}>
+                            {isStartLocation(next) && (
+                                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#16a34a' }}>
+                                    จุดเริ่มต้น
+                                </div>
+                            )}
+                            {isStopLocation(next) && (
+                                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#dc2626' }}>
+                                    จุดหมาย
+                                </div>
+                            )}
+                            <div style={{ fontSize: '12px', marginTop: '2px' }}>
+                                {next.name}
+                            </div>
+                        </div>
+                    </Tooltip>
+                </Marker>
+            )}
 
             {next && (
                 <RoutingLayer
@@ -360,6 +527,18 @@ export default function RouteMap({
                     onRouteFound={handleRouteFound}
                 />
             )}
+            <style jsx global>{`
+  .leaflet-routing-container {
+    bottom: 10px !important;  /* ขยับลงจากขอบล่างนิดหน่อย */
+    top: auto !important;      /* ยกเลิกการยึดด้านบน */
+    background: rgba(255, 255, 255, 0.9) !important; 
+    border-radius: 10px !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+`}</style>
         </MapContainer>
+
+
     );
 }

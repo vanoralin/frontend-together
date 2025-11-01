@@ -33,6 +33,7 @@ interface TripData {
     scheduled_start_time: string;
     reservations?: Reservation[];
     passenger_profile_picture_url?: string;
+    trip_type?: "normal" | "instant" | "customer";
 }
 
 interface PageProps {
@@ -236,7 +237,7 @@ export default function ViewTripPage({ params }: PageProps) {
                 license_plate={trip.driver_vehicle?.license_plate || '-'}
                 status={trip.status === 'available' ? 'ยังว่าง' : 'เต็มแล้ว'}
                 price={trip.amount}
-                tripType="normal"
+                tripType={trip.trip_type}
                 mode="status"
             />
 

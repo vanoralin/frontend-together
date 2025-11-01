@@ -271,7 +271,7 @@ interface CardTripProps {
     license_plate?: string;
     model_vehicle?: string;
     currentPassengers?: number;
-    mode?: 'status' | 'link' | 'instant' | 'start' | 'today-cus'; // default: status
+    mode?: 'status' | 'link' | 'instant' | 'start' | 'today-cus' | 'today-dri'; // default: status
     href?: string;
     role?: 'driver' | 'customer';
     tripType?: 'normal' | 'instant' | 'customer';
@@ -370,7 +370,7 @@ export function CardTrip({
                 </div>
 
                 {/* ข้อมูลรถ */}
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-end mt-2">
                     <div>
                         <div className="flex items-center gap-2">
                             <VehicleType type={vehicle} />
@@ -382,6 +382,18 @@ export function CardTrip({
                                 <p>ทะเบียน: {license_plate}</p>
                             </div>
                         )}
+
+                        {mode === 'today-dri' ? (
+                            people === 0 ? (
+                                <div className="flex gap-2 mt-2">
+                                    <span className=" text-theme-orange font-medium py-1 rounded-full">
+                                        ยังไม่มีการจองในขณะนี้
+                                    </span>
+                                </div>
+                            ) : (null
+                            )
+                        ) : null}
+
                     </div>
 
                     {/* Status / Instant / Link */}
@@ -402,9 +414,9 @@ export function CardTrip({
                         <span className="bg-theme-green text-white text-xs px-3 py-1 rounded-full">
                             เริ่มเดินทาง
                         </span>
-                    ) : (
-                        <span className="bg-theme-light-gray text-theme-gray text-xs px-3 py-1 rounded-full">
-                            ดูรายละเอียด
+                    )  : (
+                        <span className="bg-white text-theme-orange text-xs px-3 py-1 rounded-full border-2 border-theme-orange">
+                            ดูรายละเอียด ➜
                         </span>
                     )}
                 </div>
