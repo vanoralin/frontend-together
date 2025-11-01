@@ -36,5 +36,8 @@
 .rdp-dropdown {
   font-weight: 300 !important; 
 }
+.leaflet-control-attribution {
+  display: none !important;
+}
 
 

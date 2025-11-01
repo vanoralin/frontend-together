@@ -1,139 +1,127 @@
 "use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { LocationDirectionShowBox, NumberInCar } from "@/app/components/trip_components";
-import { Popup } from "@/app/components/share_component"; // generic Popup
+import { LocationShowBox, VehicleType } from "@/app/components/trip_components";
+import { Popup } from "@/app/components/share_component";
 
-export default function BottomSheet({ status }: { status: number }) {
-    const [expanded, setExpanded] = useState(false);
-    const [popupType, setPopupType] = useState<"cancel" | "finish" | null>(null);
+interface TripDetail {
+    pickup_location: { name: string };
+    dropoff_location: { name: string };
+    scheduled_start_time: string;
+    seats: number;
+    vehicle?: { vehicle_type?: string; model_vehicle?: string; license_plate?: string };
+    driver?: { name?: string };
+    passenger?: { name?: string };
+    driver_profile_picture_url?: string;
+    amount?: number;
+}
 
-    // ความสูงของ Bottom Sheet
-    const collapsedHeight = "40vh";
-    const expandedHeight = "70vh";
+interface BottomSheetProps {
+    trip: TripDetail;
+    type?: "page" | "map";
+    children?: React.ReactNode;
+    showtext?: string;
+}
+
+export default function BottomSheet({ trip, type = "map", children, showtext }: BottomSheetProps) {
+    const [expanded, setExpanded] = useState(true);
+
+    const content = (
+        <div className="p-4">
+            {type === "map" && (
+                <div className="flex flex-col justify-between items-start">
+                    <p className="font-medium text-xl">{showtext}</p>
+                    <p>
+                        เวลาเริ่ม:{" "}
+                        {new Date(trip.scheduled_start_time).toLocaleString("th-TH", { hour12: false })}
+                    </p>
+                </div>
+            )}
+
+            <div className="flex justify-between mt-3">
+                <div>
+                    <p className="font-medium">{trip.vehicle?.license_plate || "ไม่ระบุ"}</p>
+                    <p>{trip.vehicle?.model_vehicle || ""}</p>
+                    <VehicleType
+                        type={trip.vehicle?.vehicle_type || ""}
+                        className="text-sm"
+                    />
+                </div>
+                <img src={`/example_${trip.vehicle?.vehicle_type}.png`} alt="veh pic" className="w-35 rounded-md object-cover" />
+            </div>
+
+            <div className="flex justify-between items-center mt-4 border-y py-3 border-gray-300 w-full">
+                <div className="flex gap-3 items-center">
+                    <img
+                        src={trip.driver_profile_picture_url || "/null_profile.png"}
+                        alt=""
+                        className="w-12 h-12 rounded-full object-cover"
+                        onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = "/null_profile.png";
+                        }}
+                    />
+                    <div>
+                        <p>{trip.driver?.name || "ไม่ระบุคนขับ"}</p>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <img src="/icon_phone_bg.svg" alt="" className="w-8 h-8 object-contain" />
+                    <img src="/icon_chat_bg.svg" alt="" className="w-8 h-8 object-contain" />
+                </div>
+            </div>
+
+            <div className="mt-4 space-y-3 pt-2 text-sm">
+                {/* 🔹 แสดง children ก่อน "รายละเอียด" ถ้าย่อ */}
+                {!expanded && children}
+
+                <div className="flex justify-between">
+                    <h1 className="font-medium text-xl">รายละเอียด</h1>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                            {trip.seats}
+                            <img
+                                src="/icon_nav_profile.svg"
+                                alt="profile"
+                                className="w-6 h-6 object-contain"
+                                style={{ filter: "brightness(0) invert(50%)" }}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg space-y-3 mt-6 w-full max-w-md mb-10">
+                    <LocationShowBox value={trip.pickup_location.name || ""} />
+                    <LocationShowBox value={trip.dropoff_location.name || ""} />
+                </div>
+
+                {/* 🔹 แสดง children หลังสุด ถ้าเต็ม */}
+                {expanded && children}
+            </div>
+        </div>
+    );
+
 
     return (
         <>
-            <motion.div
-                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-lg z-50 overflow-hidden"
-                animate={{ height: expanded ? expandedHeight : collapsedHeight }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            >
-                {/* Handle bar */}
-                <div
-                    className="w-12 h-1.5 bg-theme-light-gray rounded-full mx-auto mt-2 mb-2 cursor-pointer"
-                    onClick={() => setExpanded(!expanded)}
-                ></div>
-
-                {/* Content */}
-                <div className="p-4">
-                    <div className="flex flex-col justify-between items-start">
-                        <p className="font-medium text-xl">คนขับกำลังไปยังจุดหมาย</p>
-                        <p className=" text-theme-gray">อีก 6 นาที</p>
-                    </div>
-
-                    <div className="flex justify-between mt-3">
-                        <div>
-                            <p className="font-medium">กข-555 บุรีรัมย์</p>
-                            <p className="text-sm text-theme-gray">TOYOTA HAHAxzz</p>
-                            <p className="text-theme-gray">สีขาว</p>
-                        </div>
-                        <img src="/car.png" alt="Car" className="w-35 h-14 rounded-md object-cover" />
-                    </div>
-
-                    <div className="flex justify-between items-center mt-4 border-y py-3 border-theme-light-gray w-full">
-                        <div className="flex gap-3 items-center">
-                            <img src="/profile_wonyoung.jpg" alt="" className="w-12 h-12 rounded-full object-cover" />
-                            <div>
-                                <p>วอนยอง</p>
-                                <p>099-999-9999</p>
-                            </div>
-                        </div>
-                        <img src="/call_phone.png" alt="" className="w-8 h-8 object-contain" />
-                    </div>
-
-                    <div className="mt-4 space-y-3 pt-2 text-sm">
-                        <div className="flex justify-between">
-                            <h1 className="font-medium text-xl">รายละเอียด</h1>
-                            <div className="flex gap-4">
-                                <NumberInCar number={3} />
-                                <div className="flex gap-2 items-center">
-                                    <img src="/coin.svg" alt="" className="h-6" />
-                                    <p>32 บาท</p>
-                                </div>
-                            </div>
-                        </div>
-                        <p>วันที่: 27/07/2568 เวลา 12:20</p>
-
-                        <LocationDirectionShowBox value1="ฝั่งตรงข้ามเกกี 4" value2="หน้าตึก ECC" />
-
-                        {status === 0 ? (
-                            <button
-                                className="w-full bg-white text-theme-orange border-2 py-2 rounded-xl mt-2"
-                                onClick={() => setPopupType("cancel")}
-                            >
-                                ยกเลิกการจองทริป
-                            </button>
-                        ) : (
-                            <button
-                                className="w-full bg-theme-orange text-white py-2 rounded-xl mt-2"
-                                onClick={() => setPopupType("finish")}
-                            >
-                                เสร็จสิ้นการเดินทาง
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* Popup: ยกเลิกการจอง */}
-            {popupType === "cancel" && (
-                <Popup
-                    title="ยกเลิกการจองทริป"
-                    description="คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองทริปนี้?"
-                    image={<img src="/alarm sign.svg" alt="cancel" className="w-20 h-auto" />}
-                    onClose={() => setPopupType(null)}
-                    actions={[
-                        {
-                            label: "ย้อนกลับ",
-                            onClick: () => setPopupType(null),
-                            variant: "secondary",
-                        },
-                        {
-                            label: "ยืนยัน",
-                            onClick: () => {
-                                setPopupType(null);
-                                console.log("Trip cancelled");
-                            },
-                            variant: "primary",
-                        },
-                    ]}
-                />
-            )}
-
-            {/* Popup: เสร็จสิ้นการเดินทาง */}
-            {popupType === "finish" && (
-                <Popup
-                    title="เสร็จสิ้นการเดินทาง"
-                    description="กรุณากดยืนยันว่าคุณได้ถึงที่หมายแล้ว"
-                    image={<img src="/home_congrat.svg" alt="done" className="w-30 h-auto" />}
-                    onClose={() => setPopupType(null)}
-                    actions={[
-                        {
-                            label: "ย้อนกลับ",
-                            onClick: () => setPopupType(null),
-                            variant: "secondary",
-                        },
-                        {
-                            label: "ยืนยัน",
-                            onClick: () => {
-                                setPopupType(null);
-                                console.log("Trip finished");
-                            },
-                            variant: "primary",
-                        },
-                    ]}
-                />
+            {type === "page" ? (
+                <motion.div
+                    className="bg-white shadow-lg overflow-auto w-full h-full rounded-none"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                >
+                    {content}
+                </motion.div>
+            ) : (
+                <motion.div
+                    className="absolute left-0 right-0 bottom-0 bg-white shadow-lg rounded-t-2xl overflow-hidden"
+                    animate={{ height: expanded ? "70vh" : "40vh" }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                >
+                    <div
+                        className="w-12 h-1.5 bg-theme-light-gray rounded-full mx-auto mt-2 mb-2 cursor-pointer"
+                        onClick={() => setExpanded(!expanded)}
+                    />
+                    {content}
+                </motion.div>
             )}
         </>
     );
