@@ -15,14 +15,14 @@ interface Review {
 interface HistoryItem {
   fare: number;
   pax: number;
-  date: string; // DD/MM/YYYY
-  startTime: string; // HH:MM (24-hr)
-  endTime: string; // HH:MM (24-hr)
-  stops: string[]; // stops[0] = start, stops[last] = end
+  date: string; // DD/MM/YYYY (เวลาไทย)
+  startTime: string; // HH:MM (24-hr, เวลาไทย)
+  endTime: string;   // HH:MM (24-hr, เวลาไทย)
+  stops: string[];   // stops[0] = start, stops[last] = end
   reviews?: Review[];
 }
 
-// ----- API response (based on the sample payload in the prompt) -----
+// ----- API response -----
 interface ApiLocation { name: string; lat: number; lng: number }
 interface ApiReservation { id: number; passenger_id: number; seats: number; status: string; amount: number }
 interface ApiDriver { id: number; name: string; email: string; profile_picture?: string }
@@ -36,10 +36,10 @@ interface ApiTrip {
   driver_vehicle: ApiDriverVehicle;
   amount: number; // fare per trip
   reservations: ApiReservation[];
-  reviews?: { score: number; comment?: string }[]; // <-- reviews from API
+  reviews?: { score: number; comment?: string }[];
   distance_km: number;
   duration_sec: number; // duration in seconds
-  scheduled_start_time: string; // ISO string
+  scheduled_start_time: string; // ISO string (คาดว่าเป็น UTC มี Z)
 }
 interface ApiHistoryResponse { message: string; trips: ApiTrip[] }
 
@@ -67,23 +67,45 @@ function formatDuration(mins: number): string {
   return m === 0 ? `${h} ชม.` : `${h} ชม. ${m} นาที`;
 }
 
-function pad2(n: number) { return n.toString().padStart(2, "0"); }
-function formatDateDMY(date: Date) { return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`; }
-function formatHHMM(date: Date) { return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`; }
+/** ---------- Thai Timezone Formatters (ไม่บวก 7 ชั่วโมงเอง) ---------- */
+/** ใช้ปฏิทินเกรกอเรียนและเลขอารบิกเพื่อเลี่ยง พ.ศ./เลขไทย */
+const DATE_FMT_TH = new Intl.DateTimeFormat("th-TH-u-nu-latn-ca-gregory", {
+  timeZone: "Asia/Bangkok",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
 
-// Transform API trip -> HistoryItem used by UI
+const TIME_FMT_TH = new Intl.DateTimeFormat("th-TH-u-nu-latn-ca-gregory", {
+  timeZone: "Asia/Bangkok",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+// ถ้าต้องการสตริง "DD/MM/YYYY" (เวลาไทย)
+function formatDateDMYThai(d: Date) {
+  return DATE_FMT_TH.format(d);
+}
+
+// ถ้าต้องการสตริง "HH:MM" (เวลาไทย)
+function formatHHMMThai(d: Date) {
+  return TIME_FMT_TH.format(d);
+}
+
+/** ---------- Transform API trip -> HistoryItem (เวลาไทย) ---------- */
 function mapTripToHistoryItem(t: ApiTrip): HistoryItem {
-  const start = new Date(t.scheduled_start_time);
+  const start = new Date(t.scheduled_start_time); // ควรเป็น UTC (มี Z)
   const end = new Date(start.getTime() + (t.duration_sec || 0) * 1000);
 
-  // Round to minute precision
-  const startRounded = new Date(start); startRounded.setSeconds(0, 0);
-  const endRounded = new Date(end); endRounded.setSeconds(0, 0);
+  // ปัดวินาที-มิลลิวินาทีให้เหลือนาที (ปัดลง)
+  const startRounded = new Date(Math.floor(start.getTime() / 60000) * 60000);
+  const endRounded   = new Date(Math.floor(end.getTime() / 60000) * 60000);
 
   const pax = (t.reservations || []).reduce((acc, r) => acc + (r.seats || 0), 0);
   const stops = (t.path_locations || []).map((p) => p.name).filter(Boolean);
 
-  // map reviews -> HistoryItem.reviews (label as ผู้โดยสารคนที่ 1..)
+  // reviews -> HistoryItem.reviews
   const reviews: Review[] | undefined = Array.isArray(t.reviews)
     ? t.reviews.map((rv, i) => ({ index: i + 1, rating: rv.score, comment: rv.comment }))
     : undefined;
@@ -91,14 +113,13 @@ function mapTripToHistoryItem(t: ApiTrip): HistoryItem {
   return {
     fare: Number.isFinite(t.amount) ? Number(t.amount) : 0,
     pax,
-    date: formatDateDMY(start),
-    startTime: formatHHMM(startRounded),
-    endTime: formatHHMM(endRounded),
+    date: formatDateDMYThai(startRounded),     // ✅ เวลาไทย
+    startTime: formatHHMMThai(startRounded),   // ✅ เวลาไทย
+    endTime: formatHHMMThai(endRounded),       // ✅ เวลาไทย
     stops: stops.length > 0 ? stops : ["-"],
     reviews,
   };
 }
-
 
 function resolveToken(): string | null {
   if (typeof document === "undefined") return null;
@@ -211,7 +232,7 @@ function Background() {
 
       {open && selected && (
         <PopupOverlay onClose={closePopup}>
-          <Popup_detail item={selected} onClose={closePopup} />
+          <Popup_detail item={selected} />
         </PopupOverlay>
       )}
 
@@ -285,7 +306,7 @@ function HistoryCard({ item, onClick }: { item: HistoryItem; onClick?: () => voi
         </div>
 
         {/* วันที่ + เวลา */}
-        <div className="flex mt-2 mb-1">
+        <div className="flex mt-2 mb-1 items-center">
           <img src="/calendar.svg" className="h-5 w-5 ml-1" alt="calendar" />
           <p className="ml-2 text-sm text-gray-500">
             {item.date}
@@ -307,6 +328,7 @@ function PopupOverlay({ onClose, children }: { onClose: () => void; children: Re
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
   const startRatioRef = useRef<number>(SNAP_POINTS[0]);
+
 
   useEffect(() => { setHeightRatio(SNAP_POINTS[snapIndex]); }, [snapIndex]);
   useEffect(() => {
@@ -371,7 +393,7 @@ function PopupOverlay({ onClose, children }: { onClose: () => void; children: Re
   );
 }
 
-/** ---------- การ์ด: จุดรับส่งทั้งหมด (เส้นเชื่อมเฉพาะ “ระหว่างจุด”) ---------- */
+/** ---------- การ์ด: จุดรับส่งทั้งหมด ---------- */
 function StopsCard({ item }: { item: HistoryItem }) {
   const stops = item.stops;
 
@@ -391,11 +413,9 @@ function StopsCard({ item }: { item: HistoryItem }) {
                 className="h-[18px] w-[18px] shrink-0 absolute left-0 top-[4px] z-10"
               />
 
-              {/* เส้นเชื่อมระหว่างจุด (เฉพาะถ้าไม่ใช่จุดสุดท้าย) */}
+              {/* เส้นเชื่อมระหว่างจุด */}
               {!isLast && (
-                <div
-                  className="absolute left-[9px] top-[22px] bottom-[-10px] w-px bg-gray-500"
-                />
+                <div className="absolute left-[9px] top-[22px] bottom-[-10px] w-px bg-gray-500" />
               )}
 
               {/* กล่องชื่อจุด */}
@@ -410,7 +430,7 @@ function StopsCard({ item }: { item: HistoryItem }) {
   );
 }
 
-/** ---------- เวลา + ระยะเวลารวม (ดึงจากข้อมูลจริง) ---------- */
+/** ---------- เวลา + ระยะเวลารวม ---------- */
 function TripMeta({ item }: { item: HistoryItem }) {
   const mins = diffMinutes(item.startTime, item.endTime);
   const duration = formatDuration(mins);
@@ -433,7 +453,7 @@ function TripMeta({ item }: { item: HistoryItem }) {
   );
 }
 
-/** ---------- ความคิดเห็นที่ได้รับ (แสดงรีวิวทุกคน ถ้ามี) ---------- */
+/** ---------- ความคิดเห็นที่ได้รับ ---------- */
 function FeedbackCard({ item }: { item: HistoryItem }) {
   const reviews = item.reviews ?? [];
   const hasReviews = reviews.length > 0;

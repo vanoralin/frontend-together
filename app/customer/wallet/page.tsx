@@ -221,15 +221,24 @@ function History({ history }: { history: HistoryBlockProps[] }) {
   );
 }
 
-/** ✅ helper: แปลง ISO → DD/MM/YYYY */
+/** แปลง ISO -> DD/MM/YYYY ในเขตเวลาไทย */
 function formatShortDate(input: string): string {
   const d = new Date(input);
   if (isNaN(d.getTime())) return input;
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
+
+  const parts = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(d);
+
+  const dd = parts.find(p => p.type === "day")?.value ?? "";
+  const mm = parts.find(p => p.type === "month")?.value ?? "";
+  const yyyy = parts.find(p => p.type === "year")?.value ?? "";
   return `${dd}/${mm}/${yyyy}`;
 }
+
 
 function Block_history({ history }: { history: HistoryBlockProps[] }) {
   return (
