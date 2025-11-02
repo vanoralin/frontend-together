@@ -58,28 +58,11 @@ interface HistoryBlockProps {
 function Background() {
   const router = useRouter();
 
-  // mock history (คุณจะสลับไปดึงจาก API ก็ได้)
-  const historyData: HistoryBlockProps[] = [
-    { type: "topup", date: "2024-08-24 22:01", success: "success", amount: 50 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "topup", date: "2024-08-15 09:15", success: "cancel", amount: 100 },
-    { type: "withdraw", date: "2024-08-10 18:45", success: "success", amount: 30 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-    { type: "withdraw", date: "2024-07-30 16:20", success: "success", amount: 10 },
-    { type: "topup", date: "2024-07-25 08:10", success: "cancel", amount: 150 },
-    { type: "withdraw", date: "2024-07-20 19:55", success: "success", amount: 40 },
-    { type: "withdraw", date: "2024-08-20 14:30", success: "cancel", amount: 20 },
-    { type: "paid", date: "2024-08-18 12:00", success: "success", amount: 35 },
-  ];
-
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
-
   const [history, setHistory] = useState<HistoryBlockProps[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(true);
-
 
   useEffect(() => {
     (async () => {
@@ -108,7 +91,6 @@ function Background() {
       }
     })();
   }, [router]);
-
 
   useEffect(() => {
     (async () => {
@@ -160,7 +142,6 @@ function Background() {
             coin={profile.balance}
           />
           <Topup />
-
           {historyLoading ? (
             <div className="w-[366px] h-[370px] bg-white/70 mt-10 rounded-[20px] animate-pulse" />
           ) : (

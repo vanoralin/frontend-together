@@ -1,4 +1,3 @@
-// ทำงานเหมือนโค้ดตัวอย่างด้านล่างครบ
 "use client";
 
 import React from "react";
@@ -15,7 +14,6 @@ type DetailProps = {
   onExpire?: () => void;
   expired?: boolean;
 };
-
 
 async function confirmTopup(txId: number) {
   const res = await fetch(API_CONFIRM, {
@@ -55,7 +53,6 @@ async function cancelTopup(txId: number) {
 function Background() {
   const router = useRouter();
 
-  // อ่านค่าเก็บไว้ (เหมือนตัวอย่างที่ให้มา)
   const amountInput =
     (typeof window !== "undefined" && localStorage.getItem("topupAmount")) || "0";
   const base64 =
@@ -64,7 +61,6 @@ function Background() {
     (typeof window !== "undefined" && localStorage.getItem("topupTxId")) || "";
   const txIdNum = Number(txIdStr || 0);
 
-  // ถ้าไม่มีข้อมูลที่จำเป็น → แจ้งเตือนและย้อนกลับไปหน้า topup
   React.useEffect(() => {
     if (!base64 || !txIdStr) {
       // alert("ไม่พบข้อมูล QR / transaction_id");
@@ -72,7 +68,6 @@ function Background() {
     }
   }, [base64, txIdStr, router]);
 
-  // ทำ data URL จาก base64; ถ้าไม่มี ใช้ภาพ fallback
   const dataUrl = base64 ? `data:image/png;base64,${base64}` : "/QR.png";
   const [expired, setExpired] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -127,11 +122,11 @@ function Background() {
         initialSeconds={300}       // ทดสอบเร็ว
       />
 
-      {/* ปุ่มยืนยัน (ยิง /api/topup/confirm) */}
+      {/* ปุ่มยืนยัน */}
       <Goto_payment expired={expired} />
+
       {/* ป็อปอัปหมดเวลา (แบบเดิม) */}
       {expired && <ExpiredPopup onClose={handleCancelAndGo} />}
-
     </div>
   );
 }
@@ -166,13 +161,11 @@ function Detail({
   const [secondsLeft, setSecondsLeft] = React.useState(initialSeconds);
   const firedRef = React.useRef(false);
 
-  // รีเซ็ตทุกครั้งที่ amount/initialSeconds เปลี่ยน
   React.useEffect(() => {
     firedRef.current = false;
     setSecondsLeft(initialSeconds);
   }, [initialSeconds, amount]);
 
-  // เรียก onExpire ครั้งเดียวเมื่อนับถึง 0
   React.useEffect(() => {
     if (secondsLeft === 0 && !firedRef.current) {
       firedRef.current = true;
@@ -180,7 +173,6 @@ function Detail({
     }
   }, [secondsLeft, onExpire]);
 
-  // นับถอยหลัง
   React.useEffect(() => {
     if (secondsLeft <= 0) return;
     const id = setInterval(() => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
@@ -215,13 +207,11 @@ function Goto_payment({ expired }: { expired: boolean }) {
       setLoading(true);
       await confirmTopup(Number(txIdStr));
 
-      // ล้างข้อมูล localStorage หลังยืนยันสำเร็จ
       localStorage.removeItem("topupAmount");
       localStorage.removeItem("topupMessage");
       localStorage.removeItem("topupQrBase64");
       localStorage.removeItem("topupTxId");
 
-      // กลับหน้า wallet (ยึดตามตัวอย่าง)
       router.replace("/driver/wallet");
     } catch (e: any) {
       if (e?.message === "401") {
@@ -316,4 +306,4 @@ function ExpiredPopup({ onClose }: { onClose: () => void }) {
 }
 
 export default Background;
-export { Header, Detail, Goto_payment };
+export { Header, Detail, Goto_payment, ExpiredPopup };

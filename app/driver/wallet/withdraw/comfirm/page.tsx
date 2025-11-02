@@ -40,42 +40,22 @@ export default function ConfirmWithdrawPage() {
   const [amountDisplay, setAmountDisplay] = React.useState<string>("0.00");
   const [bankInfo, setBankInfo] = React.useState<BankAccountData | null>(null);
   const [loadingBank, setLoadingBank] = React.useState<boolean>(true);
-
+    
   React.useEffect(() => {
     const s = localStorage.getItem("withdrawAmount") || "0";
     const n = Number(s);
     setAmountDisplay(isNaN(n) ? "0.00" : n.toFixed(2));
   }, []);
 
-  // ✅ วางตรงนี้ (นอก useEffect, เหนือ return ของ component)
-  const formatAccount = (numDigits: string) => {
-    const digits = String(numDigits || "")
-      .replace(/\D/g, "")
-      .slice(0, 10);
-    const groups = [3, 1, 5, 1]; // 767-6-76767-6
-    let out: string[] = [];
-    let idx = 0;
-    for (const g of groups) {
-      const part = digits.slice(idx, idx + g);
-      if (!part) break;
-      out.push(part);
-      idx += g;
-    }
-    return out.join("-");
-  };
-
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoadingBank(true);
-        const res = await axios.get<BankAccountData>(
-          "/api/driver/bank-account",
-          {
-            withCredentials: true,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+        const res = await axios.get<BankAccountData>("/api/driver/bank-account", {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        });
         if (!mounted) return;
         setBankInfo(res.data ?? null);
       } catch {
@@ -91,67 +71,68 @@ export default function ConfirmWithdrawPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center bg-[#C5D4E8] pb-[140px]">
-      <HeaderWithdraw />
+<div className="relative min-h-screen w-full flex flex-col items-center bg-[#C5D4E8] pb-[140px]">
+  <HeaderWithdraw />
 
-      <main className="w-full max-w-[640px] px-5 mt-6">
-        <section className="space-y-6">
-          <DisplayAmount amount={amountDisplay} />
+  <main className="w-full max-w-[640px] px-5 mt-6">
+    <section className="space-y-6">
+      <DisplayAmount amount={amountDisplay} />
 
-          {/* Card: Bank destination */}
-          <div className="rounded-2xl bg-white backdrop-blur border border-white shadow-[0_8px_30px_rgba(0,0,0,0.05)] px-5 py-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                {/* bank icon */}
-                <svg
-                  className="w-5 h-5"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M3 10.5 12 4l9 6.5V12H3v-1.5Zm0 3.5h18v6H3v-6Zm2 1.5v3h3v-3H5Zm5 0v3h4v-3h-4Zm6 0v3h3v-3h-3Z" />
-                </svg>
-                <p className="text-base font-semibold tracking-wide">
-                  เข้าบัญชีธนาคาร
-                </p>
+      {/* Card: Bank destination */}
+      <div className="rounded-2xl bg-white backdrop-blur border border-white shadow-[0_8px_30px_rgba(0,0,0,0.05)] px-5 py-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            {/* bank icon */}
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M3 10.5 12 4l9 6.5V12H3v-1.5Zm0 3.5h18v6H3v-6Zm2 1.5v3h3v-3H5Zm5 0v3h4v-3h-4Zm6 0v3h3v-3h-3Z" />
+            </svg>
+            <p className="text-base font-semibold tracking-wide">เข้าบัญชีธนาคาร</p>
+          </div>
+
+        </div>
+
+        {loadingBank ? (
+          // Skeleton loading
+          <div className="animate-pulse space-y-3">
+          </div>
+        ) : bankInfo ? (
+          <div className="mt-1 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-base text-slate-500">ธนาคาร</span>
+              <div className="text-base tracking-wide">
+                {bankInfo.bank_name}
               </div>
             </div>
 
-            {loadingBank ? (
-              // Skeleton loading
-              <div className="animate-pulse space-y-3"></div>
-            ) : bankInfo ? (
-              <div className="mt-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-base text-slate-500">ธนาคาร</span>
-                  <div className="text-base tracking-wide">
-                    {bankInfo.bank_name}
-                  </div>
-                </div>
+            <div className="flex items-center justify-between">
+              <span className="text-base text-slate-500">ชื่อบัญชี</span>
+              <span className="text-base tracking-wide">
+                {bankInfo.bank_account_name}
+              </span>
+            </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-base text-slate-500">ชื่อบัญชี</span>
-                  <span className="text-base tracking-wide">
-                    {bankInfo.bank_account_name}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-base text-slate-500">เลขที่บัญชี</span>
-                  <span className="text-base tracking-wider">
-                    {formatAccount(bankInfo.bank_account_number)}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-base text-red-500">ไม่พบบัญชีธนาคาร</p>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="text-ิฟหำ text-slate-500">เลขที่บัญชี</span>
+              <span className="text-base tracking-wider">
+                {bankInfo.bank_account_number}
+              </span>
+            </div>
           </div>
-        </section>
-      </main>
+        ) : (
+          <p className="text-base text-red-500">ไม่พบบัญชีธนาคาร</p>
+        )}
+      </div>
+    </section>
+  </main>
 
-      <GotoPayment nextHref={nextHref} />
-    </div>
+  <GotoPayment nextHref={nextHref} />
+</div>
+
   );
 }
 
@@ -159,9 +140,7 @@ export function HeaderWithdraw() {
   return (
     <div className="flex flex-col items-center">
       <BackButton />
-      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">
-        ยืนยันการถอน
-      </p>
+      <p className="text-[32px] font-bold text-shadow-lg mt-10.5">ยืนยันการถอน</p>
     </div>
   );
 }
