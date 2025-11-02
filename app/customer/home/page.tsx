@@ -84,16 +84,23 @@ export function TripTodayCard() {
                 const data = Array.isArray(res.data) ? res.data : [];
 
                 const now = new Date();
-                const todayTrips = data.filter((t: any) =>
-                    new Date(t.scheduled_start_time).toDateString() === now.toDateString()
+
+                // กรองเฉพาะทริปที่ยังไม่เกิดขึ้น
+                const upcomingTrips = data.filter((t: any) => {
+                    const tripTime = new Date(t.scheduled_start_time);
+                    return tripTime > now;
+                });
+
+                // เรียงตามเวลาใกล้ที่สุด
+                const sortedTrips = upcomingTrips.sort(
+                    (a: any, b: any) =>
+                        new Date(a.scheduled_start_time).getTime() -
+                        new Date(b.scheduled_start_time).getTime()
                 );
 
-                if (todayTrips.length > 0) {
-                    const latest = todayTrips.sort(
-                        (a: any, b: any) => new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime()
-                    )[0];
-
-                    setTrip(latest);
+                // เอาทริปแรก (ใกล้ที่สุด)
+                if (sortedTrips.length > 0) {
+                    setTrip(sortedTrips[0]);
                 }
             } catch (err) {
                 console.error("Error fetching today's trip:", err);
@@ -105,8 +112,8 @@ export function TripTodayCard() {
     if (!trip) {
         return (
             <>
-                <h1 className="text-2xl font-medium">ทริปของวันนี้</h1>
-                <p className="text-gray-500 mt-2">คุณไม่มีทริปสำหรับวันนี้</p>
+                <h1 className="text-2xl font-medium">ทริปที่กำลังจะมาถึง</h1>
+                <p className="text-gray-500 mt-2">คุณไม่มีทริปที่กำลังจะมาถึง</p>
             </>
         );
     }
@@ -124,7 +131,7 @@ export function TripTodayCard() {
 
     return (
         <>
-            <h1 className="text-2xl font-medium">ทริปของวันนี้</h1>
+            <h1 className="text-2xl font-medium">ทริปที่กำลังจะมาถึง</h1>
 
             <CardTrip
                 key={trip.id}
