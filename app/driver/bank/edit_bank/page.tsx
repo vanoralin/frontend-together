@@ -72,13 +72,15 @@ const formatAccount = (numDigits: string, bank: BankCode): string => {
 };
 
 // mask โดยคงเครื่องหมายขีดไว้ (โชว์เฉพาะ 4 ตัวท้าย)
+// mask โดย "ไม่ใส่ขีด" ในช่วงที่เป็นจุด และคงรูปแบบขีดเฉพาะส่วนที่โชว์ 4 ตัวท้าย
+// mask โดยใช้ตัว 'x' แทนเลขที่ถูกซ่อน และคงขีดไว้เหมือนเดิม
 const maskWithHyphen = (formatted: string) => {
   const digits = formatted.replace(/\D/g, "");
   let toMask = Math.max(0, digits.length - 4);
   let res = "";
   for (const ch of formatted) {
-    if (/\d/.test(ch)) res += toMask-- > 0 ? "•" : ch;
-    else res += ch;
+    if (/\d/.test(ch)) res += toMask-- > 0 ? "x" : ch;
+    else res += ch; // คงขีดไว้
   }
   return res;
 };

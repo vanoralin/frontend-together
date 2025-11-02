@@ -21,6 +21,13 @@ interface TripData {
     scheduled_start_time: string;
 }
 
+interface RouteInstruction {
+    text: string;
+    distance: number;
+    time: number;
+    type: string;
+}
+
 export default function TripMapPage() {
     const params = useParams();
     const router = useRouter();
@@ -31,6 +38,10 @@ export default function TripMapPage() {
     const [started, setStarted] = useState(false);
     const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
     const routeInfoRef = useRef<{ distance: number; duration: number } | null>(null);
+    const [currentInstruction, setCurrentInstruction] = useState<RouteInstruction | null>(null);
+
+    const [showCompletePopup, setShowCompletePopup] = useState(false);
+    const [countdown, setCountdown] = useState(3);
 
     // Fetch trip data
     useEffect(() => {
@@ -39,7 +50,6 @@ export default function TripMapPage() {
                 const res = await fetch(`/api/trips/view/${tripId}`);
                 const data = await res.json();
                 setTrip(data);
-                // Don't auto-start, let user click button
                 setStarted(false);
             } catch (err) {
                 console.error("Error fetching trip:", err);
@@ -56,35 +66,11 @@ export default function TripMapPage() {
         );
     };
 
-    // Auto-advance when driver reaches a location without pickup/dropoff
-    useEffect(() => {
-        if (!started || !trip || currentIndex === 0) return; // Don't auto-advance at start
-
-        const currentLocation = trip.path.locations[currentIndex];
-
-        // Check if current location has no pickup/dropoff and is not the last location
-        if (currentIndex < trip.path.locations.length - 1 &&
-            !hasPickupOrDropoff(currentLocation.id)) {
-
-            console.log(`Location ${currentLocation.name} has no pickup/dropoff, auto-advancing...`);
-
-            // Auto-advance to next location after simulation reaches it
-            const timer = setTimeout(() => {
-                console.log(`Auto-advancing from ${currentIndex} to ${currentIndex + 1}`);
-                setCurrentIndex(currentIndex + 1);
-                if (routeInfoRef.current) setRouteInfo(routeInfoRef.current);
-            }, 2000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [currentIndex, started, trip]);
-
     const startTrip = async () => {
         if (!trip) return;
         setStarted(true);
-        setCurrentIndex(0); // Start at first location
+        setCurrentIndex(0);
 
-        // Update trip status
         try {
             await fetch(`/api/trips/${tripId}/start`, { method: 'POST' });
             setTrip(prev => prev ? { ...prev, status: "in_progress" } : prev);
@@ -96,25 +82,28 @@ export default function TripMapPage() {
     const goNext = () => {
         if (!trip) return;
 
-        if (currentIndex < trip.path.locations.length - 1) {
+        if (currentIndex + 1 < trip.path.locations.length - 1) {
             setCurrentIndex(currentIndex + 1);
             if (routeInfoRef.current) setRouteInfo(routeInfoRef.current);
+            setCurrentInstruction(null);
         } else {
-            alert("เสร็จสิ้นการเดินทาง!");
-        }
-    };
+            setShowCompletePopup(true);
+            setCountdown(3);
 
-    const goPrev = () => {
-        if (currentIndex > 0) {
-            setCurrentIndex(currentIndex - 1);
-            if (routeInfoRef.current) setRouteInfo(routeInfoRef.current);
+            const timer = setInterval(() => {
+                setCountdown((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        router.push("/driver/home");
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
         }
     };
 
     if (!trip) return <p>กำลังโหลดข้อมูลทริป...</p>;
-
-    const fromName = trip.path.locations[0]?.name || "-";
-    const toName = trip.path.locations[trip.path.locations.length - 1]?.name || "-";
 
     const current = trip.path.locations[currentIndex];
     const next = currentIndex < trip.path.locations.length - 1
@@ -126,16 +115,6 @@ export default function TripMapPage() {
     const currentPickupCount = trip.reservations?.filter(r => r.pickup_location_id === current?.id).reduce((sum, r) => sum + (r.seats || 0), 0) || 0;
     const currentDropoffCount = trip.reservations?.filter(r => r.dropoff_location_id === current?.id).reduce((sum, r) => sum + (r.seats || 0), 0) || 0;
 
-    // For display purposes (during movement)
-    const displayLocation = started ? (currentIndex === 0 ? next : current) : current;
-    const displayHasAction = started && currentIndex > 0 ? hasPickupOrDropoff(current?.id) : false;
-    const displayPickupCount = started && currentIndex > 0
-        ? trip.reservations?.filter(r => r.pickup_location_id === current?.id).reduce((sum, r) => sum + (r.seats || 0), 0) || 0
-        : 0;
-    const displayDropoffCount = started && currentIndex > 0
-        ? trip.reservations?.filter(r => r.dropoff_location_id === current?.id).reduce((sum, r) => sum + (r.seats || 0), 0) || 0
-        : 0;
-
     // Next location info
     const nextHasAction = next ? hasPickupOrDropoff(next?.id) : false;
     const nextPickupCount = next
@@ -145,48 +124,101 @@ export default function TripMapPage() {
         ? trip.reservations?.filter(r => r.dropoff_location_id === next?.id).reduce((sum, r) => sum + (r.seats || 0), 0) || 0
         : 0;
 
+    // Get direction icon based on instruction type
+    const getDirectionIcon = (type: string) => {
+        const types: { [key: string]: string } = {
+            'Straight': '⬆️',
+            'SlightRight': '↗️',
+            'Right': '➡️',
+            'SharpRight': '↘️',
+            'TurnAround': '🔄',
+            'SharpLeft': '↙️',
+            'Left': '⬅️',
+            'SlightLeft': '↖️',
+            'WaypointReached': '📍',
+            'Roundabout': '🔁',
+            'DestinationReached': '🏁'
+        };
+        return types[type] || '➡️';
+    };
+
+    // FIX #1: Use stable reference for button enable/disable
+    // Only enable button when distance is <= 100m
+    const isButtonEnabled = routeInfo && routeInfo.distance <= 100;
+
     return (
         <div className="flex flex-col h-screen">
-            <BackButton />
+            {!started && <BackButton />}
 
-            <div className="flex-1">
+            <div className="flex-1 relative">
                 {!started ? (
-                    // Before start
                     <RouteMap
                         tripId={trip.id}
                         current={current}
                         next={current}
                         isStarted={false}
                         isDriver={true}
+                        allLocations={trip.path.locations}
                         onRouteData={() => { }}
                     />
                 ) : (
-                    // After start
                     next && (
-                        <RouteMap
-                            tripId={trip.id}
-                            current={current}
-                            next={next}
-                            isStarted={started}
-                            isDriver={true}
-                            onRouteData={(distance, duration) => {
-                                routeInfoRef.current = { distance, duration };
-                                setRouteInfo({ distance, duration });
-                            }}
-                        />
+                        <>
+                            <RouteMap
+                                tripId={trip.id}
+                                current={current}
+                                next={next}
+                                isStarted={started}
+                                isDriver={true}
+                                allLocations={trip.path.locations}
+                                onRouteData={(distance, duration, instructions, instruction) => {
+                                    // FIX #1: Only update if values actually changed
+                                    if (routeInfoRef.current?.distance !== distance ||
+                                        routeInfoRef.current?.duration !== duration) {
+                                        routeInfoRef.current = { distance, duration };
+                                        setRouteInfo({ distance, duration });
+                                    }
+
+                                    if (instruction && instruction !== currentInstruction) {
+                                        setCurrentInstruction(instruction);
+                                    }
+                                }}
+                            />
+
+                            {/* Google Maps style navigation banner at top */}
+                            {currentInstruction && (
+                                <div className="absolute top-4 left-4 right-4 z-[1000] max-w-[390px] mx-auto">
+                                    <div className="bg-white rounded-lg shadow-xl p-4 flex items-center gap-3">
+                                        <div className="text-3xl flex-shrink-0">
+                                            {getDirectionIcon(currentInstruction.type)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-lg font-semibold text-gray-900">
+                                                {currentInstruction.text}
+                                            </p>
+                                            {currentInstruction.distance > 0 && (
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    ใน {currentInstruction.distance < 1000
+                                                        ? `${currentInstruction.distance.toFixed(0)} ม.`
+                                                        : `${(currentInstruction.distance / 1000).toFixed(1)} กม.`}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )
                 )}
             </div>
 
             <div className="bg-white w-full max-w-[390px] mx-auto p-4 z-50 shadow-lg rounded-t-xl">
                 {!started ? (
-                    // Before starting
                     <div className="flex flex-col">
                         <div className="mb-4">
                             <h2 className="font-semibold text-lg mb-2">จุดออกเดินทาง</h2>
                             <PinName location={current.name} />
 
-                            {/* Show pickup/dropoff at starting location */}
                             {currentHasAction && (
                                 <div className="mt-2 space-y-1">
                                     {currentPickupCount > 0 && (
@@ -217,9 +249,9 @@ export default function TripMapPage() {
 
                         {next && (
                             <>
-                                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                                    <div className="text-sm text-gray-600 mb-1">หมุดถัดไป:</div>
-                                    <div className="font-medium text-blue-900">{next.name}</div>
+                                <div className="mb-4 bg-blue-50 rounded-lg p-3">
+                                    <h2 className="text-lg mb-2 font-semibold">จุดหมาย</h2>
+                                    <PinName location={next.name} />
 
                                     {nextHasAction && (
                                         <div className="mt-2 space-y-1">
@@ -259,98 +291,73 @@ export default function TripMapPage() {
                         )}
                     </div>
                 ) : (
-                    // After starting
                     <>
                         <div className="mb-3">
                             <div className="text-xs text-gray-500">
-                                หมุดที่ {currentIndex + 1} จาก {trip.path.locations.length}
+                                หมุดที่ {currentIndex + 2}/{trip.path.locations.length}
                             </div>
-                            <h2 className="font-semibold text-lg">
-                                {displayHasAction ? "หมุดปัจจุบัน" : "กำลังผ่าน"}
-                            </h2>
-                            <PinName location={displayLocation?.name || current.name} />
                         </div>
 
-                        {displayHasAction ? (
-                            <>
-                                {displayPickupCount > 0 && (
-                                    <div className="flex items-center gap-2 mt-2 p-3 bg-green-50 rounded-lg">
-                                        <img
-                                            src="/icon_nav_profile.svg"
-                                            alt="profile"
-                                            className="w-5 h-5"
-                                            style={{ filter: "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)" }}
-                                        />
-                                        <div className="font-medium text-green-700">
-                                            รับผู้โดยสาร: {displayPickupCount} คน
-                                        </div>
-                                    </div>
-                                )}
-
-                                {displayDropoffCount > 0 && (
-                                    <div className="flex items-center gap-2 mt-2 p-3 bg-red-50 rounded-lg">
-                                        <img
-                                            src="/icon_nav_profile.svg"
-                                            alt="profile"
-                                            className="w-5 h-5"
-                                            style={{ filter: "brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%)" }}
-                                        />
-                                        <div className="font-medium text-red-700">
-                                            ส่งผู้โดยสาร: {displayDropoffCount} คน
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        ) : currentIndex > 0 && (
-                            <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 rounded-lg">
-                                <div className="animate-pulse w-2 h-2 bg-blue-500 rounded-full"></div>
-                                <div className="text-blue-700 text-sm">
-                                    ผ่านจุดนี้ไปยังหมุดถัดไป...
-                                </div>
-                            </div>
-                        )}
-
                         {next && routeInfo && (
-                            <div className="mt-3 text-gray-600 text-sm bg-gray-50 p-2 rounded">
-                                📍 หมุดถัดไป: <span className="font-medium">{next.name}</span>
-                                <br />
-                                ระยะทาง {(routeInfo.distance / 1000).toFixed(1)} km • {Math.ceil(routeInfo.duration / 60)} นาที
+                            <div className="text-gray-600 bg-gray-50 p-3 rounded">
+                                <h2 className="font-semibold text-lg mb-2 text-theme-black">
+                                    {`จุดหมาย (${(routeInfo.distance / 1000).toFixed(1)} km | ${(routeInfo.duration / 60).toFixed(0)} นาที)`}
+                                </h2>
+                                <PinName location={next?.name} />
 
-                                {/* Show next location pickup/dropoff */}
                                 {nextHasAction && (
-                                    <div className="mt-1 flex gap-2 flex-wrap">
+                                    <div className="mt-2 space-y-2">
                                         {nextPickupCount > 0 && (
-                                            <span className="text-xs text-green-600">รับ: {nextPickupCount} คน</span>
+                                            <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                                                <img
+                                                    src="/icon_nav_profile.svg"
+                                                    alt="pickup"
+                                                    className="w-5 h-5"
+                                                    style={{ filter: "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)" }}
+                                                />
+                                                <span className="text-green-700 font-medium">รับผู้โดยสาร: {nextPickupCount} คน</span>
+                                            </div>
                                         )}
                                         {nextDropoffCount > 0 && (
-                                            <span className="text-xs text-red-600">ส่ง: {nextDropoffCount} คน</span>
+                                            <div className="flex items-center gap-2 p-2 bg-red-50 rounded-lg">
+                                                <img
+                                                    src="/icon_nav_profile.svg"
+                                                    alt="dropoff"
+                                                    className="w-5 h-5"
+                                                    style={{ filter: "brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%)" }}
+                                                />
+                                                <span className="text-red-700 font-medium">ส่งผู้โดยสาร: {nextDropoffCount} คน</span>
+                                            </div>
                                         )}
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {(displayHasAction || currentIndex === 0) && (
-                            <div className="flex justify-between mt-4">
-                                <button
-                                    onClick={goPrev}
-                                    disabled={currentIndex === 0}
-                                    className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-                                >
-                                    ก่อนหน้า
-                                </button>
-                                <button
-                                    onClick={goNext}
-                                    className={`px-4 py-2 rounded text-white ${currentIndex >= trip.path.locations.length - 1 ? "bg-green-500" : "bg-theme-orange"}`}
-                                >
-                                    {currentIndex >= trip.path.locations.length - 1 ? "เสร็จสิ้นการเดินทาง" : "ดำเนินการเสร็จสิ้น"}
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex justify-center mt-4">
+                            <button
+                                onClick={goNext}
+                                disabled={!isButtonEnabled}
+                                className={`px-6 py-3 rounded-lg text-white font-medium transition-colors
+                                    ${isButtonEnabled
+                                        ? (currentIndex + 1 >= trip.path.locations.length - 1
+                                            ? "bg-green-500 hover:bg-green-600"
+                                            : "bg-theme-orange hover:bg-orange-600")
+                                        : "bg-gray-300 cursor-not-allowed"}
+                                `}
+                            >
+                                {currentIndex + 1 >= trip.path.locations.length - 1
+                                    ? "เสร็จสิ้นการเดินทาง"
+                                    : "ถึงที่หมายแล้ว"}
+                            </button>
+                        </div>
 
-                        {!next && displayHasAction && (
-                            <div className="text-center mt-2 text-green-600 font-medium">
-                                🎉 นี่คือหมุดสุดท้าย
+                        {showCompletePopup && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+                                <div className="bg-white rounded-lg p-6 shadow-lg text-center">
+                                    <h2 className="text-xl font-semibold mb-2">เสร็จสิ้นการเดินทาง</h2>
+                                    <p className="text-gray-600">กำลังนำคุณกลับไปหน้าหลักใน {countdown} วินาที...</p>
+                                </div>
                             </div>
                         )}
                     </>
