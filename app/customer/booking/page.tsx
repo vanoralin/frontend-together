@@ -1304,39 +1304,79 @@ export default function BookingMain() {
   /* ---------- หน้าแพ็กเกจ 3/3: ยืนยัน + ยิง LOOP /trips/book (READ-ONLY calendar & vehicle) ---------- */
   const renderPackage3Page = () => (
     <div className="bg-[#C5DEDA] min-h-screen w-full flex flex-col items-center pb-[140px]">
-      {/* ... เนื้อหาอื่นเหมือนเดิม ... */}
-      <div className="w-full max-w-md">
-        <button
-          onClick={() => setShowPopup(true)}
-          className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
-          disabled={!selectedPackage || !selectedDates.length || typeof pickupId !== "number" || typeof dropoffId !== "number"}
-        >
-          ยืนยันและจ่ายค่าเดินทาง
-        </button>
-      </div>
+      <div className="w-full flex flex-col items-center px-6 mt-10">
+        <div className="w-full max-w-md flex items-center mt-2">
+          <BackButton2 onBack={() => setPage("package2")} />
+        </div>
+        <div className="text-center mt-1 mb-5">
+          <h1 className="text-lg text-black font-light">การจองทริปขาประจำ หน้า 3/3</h1>
+          <p className="text-xl font-regular text-black">ยืนยันการจอง</p>
+          <p className="text-xl font-light text-[#B55C32] mt-2">กรุณาตรวจสอบรายการเดินทาง</p>
+        </div>
 
-      {showPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center">
-            {/* ... กล่องยืนยัน ... */}
-            <div className="flex justify-between mt-5">
-              <button
-                onClick={() => setShowPopup(false)}
-                className="flex-1 bg-white border border-[#B5B5B5] text-[#191919] py-2 rounded-3xl mr-2"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={doRequestPackage}
-                className="flex-1 bg-[#E6A88A] border border-[#B55C32] text-[#191919] py-2 rounded-3xl ml-2"
-                disabled={loading}
-              >
-                {loading ? "กำลังทำรายการ..." : "ตกลง"}
-              </button>
+        <div className="w-full max-w-md bg-[#ffffff] font-light rounded-2xl p-4 shadow-md shadow-black/50 mb-4">
+          <div className="flex flex-col gap-4 relative">
+            <LocationBox value={pickupLabel} showLine />
+            <LocationBox value={dropoffLabel} />
+          </div>
+        </div>
+
+        {/* ปฏิทิน READ-ONLY */}
+        <div className="font-light w-full bg-white rounded-2xl shadow p-4 mb-6 shadow-md shadow-black/50">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-black font-light">วันที่ที่เลือกไว้</p>
+          </div>
+          <div className="pointer-events-none select-none">
+            <CalendarComponent selected={selectedDates} setSelected={() => { /* read-only */ }} />
+          </div>
+        </div>
+
+        {/* สรุป + ยานพาหนะ READ-ONLY + จำนวนคนนั่ง */}
+        <div className="w-full max-w-md bg-white rounded-2xl p-6 mb-6 text-center shadow-md shadow-black/50 font-light">
+          <p className="text-black font-light mb-2">คุณเลือกไปแล้ว</p>
+          <div className="flex justify-center items-center gap-2 text-[#B55C32] text-2xl font-light">
+            {selectedDates.length} วัน
+          </div>
+          <div className="pt-4 w-full space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[#191919] font-light">ยานพาหนะ</span>
+              <span className="text-[#191919] font-light">{selectedVehicle}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[#191919] font-light">จำนวนคนนั่ง</span>
+              <span className="text-[#191919] font-light">{passengerCount}</span>
             </div>
           </div>
         </div>
-      )}
+
+        <div className="w-full max-w-md bg-white rounded-2xl p-4 shadow-md shadow-black/50 mb-5 flex justify-between items-center">
+          <div>
+            <p className="text-[#191919] text-base font-light mb-2">ค่าแพ็คเกจ</p>
+            <div className="flex items-center gap-2">
+              <img src="/coin.svg" alt="coin" className="w-8 h-8 object-contain" />
+              <p className="text-[#191919] text-xl font-light">
+                {pkgPrice ? `${pkgPrice} บาท` : "กรุณาเลือกแพ็กเกจ"}
+              </p>
+            </div>
+          </div>
+          <div className="text-right self-start">
+            <p className="text-[#8b8b8b] text-sm font-light">ยอดในกระเป๋าเงิน</p>
+            <div className="flex items-center justify-end gap-1">
+              <img src="/coin.svg" alt="coin" className="w-4 h-4 object-contain" />
+              <p className="text-[#8b8b8b] text-base font-light">{me ? `${me.balance} บาท` : "-"}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-md">
+          <button
+            onClick={() => setShowPopup(true)}
+            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
+            disabled={!selectedPackage || !selectedDates.length || typeof pickupId !== "number" || typeof dropoffId !== "number"}
+          >
+            ยืนยันและจ่ายค่าเดินทาง
+          </button>
+        </div>
 
         {showPopup && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1349,7 +1389,7 @@ export default function BookingMain() {
                 </div>
               </div>
               <p className="text-[#191919] text-m font-regular mb-4">
-                เมื่อจองแล้วจะไม่สามารถแก้ไขได้<br />และเงินในกระเป๋าจะถูกหักตามการจองแต่ละวัน
+                เมื่อยืนยันแล้วจะไม่สามารถแก้ไขได้<br />และเงินในกระเป๋าจะ<strong>ถูกหักทันที</strong>
               </p>
               <p className="text-[#191919] text-sm font-light mb-4">แน่ใจหรือไม่ว่าต้องการทำรายการจองนี้</p>
               <div className="flex justify-between mt-5">
@@ -1429,6 +1469,7 @@ export default function BookingMain() {
           </div>
         )}
       </div>
+    </div>
   );
 
   return (

@@ -13,8 +13,8 @@ function Background() {
     typeof params?.id === "string"
       ? params.id
       : Array.isArray(params?.id)
-        ? params?.id[0]
-        : search?.get("id");
+      ? params?.id[0]
+      : search?.get("id");
 
   const [trip, setTrip] = useState<any>(null);
 
