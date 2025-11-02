@@ -1,13 +1,13 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef} from "react";
 import { useRouter } from "next/navigation";
 import { FaMotorcycle, FaCar } from "react-icons/fa";
 import CalendarComponent from "@/app/components/Calendar";
-import MapComponent2 from "@/app/components/MapComponent2";
-import type { MapMarker } from "@/app/components/MapComponent2";
 import axios from "axios";
 import { BackButton2 } from "@/app/components/BackButton2";
 import { ChevronDown } from "lucide-react";
+import dynamic from "next/dynamic";
+import L from "leaflet";
 
 /* ================== Axios (ผ่านพร็อกซี /api) ================== */
 const api = axios.create({
@@ -15,6 +15,12 @@ const api = axios.create({
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
+
+/* ==================  MapSelectComponent ================== */
+const MapSelectComponent = dynamic(
+  () => import("@/app/components/MapSelectComponent"),
+  { ssr: false }
+);
 
 /* ================== Types ================== */
 type UserProfile = { id: number; name: string; email: string; role: string; balance: number };
@@ -219,6 +225,7 @@ function TimePicker({
 /* ================== Main Component ================== */
 export default function BookingMain() {
   const router = useRouter();
+  const mapRef = useRef<L.Map | null>(null);
 
   type PageType =
     | "type"
@@ -386,17 +393,6 @@ export default function BookingMain() {
     else setDropoffId(best.id);
   }
 
-  /* -------- Markers/Center -------- */
-  const markers = useMemo<MapMarker[]>(
-    () => locs.map((l) => ({ id: l.id, position: { lat: l.lat, lng: l.lng }, label: l.name })),
-    [locs]
-  );
-  const mapCenter = useMemo(() => {
-    const p = typeof pickupId === "number" ? locs.find((l) => l.id === pickupId) : null;
-    const d = typeof dropoffId === "number" ? locs.find((l) => l.id === dropoffId) : null;
-    return (p ?? d) ?? { lat: 13.736717, lng: 100.523186 };
-  }, [pickupId, dropoffId, locs]);
-
   /* -------- Actions: estimate + book (one-time) -------- */
   const doEstimate = async () => {
     setErr("");
@@ -440,14 +436,12 @@ export default function BookingMain() {
 
       setShowPopup(false);
 
-      // รีเฟรชยอดเงินหลังตัดเงินสำเร็จ
       try {
         const p = await api.get<UserProfile>("/User/profile");
         setMe(p.data);
       } catch {/* ignore */}
 
       setOkTitle("จองสำเร็จ");
-      setOkMsg(tid ? `${msg}\nTrip ID: ${tid}` : msg);
       setShowOk(true);
     } catch (e: any) {
       const code = e?.response?.status;
@@ -490,13 +484,13 @@ export default function BookingMain() {
 
       const payload = {
         time,
-        Dates, // ชื่อคีย์ตามที่กำหนด (D ใหญ่)
+        Dates, 
         pickup_location_id: pickupId,
         dropoff_location_id: dropoffId,
         vehicle_type,
       };
 
-      await api.post("/daily-packages/request", payload, {
+      await api.post("/daily-packages/requests", payload, {
         headers: { "Idempotency-Key": `pkg-${rid()}` },
       });
 
@@ -611,14 +605,15 @@ export default function BookingMain() {
 
         {/* แผนที่ */}
         <div className="w-full max-w-md h-[450px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative">
-          <MapComponent2
-            center={mapCenter}
-            zoom={15}
-            markers={markers}
-            onMapClick={(lat, lng) => selectNearest(lat, lng, mapMode)}
-            onMarkerClick={(id) => {
-              if (mapMode === "pickup") setPickupId(Number(id));
-              else setDropoffId(Number(id));
+          <MapSelectComponent
+            locations={locs}
+            mapRef={mapRef}
+            onMarkerSelect={(loc) => {
+              // loc: { id, name, lat, lng } จาก MapSelectComponent
+              if (!loc) return;
+              if (mapMode === "pickup") setPickupId(Number(loc.id));
+              else setDropoffId(Number(loc.id));
+              mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
             }}
           />
           <div className="absolute top-3 left-3 bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
@@ -1154,14 +1149,14 @@ export default function BookingMain() {
 
         {/* แผนที่ */}
         <div className="w-full max-w-md h-[450px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative">
-          <MapComponent2
-            center={mapCenter}
-            zoom={15}
-            markers={markers}
-            onMapClick={(lat, lng) => selectNearest(lat, lng, mapMode)}
-            onMarkerClick={(id) => {
-              if (mapMode === "pickup") setPickupId(Number(id));
-              else setDropoffId(Number(id));
+          <MapSelectComponent
+            locations={locs}
+            mapRef={mapRef}
+            onMarkerSelect={(loc) => {
+              if (!loc) return;
+              if (mapMode === "pickup") setPickupId(Number(loc.id));
+              else setDropoffId(Number(loc.id));
+              mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
             }}
           />
           <div className="absolute top-3 left-3 bg-black/70 text-white text-xs px-3 py-1 rounded-full">
