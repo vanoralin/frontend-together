@@ -4,10 +4,8 @@ import React from "react";
 import { useRouter } from "next/navigation";
 // import { BackButton } from "@/app/components/share_component"; // ใช้ปุ่ม icon แทน
 
-
 const API_CONFIRM = "/api/topup/confirm";
 const API_CANCEL = "/api/topup/cancel";
-
 
 type DetailProps = {
   amount: number;
@@ -27,9 +25,7 @@ async function confirmTopup(txId: number) {
     body: JSON.stringify({ transaction_id: txId }),
   });
 
-  if (res.status === 401) {
-    throw new Error("401");
-  }
+  if (res.status === 401) throw new Error("401");
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
     throw new Error(txt || "ยืนยันไม่สำเร็จ");
@@ -107,18 +103,14 @@ function Background() {
 
   return (
     <div className="bg-[#C5DEDA] min-h-screen relative w-full flex flex-col items-center pb-[140px]">
-
       <Header onBack={handleCancelAndGo} busy={busy} />
 
       {/* QR */}
       <div className="flex flex-col items-center mt-10 bg-white p-4 rounded-lg shadow-lg">
-        <img
-          src={dataUrl}
-          alt="QR Code"
-          className="w-[280px] h-[280px] object-contain"
-        />
+        <img src={dataUrl} alt="QR Code" className="w-[280px] h-[280px] object-contain" />
       </div>
 
+      {/* รายละเอียด + นับถอยหลัง */}
       <Detail
         amount={Number(amountInput) || 0}
         onExpire={() => {
@@ -130,7 +122,9 @@ function Background() {
         initialSeconds={300}       // ทดสอบเร็ว
       />
 
+      {/* ปุ่มยืนยัน */}
       <Goto_payment expired={expired} />
+
       {/* ป็อปอัปหมดเวลา (แบบเดิม) */}
       {expired && <ExpiredPopup onClose={handleCancelAndGo} />}
     </div>
@@ -181,10 +175,7 @@ function Detail({
 
   React.useEffect(() => {
     if (secondsLeft <= 0) return;
-    const id = setInterval(
-      () => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)),
-      1000
-    );
+    const id = setInterval(() => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(id);
   }, [secondsLeft]);
 
@@ -215,10 +206,12 @@ function Goto_payment({ expired }: { expired: boolean }) {
     try {
       setLoading(true);
       await confirmTopup(Number(txIdStr));
+
       localStorage.removeItem("topupAmount");
       localStorage.removeItem("topupMessage");
       localStorage.removeItem("topupQrBase64");
       localStorage.removeItem("topupTxId");
+
       router.replace("/customer/wallet");
     } catch (e: any) {
       if (e?.message === "401") {
@@ -251,7 +244,6 @@ function Goto_payment({ expired }: { expired: boolean }) {
     </div>
   );
 }
-
 
 /* =========== Expired Popup (แบบเดิม) =========== */
 function ExpiredPopup({ onClose }: { onClose: () => void }) {
@@ -314,5 +306,4 @@ function ExpiredPopup({ onClose }: { onClose: () => void }) {
 }
 
 export default Background;
-export { Header, Detail, Goto_payment };
-
+export { Header, Detail, Goto_payment, ExpiredPopup };
