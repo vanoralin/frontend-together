@@ -66,7 +66,12 @@ function HeaderNotification() {
   );
 }
 
-function NotificationBlock({ title, message, date, time }: NotificationBlockProps) {
+function NotificationBlock({
+  title,
+  message,
+  date,
+  time,
+}: NotificationBlockProps) {
   const hasDateTime = Boolean(date && time);
   return (
     <div
@@ -76,9 +81,7 @@ function NotificationBlock({ title, message, date, time }: NotificationBlockProp
     >
       <div className="flex items-center justify-between">
         {/* ลบ line-clamp-1 ออก เพื่อให้ตัดบรรทัดอัตโนมัติ */}
-        <p className="text-base font-base text-gray-800 break-words">
-          {title}
-        </p>
+        <p className="text-base font-base text-gray-800 break-words">{title}</p>
 
         {hasDateTime && (
           <div className="flex items-center gap-3 text-sm text-gray-500">
@@ -90,11 +93,12 @@ function NotificationBlock({ title, message, date, time }: NotificationBlockProp
         )}
       </div>
 
-      {message && <p className="text-gray-700 text-sm leading-snug">{message}</p>}
+      {message && (
+        <p className="text-gray-700 text-sm leading-snug">{message}</p>
+      )}
     </div>
   );
 }
-
 
 /* ------------------------------- Page ---------------------------------- */
 export default function Background() {
@@ -146,23 +150,32 @@ export default function Background() {
 
   // เลือกเฉพาะ type = 'inform' และเรียงใหม่ล่าสุดอยู่บนสุด
   const informOnly = React.useMemo(() => {
-    return allNotis
-      .filter((n) => n.type === "inform")
-      // ไม่มี date/time จาก API: เรียงตาม id (desc) เป็น fallback
-      .sort((a, b) => Number(b.id) - Number(a.id));
+    return (
+      allNotis
+        .filter((n) => n.type === "inform")
+        // ไม่มี date/time จาก API: เรียงตาม id (desc) เป็น fallback
+        .sort((a, b) => Number(b.id) - Number(a.id))
+    );
   }, [allNotis]);
 
   return (
     <div className="relative min-h-screen w-full bg-[#C5DEDA] flex flex-col items-center overflow-y-auto">
       <HeaderNotification />
 
-      <main className="w-full max-w-2xl mx-auto p-4 space-y-4" aria-live="polite">
+      <main
+        className="w-full max-w-2xl mx-auto p-4 space-y-4"
+        aria-live="polite"
+      >
         {loading && (
-          <div className="text-center text-sm text-gray-600 py-6">กำลังโหลดการแจ้งเตือน…</div>
+          <div className="text-center text-sm text-gray-600 py-6">
+            กำลังโหลดการแจ้งเตือน…
+          </div>
         )}
 
         {error && (
-          <div className="text-center text-sm text-red-600 py-6">ผิดพลาด: {error}</div>
+          <div className="text-center text-sm text-red-600 py-6">
+            ผิดพลาด: {error}
+          </div>
         )}
 
         {!loading &&
