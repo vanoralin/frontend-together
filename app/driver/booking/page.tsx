@@ -9,6 +9,7 @@ import NavBar from "@/app/driver/components/navbar";
 import CalendarComponent from "@/app/components/Calendar";
 import { BackButton2 } from "@/app/components/BackButton2";
 import type { MapMarker } from "@/app/components/MapComponent2";
+import MapComponent from "@/app/components/MapComponent";
 import { format } from "date-fns";
 
 /* ========= Axios ========= */
