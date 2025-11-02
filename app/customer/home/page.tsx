@@ -85,24 +85,14 @@ export function TripTodayCard() {
 
                 const nowUTC = new Date();
 
-                // const upcomingTrips = myTrips.filter(t => {
-                //     let tripTime = new Date(t.scheduled_start_time).getTime();
-
-                //     // ถ้าเป็น booked + instant ให้บวก 30 นาที
-                //     if (t.status === "booked" && t.trip_type === "instant") {
-                //         tripTime += 30 * 60 * 1000;
-                //     }
-
-                //     return tripTime > nowUTC.getTime();
-                // }).sort((a, b) =>
-                //     new Date(a.scheduled_start_time).getTime() -
-                //     new Date(b.scheduled_start_time).getTime()
-                // );
-
-                // กรองเฉพาะทริปที่ยังไม่เกิดขึ้น
+                // ✅ กรองเฉพาะทริปที่ยังไม่ถึงเวลา + มีสถานะ available หรือ booked
                 const upcomingTrips = data.filter((t: any) => {
+                    const tripStatusOk = ["available", "booked"].includes(t.trip_status);
+                    if (!tripStatusOk) return false;
+
                     let tripTime = new Date(t.scheduled_start_time).getTime();
 
+                    // ถ้าเป็นทริปด่วน (instant) ให้บวกเวลาเพิ่ม 30 นาที
                     if (t.trip_type === "instant") {
                         tripTime += 30 * 60 * 1000;
                     }
@@ -127,6 +117,7 @@ export function TripTodayCard() {
         };
         fetchTodayTrip();
     }, []);
+
 
     if (!trip) {
         return (
