@@ -4,6 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
+
         destination: 'http://129.150.62.182:8888/:path*',
       },
       {
@@ -14,9 +15,16 @@ const nextConfig = {
       {
         source: '/auth/:path*',
         destination: 'http://129.150.62.182:8888/auth/:path*',
+
+      },
+      {
+        source: '/uploads/:path*', 
+        destination: 'http://129.150.62.182:8888/uploads/:path*', 
       },
     ]
   },
 }
 
+
 module.exports = nextConfig
+

@@ -256,4 +256,6 @@ function Goto_payment({ amountInput }: { amountInput: string }) {
   );
 }
 
+
 export default Background;
+

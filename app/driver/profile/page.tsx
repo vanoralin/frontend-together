@@ -4,9 +4,11 @@ import RoleBar from "@/app/components/user_components";
 import Link from "next/link";
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import axios from "axios";
 import Navbar from "../components/navbar";
 import { useBankAccount } from "@/lib/useBankAccount";
+
 
 // --- Types ---
 type Gender = "male" | "female";
@@ -68,6 +70,7 @@ async function postLogout() {
     data = { message: raw };
   }
   return data;
+
 }
 
 function Background() {
@@ -138,6 +141,7 @@ function Background() {
     <div className="relative min-h-screen w-full bg-[#C5D4E8] flex flex-col items-center overflow-y-scroll">
       <Header_profile />
 
+
       {/* Content state handling */}
       {loading && (
         <div className="h-[170px] w-[366px] bg-white/70 rounded-[30px] shadow-md mt-7 animate-pulse" />
@@ -166,6 +170,7 @@ function Background() {
       )}
 
       {/* Logout */}
+
       <Block_logout onClick={openLogout} />
 
       {isLogoutOpen && (
@@ -189,16 +194,19 @@ const genderIconMap: Record<Gender, string> = {
 function Header_profile() {
   return (
     <div className="flex flex-col items-center">
+
       <p className="text-[32px] font-bold text-shadow-lg mt-10.5">โปรไฟล์</p>
     </div>
   );
 }
+
 
 function Block_profileuser({
   profile_picture,
   name,
   userRole, // ← "driver" | "customer" | "admin" | "user"
   pageRole = "driver",
+
   gender = "male",
   email,
 }: HeaderProps) {
@@ -243,12 +251,14 @@ function Block_profileuser({
         <Link href="/driver/edit_profile">
           <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
         </Link>
+
       </div>
     </div>
   );
 }
 
 function Block_Driver_info() {
+
   const router = useRouter();
   const { hasLinked, loading } = useBankAccount();
 
@@ -264,6 +274,7 @@ function Block_Driver_info() {
         <div className="h-[82px] w-[366px] bg-white rounded-t-[20px] shadow-md mt-5 flex items-center justify-between px-4">
           <p className="text-xl">ข้อมูลคนขับ, ยานพาหนะ</p>
           <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
+
         </div>
       </Link>
 
@@ -318,6 +329,7 @@ function Block_listitem_profile({ coin }: ListItemProps) {
         <Link href="/driver/help">
           <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
         </Link>
+
       </div>
     </div>
   );
@@ -363,9 +375,7 @@ function Popup_logout({
         className="relative h-[164px] w-[366px] bg-white rounded-[30px] shadow-md p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-lg text-center mt-2">
-          แน่ใจไหมว่าต้องการออกจากระบบ?
-        </p>
+        <p className="text-lg text-center mt-2">แน่ใจไหมว่าต้องการออกจากระบบ?</p>
         <div className="flex justify-center space-x-6 mt-5">
           <button
             onClick={onCancel}

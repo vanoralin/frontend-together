@@ -17,16 +17,38 @@ interface HistoryItem {
   pax: number;
   date: string; // DD/MM/YYYY (เวลาไทย)
   startTime: string; // HH:MM (24-hr, เวลาไทย)
-  endTime: string;   // HH:MM (24-hr, เวลาไทย)
-  stops: string[];   // stops[0] = start, stops[last] = end
+  endTime: string; // HH:MM (24-hr, เวลาไทย)
+  stops: string[]; // stops[0] = start, stops[last] = end
   reviews?: Review[];
 }
 
 // ----- API response -----
-interface ApiLocation { name: string; lat: number; lng: number }
-interface ApiReservation { id: number; passenger_id: number; seats: number; status: string; amount: number }
-interface ApiDriver { id: number; name: string; email: string; profile_picture?: string }
-interface ApiDriverVehicle { driver_id: number; vehicle_type: string; model_vehicle: string; license_plate: string; seats: number; description?: string }
+interface ApiLocation {
+  name: string;
+  lat: number;
+  lng: number;
+}
+interface ApiReservation {
+  id: number;
+  passenger_id: number;
+  seats: number;
+  status: string;
+  amount: number;
+}
+interface ApiDriver {
+  id: number;
+  name: string;
+  email: string;
+  profile_picture?: string;
+}
+interface ApiDriverVehicle {
+  driver_id: number;
+  vehicle_type: string;
+  model_vehicle: string;
+  license_plate: string;
+  seats: number;
+  description?: string;
+}
 interface ApiTrip {
   trip_id: number;
   status: string;
@@ -41,10 +63,14 @@ interface ApiTrip {
   duration_sec: number; // duration in seconds
   scheduled_start_time: string; // ISO string (คาดว่าเป็น UTC มี Z)
 }
-interface ApiHistoryResponse { message: string; trips: ApiTrip[] }
+interface ApiHistoryResponse {
+  message: string;
+  trips: ApiTrip[];
+}
 
 /* ---------------- Utils ---------------- */
-const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
+const clamp = (v: number, min: number, max: number) =>
+  Math.min(Math.max(v, min), max);
 const SNAP_POINTS = [0.33, 0.66] as const;
 
 function timeToMinutes(t: string): number {
@@ -100,22 +126,29 @@ function mapTripToHistoryItem(t: ApiTrip): HistoryItem {
 
   // ปัดวินาที-มิลลิวินาทีให้เหลือนาที (ปัดลง)
   const startRounded = new Date(Math.floor(start.getTime() / 60000) * 60000);
-  const endRounded   = new Date(Math.floor(end.getTime() / 60000) * 60000);
+  const endRounded = new Date(Math.floor(end.getTime() / 60000) * 60000);
 
-  const pax = (t.reservations || []).reduce((acc, r) => acc + (r.seats || 0), 0);
+  const pax = (t.reservations || []).reduce(
+    (acc, r) => acc + (r.seats || 0),
+    0
+  );
   const stops = (t.path_locations || []).map((p) => p.name).filter(Boolean);
 
   // reviews -> HistoryItem.reviews
   const reviews: Review[] | undefined = Array.isArray(t.reviews)
-    ? t.reviews.map((rv, i) => ({ index: i + 1, rating: rv.score, comment: rv.comment }))
+    ? t.reviews.map((rv, i) => ({
+        index: i + 1,
+        rating: rv.score,
+        comment: rv.comment,
+      }))
     : undefined;
 
   return {
     fare: Number.isFinite(t.amount) ? Number(t.amount) : 0,
     pax,
-    date: formatDateDMYThai(startRounded),     // ✅ เวลาไทย
-    startTime: formatHHMMThai(startRounded),   // ✅ เวลาไทย
-    endTime: formatHHMMThai(endRounded),       // ✅ เวลาไทย
+    date: formatDateDMYThai(startRounded), // ✅ เวลาไทย
+    startTime: formatHHMMThai(startRounded), // ✅ เวลาไทย
+    endTime: formatHHMMThai(endRounded), // ✅ เวลาไทย
     stops: stops.length > 0 ? stops : ["-"],
     reviews,
   };
@@ -132,7 +165,11 @@ function resolveToken(): string | null {
     const value = rest.join("=");
     if (!name) continue;
     if (name === "AuthToken") {
-      try { return decodeURIComponent(value); } catch { return value; }
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
     }
   }
   return null;
@@ -157,7 +194,9 @@ function Background() {
     if (open) {
       const prev = document.body.style.overflow;
       document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = prev; };
+      return () => {
+        document.body.style.overflow = prev;
+      };
     }
   }, [open]);
 
@@ -194,10 +233,15 @@ function Background() {
       }
     }
     fetchHistory();
-    return () => { aborted = true; };
+    return () => {
+      aborted = true;
+    };
   }, []);
 
-  const openPopup = (item: HistoryItem) => { setSelected(item); setOpen(true); };
+  const openPopup = (item: HistoryItem) => {
+    setSelected(item);
+    setOpen(true);
+  };
   const closePopup = () => setOpen(false);
 
   return (
@@ -208,7 +252,10 @@ function Background() {
       {loading && (
         <div className="w-[366px] animate-pulse">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-[141px] w-[366px] bg-white/70 rounded-[30px] shadow-sm mt-5" />
+            <div
+              key={i}
+              className="h-[141px] w-[366px] bg-white/70 rounded-[30px] shadow-sm mt-5"
+            />
           ))}
         </div>
       )}
@@ -226,9 +273,15 @@ function Background() {
         </div>
       )}
 
-      {!loading && !error && items.map((item, idx) => (
-        <Block_history key={idx} item={item} onClick={() => openPopup(item)} />
-      ))}
+      {!loading &&
+        !error &&
+        items.map((item, idx) => (
+          <Block_history
+            key={idx}
+            item={item}
+            onClick={() => openPopup(item)}
+          />
+        ))}
 
       {open && selected && (
         <PopupOverlay onClose={closePopup}>
@@ -245,37 +298,55 @@ function Header_history({ onClose }: { onClose?: () => void }) {
   const clickable = Boolean(onClose);
   return (
     <div
-      className={`flex flex-col items-center h-16 justify-center w-full relative z-[10000] ${clickable ? "cursor-pointer" : ""}`}
+      className={`flex flex-col items-center h-16 justify-center w-full relative z-[10000] ${
+        clickable ? "cursor-pointer" : ""
+      }`}
       onClick={onClose}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
-      onKeyDown={(e) => { if (clickable && (e.key === "Enter" || e.key === " ")) onClose?.(); }}
+      onKeyDown={(e) => {
+        if (clickable && (e.key === "Enter" || e.key === " ")) onClose?.();
+      }}
       aria-label={clickable ? "ปิดหน้าต่าง" : undefined}
     >
       <BackButton />
-      <h1 className="text-[32px] font-bold text-shadow-lg mt-18">ประวัติการเดินทาง</h1>
+      <h1 className="text-[32px] font-bold text-shadow-lg mt-18">
+        ประวัติการเดินทาง
+      </h1>
     </div>
   );
 }
 
 /** การ์ดพื้นฐานใน list */
-function HistoryCard({ item, onClick }: { item: HistoryItem; onClick?: () => void; }) {
+function HistoryCard({
+  item,
+  onClick,
+}: {
+  item: HistoryItem;
+  onClick?: () => void;
+}) {
   const start = item.stops[0];
-  const end   = item.stops[item.stops.length - 1];
+  const end = item.stops[item.stops.length - 1];
 
   const Wrapper: any = onClick ? "button" : "div";
   return (
     <Wrapper
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`${onClick ? "block text-left focus:outline-none cursor-pointer" : ""}`}
+      className={`${
+        onClick ? "block text-left focus:outline-none cursor-pointer" : ""
+      }`}
       aria-label={onClick ? "ดูรายละเอียดการเดินทาง" : undefined}
     >
       <div className="h-[141px] w-[366px] bg-white rounded-[30px] shadow-md mt-5 p-3">
         <div className="flex mt-1 mb-1">
           {/* คอลัมน์ไอคอน + เส้นเชื่อม */}
           <div className="relative flex flex-col items-center">
-            <img src="/icon_pin.svg" alt="start" className="h-[25px] w-[25px] mt-1" />
+            <img
+              src="/icon_pin.svg"
+              alt="start"
+              className="h-[25px] w-[25px] mt-1"
+            />
             <div className="h-6 w-px bg-gray-500" />
             <img src="/icon_pin.svg" alt="end" className="h-[25px] w-[25px]" />
           </div>
@@ -308,36 +379,51 @@ function HistoryCard({ item, onClick }: { item: HistoryItem; onClick?: () => voi
         {/* วันที่ + เวลา */}
         <div className="flex mt-2 mb-1 items-center">
           <img src="/calendar.svg" className="h-5 w-5 ml-1" alt="calendar" />
-          <p className="ml-2 text-sm text-gray-500">
-            {item.date}
-          </p>
+          <p className="ml-2 text-sm text-gray-500">{item.date}</p>
         </div>
       </div>
     </Wrapper>
   );
 }
 
-function Block_history({ item, onClick }: { item: HistoryItem; onClick?: () => void; }) {
+function Block_history({
+  item,
+  onClick,
+}: {
+  item: HistoryItem;
+  onClick?: () => void;
+}) {
   return <HistoryCard item={item} onClick={onClick} />;
 }
 
 /* ---------------- Bottom Sheet Overlay ---------------- */
-function PopupOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode; }) {
+function PopupOverlay({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   const [snapIndex, setSnapIndex] = useState(0);
   const [heightRatio, setHeightRatio] = useState<number>(SNAP_POINTS[0]);
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
   const startRatioRef = useRef<number>(SNAP_POINTS[0]);
 
-
-  useEffect(() => { setHeightRatio(SNAP_POINTS[snapIndex]); }, [snapIndex]);
+  useEffect(() => {
+    setHeightRatio(SNAP_POINTS[snapIndex]);
+  }, [snapIndex]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const onDragStart = (clientY: number) => { draggingRef.current = true; startYRef.current = clientY; startRatioRef.current = heightRatio; };
+  const onDragStart = (clientY: number) => {
+    draggingRef.current = true;
+    startYRef.current = clientY;
+    startRatioRef.current = heightRatio;
+  };
   const onDragMoveCommon = (clientY: number) => {
     if (!draggingRef.current) return;
     const vh = window.innerHeight || 1;
@@ -349,25 +435,48 @@ function PopupOverlay({ onClose, children }: { onClose: () => void; children: Re
   const onDragEnd = () => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
-    let best = 0; let bestDist = Infinity;
-    SNAP_POINTS.forEach((p, i) => { const d = Math.abs(p - heightRatio); if (d < bestDist) { bestDist = d; best = i; } });
+    let best = 0;
+    let bestDist = Infinity;
+    SNAP_POINTS.forEach((p, i) => {
+      const d = Math.abs(p - heightRatio);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    });
     setSnapIndex(best);
   };
 
   const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault(); onDragStart(e.clientY);
+    e.preventDefault();
+    onDragStart(e.clientY);
     const onMove = (ev: MouseEvent) => onDragMoveCommon(ev.clientY);
-    const onUp = () => { onDragEnd(); window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    const onUp = () => {
+      onDragEnd();
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
-  const onTouchStart = (e: React.TouchEvent) => onDragStart(e.touches[0].clientY);
-  const onTouchMove = (e: React.TouchEvent) => onDragMoveCommon(e.touches[0].clientY);
+  const onTouchStart = (e: React.TouchEvent) =>
+    onDragStart(e.touches[0].clientY);
+  const onTouchMove = (e: React.TouchEvent) =>
+    onDragMoveCommon(e.touches[0].clientY);
   const onTouchEnd = () => onDragEnd();
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end justify-center" role="dialog" aria-modal="true">
-      <button aria-label="ปิดหน้าต่าง" onClick={onClose} className="absolute inset-0 bg-[#C5DEDA]/20" tabIndex={-1} />
+    <div
+      className="fixed inset-0 z-[9999] flex items-end justify-center"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        aria-label="ปิดหน้าต่าง"
+        onClick={onClose}
+        className="absolute inset-0 bg-[#C5DEDA]/20"
+        tabIndex={-1}
+      />
       <div
         className="relative z-10 w-full max-w-[390px] mx-auto rounded-t-[30px] bg-[#EFEFEF] shadow-xl border-t border-[#D9D9D9] transition-[height] duration-200 ease-out overflow-hidden bottom-0"
         style={{ height: `min(calc(${heightRatio * 100}vh), 700px)` }}
@@ -496,7 +605,7 @@ function FeedbackCard({ item }: { item: HistoryItem }) {
 }
 
 /** ---------- Popup Detail ---------- */
-function Popup_detail({ item }: { item: HistoryItem; onClose?: () => void; }) {
+function Popup_detail({ item }: { item: HistoryItem; onClose?: () => void }) {
   return (
     <div className="w-full bg-transparent flex flex-col items-center relative">
       <HistoryCard item={item} />
@@ -520,7 +629,15 @@ function Popup_detail({ item }: { item: HistoryItem; onClose?: () => void; }) {
 }
 
 /** ---- ดาวรูปภาพแบบแสดงผล ---- */
-function StarRatingDisplay({ value, outOf = 5, size = 18 }: { value: number; outOf?: number; size?: number; }) {
+function StarRatingDisplay({
+  value,
+  outOf = 5,
+  size = 18,
+}: {
+  value: number;
+  outOf?: number;
+  size?: number;
+}) {
   const clamped = Math.max(0, Math.min(outOf, value));
   const filled = Math.floor(clamped);
   const empty = outOf - filled;
