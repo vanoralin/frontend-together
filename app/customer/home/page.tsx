@@ -83,12 +83,31 @@ export function TripTodayCard() {
                 const res = await axios.get("/api/reservations/history");
                 const data = Array.isArray(res.data) ? res.data : [];
 
-                const now = new Date();
+                const nowUTC = new Date();
+
+                // const upcomingTrips = myTrips.filter(t => {
+                //     let tripTime = new Date(t.scheduled_start_time).getTime();
+
+                //     // ถ้าเป็น booked + instant ให้บวก 30 นาที
+                //     if (t.status === "booked" && t.trip_type === "instant") {
+                //         tripTime += 30 * 60 * 1000;
+                //     }
+
+                //     return tripTime > nowUTC.getTime();
+                // }).sort((a, b) =>
+                //     new Date(a.scheduled_start_time).getTime() -
+                //     new Date(b.scheduled_start_time).getTime()
+                // );
 
                 // กรองเฉพาะทริปที่ยังไม่เกิดขึ้น
                 const upcomingTrips = data.filter((t: any) => {
-                    const tripTime = new Date(t.scheduled_start_time);
-                    return tripTime > now;
+                    let tripTime = new Date(t.scheduled_start_time).getTime();
+
+                    if (t.trip_type === "instant") {
+                        tripTime += 30 * 60 * 1000;
+                    }
+
+                    return tripTime > nowUTC.getTime();
                 });
 
                 // เรียงตามเวลาใกล้ที่สุด
