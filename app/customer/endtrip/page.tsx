@@ -207,7 +207,6 @@ function ReviewDriver() {
   );
 }
 
-/* 🚩 รายงานทริป */
 function ReportTrip() {
   const [showInput, setShowInput] = useState(false);
 
@@ -234,7 +233,7 @@ function ReportTrip() {
   );
 }
 
-/* 🎉 Success Popup (ไม่ใช่ alert) */
+
 function SuccessPopup({
   open,
   title = "บันทึกเสร็จแล้ว",
@@ -261,7 +260,7 @@ function SuccessPopup({
   );
 }
 
-/* 🔐 Helper: เอา AuthToken จาก localStorage/cookie */
+
 function getAuthToken(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const ls =
@@ -275,7 +274,7 @@ function getAuthToken(): string | undefined {
   return undefined;
 }
 
-/* 💾 ปุ่มบันทึก: POST ทั้ง 2 API + แสดง popup แล้วพาไป /customer/home */
+
 function FinishTrip({
   tripId,
   onDone,
@@ -288,7 +287,7 @@ function FinishTrip({
   const [errorPopup, setErrorPopup] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    // นับรูปดาวที่ถูกเลือก (filled)
+    
     const stars = Array.from(
       document.querySelectorAll<HTMLImageElement>('img[alt="star"]')
     );
@@ -369,7 +368,7 @@ function FinishTrip({
 
       {/* success popup */}
       <SuccessPopup open={open} onClose={() => { setOpen(false); onDone(); }} />
-        
+
       {/* error popup */}
       <SuccessPopup
         open={!!errorPopup}
