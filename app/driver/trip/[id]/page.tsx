@@ -6,6 +6,7 @@ import { BackButton, Header, Popup } from '@/app/components/share_component';
 import React from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { X, Check } from "lucide-react";
 
 interface Reservation {
     id: number;
@@ -78,7 +79,7 @@ export default function ViewTripPage({ params }: PageProps) {
     const handleConfirm = async (reservationId: number) => {
         setConfirming(reservationId);
         try {
-            await axios.post(`/api/trips/reservations/${reservationId}/confirm`, { action: "confirm" });
+            await axios.post(`/api/trips/reservations/${reservationId}/confirm`, { action: "confirm" }, { withCredentials: true });
             await fetchTrip();
         } catch (err) {
             console.error('Error confirming reservation:', err);
@@ -86,6 +87,19 @@ export default function ViewTripPage({ params }: PageProps) {
             setConfirming(null);
         }
     };
+
+    const handleConfirmAction = async (reservationId: number, action: "confirm" | "reject") => {
+        setConfirming(reservationId);
+        try {
+            await axios.post(`/api/trips/reservations/${reservationId}/confirm`, { action });
+            await fetchTrip();
+        } catch (err) {
+            console.error(`Error processing ${action} reservation:`, err);
+        } finally {
+            setConfirming(null);
+        }
+    };
+
 
     const [processing, setProcessing] = useState<string | null>(null);
 
@@ -270,7 +284,7 @@ export default function ViewTripPage({ params }: PageProps) {
             {/* Pending */}
             {pendingReservations.length > 0 && (
                 <div className="mt-4 bg-white p-4 rounded-xl shadow-md">
-                    <h2 className="font-semibold mb-2">รอการยืนยันจากคนขับ</h2>
+                    <h2 className="font-semibold mb-2">รอการยืนยัน</h2>
                     <ul className="space-y-2">
                         {pendingReservations.map(r => (
                             <li key={r.id} className="border p-2 rounded-xl flex justify-between items-center">
@@ -281,13 +295,25 @@ export default function ViewTripPage({ params }: PageProps) {
 
 
                                 </div>
-                                <button
-                                    onClick={() => handleConfirm(r.id)}
-                                    disabled={confirming === r.id}
-                                    className="px-3 py-1 bg-theme-second-orange border-theme-orange border-2 text-theme-black rounded-full"
-                                >
-                                    {confirming === r.id ? 'กำลังยืนยัน...' : 'ยืนยัน'}
-                                </button>
+
+                                <div className="flex justify-center gap-4 mt-4">
+                                    {/* ปุ่มกากบาท */}
+                                    <button
+                                        onClick={() => handleConfirmAction(r.id, "reject")}
+                                        className="flex items-center justify-center w-10 h-10 rounded-full border-red-500 border-2 bg-white text-red-500 hover:bg-red-600 transition"
+                                    >
+                                        <X size={20} />
+                                    </button>
+
+                                    {/* ปุ่มตกลง */}
+                                    <button
+                                        onClick={() => handleConfirmAction(r.id, "confirm")}
+                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-green-500 text-white hover:bg-green-600 transition"
+                                    >
+                                        <Check size={20} />
+                                    </button>
+                                </div>
+
                             </li>
                         ))}
                     </ul>

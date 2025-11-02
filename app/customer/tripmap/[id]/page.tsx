@@ -26,13 +26,13 @@ interface TripDetail {
 
 export default function TripMapPage() {
     const pathname = usePathname();
+    const router = useRouter();
     const idFromPath = pathname?.split("/").pop();
     const tripId = Number(idFromPath);
 
     const [trip, setTrip] = useState<TripDetail | null>(null);
-    const [boardingDone, setBoardingDone] = useState(false); // track if passenger boarded
+    const [boardingDone, setBoardingDone] = useState(false);
     const [loading, setLoading] = useState(false);
-    const router = useRouter();
 
     useEffect(() => {
         const fetchTrip = async () => {
@@ -87,8 +87,9 @@ export default function TripMapPage() {
                 await axios.post(`/api/trips/confirm/${trip.trip_id}/passenger`, {
                     current_location_id: trip.dropoff_location.id
                 });
-                // redirect หลังจากถึงที่หมาย
-                router.push("/driver/home"); // เปลี่ยนเป็นหน้า overview หรือหน้าที่ต้องการ
+
+                // redirect ไปหน้า endtrip พร้อมส่ง trip_id
+                router.push(`/customer/endtrip?id=${trip.trip_id}`);
             }
         } catch (err) {
             console.error("Error:", err);
@@ -107,7 +108,7 @@ export default function TripMapPage() {
     return (
         <div className="relative w-full h-screen bg-theme-customer">
             <BackButton />
-           
+
             {trip && (
                 <div className="absolute top-0 left-0 right-0 bottom-32">
                     <TripMap

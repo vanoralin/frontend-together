@@ -4,66 +4,135 @@ import axios from "axios";
 import { CardTrip } from "@/app/components/trip_components";
 import { BackButton, Header } from "@/app/components/share_component";
 
+interface UserProfile {
+    id: number;
+    name: string;
+    email: string;
+    balance: number;
+    role: string;
+}
+
+interface Location {
+    id: number;
+    name: string;
+    lat: number;
+    lng: number;
+}
+
 interface Reservation {
     seats: number;
-    status: string; // เช่น "pending_driver_confirmation", "confirmed" ฯลฯ
+    status: string;
 }
 
 interface TripData {
     id: number;
     driver: { id: number; name: string };
-    path: { id: number; name: string; locations: { id: number; name: string }[] };
-    driver_vehicle?: { vehicle_type: string; model_vehicle?: string; license_plate?: string };
+    path: {
+        id: number;
+        name: string;
+        locations: Location[];
+    };
+    driver_vehicle?: {
+        vehicle_type: string;
+        model_vehicle?: string;
+        license_plate?: string;
+    };
     amount: number;
     status: string;
     capacity?: number;
     scheduled_start_time: string;
     reservations?: Reservation[];
+    trip_type: string;
 }
 
 export default function Page() {
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [myTripIds, setMyTripIds] = useState<number[]>([]);
     const [trips, setTrips] = useState<TripData[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState<"pending" | "confirmed">("pending");
 
     useEffect(() => {
-        const fetchTrips = async () => {
-            setLoading(true);
+        const fetchProfile = async () => {
             try {
-                const statuses: TripData["status"][] = ["available", "booked"];
-                const requests = statuses.map(status =>
-                    axios.get<TripData[]>("/api/trips/view/status", { params: { status } })
+                const res = await axios.get<UserProfile>("/api/User/profile");
+                setUser(res.data);
+                return res.data;
+            } catch (err) {
+                console.error("Error fetching user profile:", err);
+                return null;
+            }
+        };
+
+        const fetchMyTripIds = async (userId: number) => {
+            try {
+                const statuses = ["available", "booked"];
+                const allTrips: TripData[] = [];
+
+                // ดึงทริปแต่ละสถานะ
+                for (const s of statuses) {
+                    const res = await axios.get<TripData[]>("/api/trips/view/status", {
+                        params: { status: s }
+                    });
+                    if (res.data) allTrips.push(...res.data);
+                }
+
+                // กรองเฉพาะทริปที่ user คนนี้เป็น driver
+                const myTrips = allTrips.filter(t => t.driver.id === userId);
+                console.log("My trips as driver:", myTrips);
+
+                // เก็บ trip IDs
+                const tripIds = myTrips.map(t => t.id);
+                setMyTripIds(tripIds);
+
+                return tripIds;
+            } catch (err) {
+                console.error("Error fetching trip IDs:", err);
+                return [];
+            }
+        };
+
+        const fetchTripDetails = async (tripIds: number[]) => {
+            try {
+                // ดึงข้อมูลทริปแต่ละ ID
+                const tripDetailPromises = tripIds.map(id =>
+                    axios.get<TripData>(`/api/trips/view/${id}`)
                 );
 
-                const results = await Promise.all(requests);
-                const combinedTrips = results.flatMap(res => res.data); // รวม array
-                setTrips(combinedTrips);
+                const results = await Promise.all(tripDetailPromises);
+                const tripDetails = results.map(res => res.data);
+
+                console.log("Trip details:", tripDetails);
+                setTrips(tripDetails);
             } catch (err) {
-                console.error("Error fetching trips:", err);
+                console.error("Error fetching trip details:", err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchTrips();
+        const init = async () => {
+            setLoading(true);
+            const userData = await fetchProfile();
+            if (userData) {
+                const tripIds = await fetchMyTripIds(userData.id);
+                if (tripIds.length > 0) {
+                    await fetchTripDetails(tripIds);
+                } else {
+                    setLoading(false);
+                }
+            } else {
+                setLoading(false);
+            }
+        };
+
+        init();
     }, []);
 
     const filteredTrips = trips.filter(trip => {
         const hasPending = trip.reservations?.some(r => r.status === "pending_driver_confirmation");
         return filterType === "pending" ? hasPending : !hasPending;
     });
-
-    const formatDate = (iso: string) => {
-        const d = new Date(iso);
-        return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-    };
-
-    const formatTime = (iso: string) => {
-        const d = new Date(iso);
-        return d.toLocaleTimeString("th-TH", { hour12: false, hour: "2-digit", minute: "2-digit" });
-    };
-
-
 
     return (
         <main className="min-h-screen bg-theme-driver">
@@ -97,7 +166,7 @@ export default function Page() {
                             key={trip.id}
                             datetime={trip.scheduled_start_time}
                             pickup={trip.path.locations[0]?.name || "-"}
-                            dropoff={trip.path.locations[1]?.name || "-"}
+                            dropoff={trip.path.locations[trip.path.locations.length - 1]?.name || "-"}
                             vehicle={trip.driver_vehicle?.vehicle_type || "-"}
                             model_vehicle={trip.driver_vehicle?.model_vehicle || "-"}
                             license_plate={trip.driver_vehicle?.license_plate || "-"}
