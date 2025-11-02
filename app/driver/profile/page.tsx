@@ -311,10 +311,10 @@ function Block_listitem_profile({ coin }: ListItemProps) {
           <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
         </div>
       </Link>
-      <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center justify-between px-4">
+      {/* <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center justify-between px-4">
         <p className="text-xl">ทริปขาประจำ</p>
         <img src="/vector_next.svg" alt="next" className="h-5 w-5" />
-      </div>
+      </div> */}
       <Link href="/driver/history_page">
         <div className="h-[82px] w-[366px] bg-white shadow-md mt-1 flex items-center justify-between px-4">
           <p className="text-xl">ประวัติการเดินทาง</p>
