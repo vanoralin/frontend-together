@@ -369,7 +369,7 @@ function FinishTrip({
 
       {/* success popup */}
       <SuccessPopup open={open} onClose={() => { setOpen(false); onDone(); }} />
-
+        
       {/* error popup */}
       <SuccessPopup
         open={!!errorPopup}
