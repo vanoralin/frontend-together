@@ -39,7 +39,9 @@ function isoToDateTimeThai(iso?: string): { date?: string; time?: string } {
   const dt = new Date(iso);
   if (isNaN(dt.getTime())) return {};
   return {
-    date: `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`,
+    date: `${pad2(dt.getDate())}/${pad2(
+      dt.getMonth() + 1
+    )}/${dt.getFullYear()}`,
     time: `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`,
   };
 }
@@ -89,11 +91,15 @@ function extractTripsArray(raw: any): any[] {
 }
 
 /** สร้าง map: reservation_id -> trip.id จาก trips(view) ที่มี reservations ภายใน */
-function buildReservationToTripMapFromTrips(trips: any[]): Record<number, number> {
+function buildReservationToTripMapFromTrips(
+  trips: any[]
+): Record<number, number> {
   const map: Record<number, number> = {};
   for (const t of trips) {
     const tripId = Number(t?.id);
-    const reservations: any[] = Array.isArray(t?.reservations) ? t.reservations : [];
+    const reservations: any[] = Array.isArray(t?.reservations)
+      ? t.reservations
+      : [];
     if (!Number.isNaN(tripId)) {
       for (const r of reservations) {
         const rid = Number(r?.id);
@@ -107,7 +113,7 @@ function buildReservationToTripMapFromTrips(trips: any[]): Record<number, number
 }
 
 /* ===================== API URL helpers ===================== */
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";   // ex: http://localhost:3000
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ""; // ex: http://localhost:3000
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ""; // ex: /customer
 const NOTI_URL = API_BASE
   ? `${API_BASE}${BASE_PATH}/api/notifications/my`
@@ -175,7 +181,9 @@ export default function Background() {
   const [errorList, setErrorList] = useState<string | null>(null);
 
   const [trips, setTrips] = useState<any[]>([]);
-  const [tripByReservation, setTripByReservation] = useState<Record<number, number>>({});
+  const [tripByReservation, setTripByReservation] = useState<
+    Record<number, number>
+  >({});
   const [readSet, setReadSet] = useState<Set<string>>(new Set());
 
   // โหลด notifications
@@ -193,7 +201,8 @@ export default function Background() {
         });
         if (!res.ok) throw new Error(`โหลดข้อมูลไม่สำเร็จ (${res.status})`);
         const raw = await res.json();
-        if (!Array.isArray(raw)) throw new Error("รูปแบบข้อมูลจาก API ไม่ใช่ array");
+        if (!Array.isArray(raw))
+          throw new Error("รูปแบบข้อมูลจาก API ไม่ใช่ array");
 
         const normalized = (raw as ApiNotification[])
           .filter((n) => n.type === "inform" || n.type === "confirmation")
@@ -218,8 +227,14 @@ export default function Background() {
     (async () => {
       try {
         const token = getAuthToken();
-        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(TRIPS_URL, { method: "GET", headers, cache: "no-store" });
+        const headers: HeadersInit = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
+        const res = await fetch(TRIPS_URL, {
+          method: "GET",
+          headers,
+          cache: "no-store",
+        });
         const raw = await res.json().catch(() => null);
         if (DEBUG) console.log("wxmujmibx: raw trips/view =", raw);
 
@@ -248,7 +263,8 @@ export default function Background() {
     const rid = n.reservation_id;
     if (!rid) {
       alert("ไม่พบ reservation_id ของรายการนี้");
-      if (DEBUG) console.warn("wxmujmibx: no reservation_id in notification", n);
+      if (DEBUG)
+        console.warn("wxmujmibx: no reservation_id in notification", n);
       return;
     }
 
@@ -271,7 +287,13 @@ export default function Background() {
       if (foundTrip?.id != null && !Number.isNaN(Number(foundTrip.id))) {
         tripId = Number(foundTrip.id);
       }
-      if (DEBUG) console.log("wxmujmibx: find in trips state ->", foundTrip, "tripId:", tripId);
+      if (DEBUG)
+        console.log(
+          "wxmujmibx: find in trips state ->",
+          foundTrip,
+          "tripId:",
+          tripId
+        );
     }
 
     // ถ้ายังไม่เจออีก แสดงผลและจบ
@@ -307,15 +329,21 @@ export default function Background() {
       <Header_notification />
       <div className="w-full max-w-md mx-auto p-4 pb-24 space-y-3">
         {loadingList && (
-          <div className="text-center text-sm text-gray-600 py-6">กำลังโหลดการแจ้งเตือน…</div>
+          <div className="text-center text-sm text-gray-600 py-6">
+            กำลังโหลดการแจ้งเตือน…
+          </div>
         )}
 
         {errorList && (
-          <div className="text-center text-sm text-red-600 py-6">ผิดพลาด: {errorList}</div>
+          <div className="text-center text-sm text-red-600 py-6">
+            ผิดพลาด: {errorList}
+          </div>
         )}
 
         {!loadingList && !errorList && notifications.length === 0 && (
-          <div className="text-center text-sm text-gray-600 py-6">ยังไม่มีการแจ้งเตือน</div>
+          <div className="text-center text-sm text-gray-600 py-6">
+            ยังไม่มีการแจ้งเตือน
+          </div>
         )}
 
         {!loadingList &&
