@@ -17,6 +17,7 @@ function Background() {
       : search?.get("id");
 
   const [trip, setTrip] = useState<any>(null);
+  const [rating, setRating] = useState<number>(0); // ⭐ เก็บค่าดาวที่นี่ (0 = ไม่กดดาว)
 
   useEffect(() => {
     if (!tripId) return;
@@ -33,11 +34,14 @@ function Background() {
         <>
           <InfoTrip trip={trip} />
           <InfoDriver trip={trip} />
-          {/* ✅ ส่วนใหม่ */}
-          <RatingStar />
+          <RatingStar value={rating} onChange={setRating} />
           <ReviewDriver />
           <ReportTrip />
-          <FinishTrip tripId={trip?.id} onDone={() => router.push("/customer/home")} />
+          <FinishTrip
+            tripId={trip?.id}
+            rating={rating}
+            onDone={() => router.push("/customer/home")}
+          />
         </>
       )}
     </div>
@@ -86,12 +90,6 @@ function InfoTrip({ trip }: { trip: any }) {
             alt="icon"
             className="h-[25px] w-[25px] object-cover mt-1"
           />
-          <div className="h-7 border-l-2"></div>
-          <img
-            src="/icon_pin.svg"
-            alt="icon"
-            className="h-[25px] w-[25px] object-cover"
-          />
         </div>
 
         <div className="ml-5 flex flex-col justify-between">
@@ -134,53 +132,57 @@ function InfoDriver({ trip }: { trip: any }) {
   const driverName = driver?.name || "-";
 
   return (
-<div className="mt-6">
-  <div className="flex flex-row">
-    <p className="text-xl ml-6.5">ข้อมูลคนขับ</p>
-  </div>
+    <div className="mt-6">
+      <div className="flex flex-row">
+        <p className="text-xl ml-6.5">ข้อมูลคนขับ</p>
+      </div>
 
-  <div className="flex flex-row items-start mt-3 m-5 bg-white border-2 border-gray-400 p-2 rounded-2xl h-auto shadow-md">
-    <div>
-      {/* รถ + ป้ายทะเบียน */}
-      <div className="flex">
-        <p className="text-lg w-[110px] text-right">
-          {vehicleType ? `${vehicleType} :` : "รถยนต์ :"}
-        </p>
+      <div className="flex flex-row items-start mt-3 m-5 bg-white border-2 border-gray-400 p-2 rounded-2xl h-auto shadow-md">
         <div>
-          <p className="text-lg ml-2">{model}</p>
-          <p className="text-lg ml-2">{plate}</p>
+          {/* รถ + ป้ายทะเบียน */}
+          <div className="flex">
+            <p className="text-lg w-[110px] text-right">
+              {vehicleType ? `${vehicleType} :` : "รถยนต์ :"}
+            </p>
+            <div>
+              <p className="text-lg ml-2">{model}</p>
+              <p className="text-lg ml-2">{plate}</p>
+            </div>
+          </div>
+
+          {/* คนขับ */}
+          <div className="flex mt-1">
+            <p className="text-lg w-[110px] text-right">คนขับ :</p>
+            <p className="text-lg text-orange-800 ml-2">{driverName}</p>
+          </div>
         </div>
       </div>
-
-      {/* คนขับ */}
-      <div className="flex mt-1">
-        <p className="text-lg w-[110px] text-right">คนขับ :</p>
-        <p className="text-lg text-orange-800 ml-2">{driverName}</p>
-      </div>
     </div>
-  </div>
-</div>
-
   );
 }
 
-/* ⭐️ ให้คะแนน */
-function RatingStar() {
-  const [rating, setRating] = useState(0);
-
+/* ⭐️ ให้คะแนน (ไม่บังคับ) */
+function RatingStar({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+}) {
   const handleClick = (star: number) => {
-    if (rating === star) setRating(0);
-    else setRating(star);
+    onChange(value === star ? 0 : star); // คลิกซ้ำ = เอาดาวออก (กลับเป็น 0)
   };
 
   return (
     <div>
-      <p className="text-xl font-medium text-center">ให้คะแนนคนขับ</p>
+      <p className="text-xl font-medium text-center">
+        ให้คะแนนคนขับ
+      </p>
       <div className="flex flex-row justify-center mt-2">
         {[1, 2, 3, 4, 5].map((star) => (
           <img
             key={star}
-            src={star <= rating ? "/star_filled.svg" : "/star.svg"}
+            src={star <= value ? "/star_filled.svg" : "/star.svg"}
             alt="star"
             className="h-[40px] w-[40px] mx-1 cursor-pointer"
             onClick={() => handleClick(star)}
@@ -233,7 +235,6 @@ function ReportTrip() {
   );
 }
 
-
 function SuccessPopup({
   open,
   title = "บันทึกเสร็จแล้ว",
@@ -260,7 +261,6 @@ function SuccessPopup({
   );
 }
 
-
 function getAuthToken(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const ls =
@@ -274,12 +274,13 @@ function getAuthToken(): string | undefined {
   return undefined;
 }
 
-
 function FinishTrip({
   tripId,
+  rating, // 0 = ไม่ให้ดาว
   onDone,
 }: {
   tripId?: number | string;
+  rating: number;
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -287,12 +288,6 @@ function FinishTrip({
   const [errorPopup, setErrorPopup] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    
-    const stars = Array.from(
-      document.querySelectorAll<HTMLImageElement>('img[alt="star"]')
-    );
-    const rating = stars.filter((s) => s.src.includes("star_filled.svg")).length;
-
     const review =
       (document.getElementById("review-textarea") as HTMLTextAreaElement | null)
         ?.value || "";
@@ -307,18 +302,28 @@ function FinishTrip({
 
     setBusy(true);
     try {
-      // 1) ส่งเรตติ้ง/รีวิว
+      // ✅ ส่งเรตติ้ง/รีวิว "เสมอ" โดยบังคับให้มี score (0 ถ้าไม่กดดาว)
+      const payload: { comment: string; score: number } = {
+        comment: review ?? "",
+        score: Number.isFinite(rating) ? rating : 0,
+      };
+
       const ratingRes = await fetch(`/api/trips/${tripId}/rating`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          comment: review,
-          score: rating, // แปลงดาวเป็นตัวเลข
-        }),
+        body: JSON.stringify(payload),
       });
-      if (!ratingRes.ok) throw new Error(`Rating HTTP ${ratingRes.status}`);
 
-      // 2) ถ้ามีรายงาน → ส่ง /api/report พร้อม AuthToken
+      if (!ratingRes.ok) {
+        let serverMsg = `Rating HTTP ${ratingRes.status}`;
+        try {
+          const t = await ratingRes.text();
+          if (t) serverMsg += `: ${t}`;
+        } catch {}
+        throw new Error(serverMsg);
+      }
+
+      // ถ้ามีรายงาน → ส่ง /api/report พร้อม AuthToken
       if (report.trim().length > 0) {
         const token = getAuthToken();
         if (!token) {
@@ -335,7 +340,14 @@ function FinishTrip({
             trip_id: Number(tripId),
           }),
         });
-        if (!reportRes.ok) throw new Error(`Report HTTP ${reportRes.status}`);
+        if (!reportRes.ok) {
+          let serverMsg = `Report HTTP ${reportRes.status}`;
+          try {
+            const t = await reportRes.text();
+            if (t) serverMsg += `: ${t}`;
+          } catch {}
+          throw new Error(serverMsg);
+        }
       }
 
       // สำเร็จ → แสดง popup แล้วกลับหน้า /customer/home
@@ -367,7 +379,13 @@ function FinishTrip({
       </div>
 
       {/* success popup */}
-      <SuccessPopup open={open} onClose={() => { setOpen(false); onDone(); }} />
+      <SuccessPopup
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          onDone();
+        }}
+      />
 
       {/* error popup */}
       <SuccessPopup
