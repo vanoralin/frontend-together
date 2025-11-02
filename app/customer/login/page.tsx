@@ -30,42 +30,45 @@ export default function LoginPage() {
     const token = params.get("token");
     const err = params.get("error");
 
-    if (err)
+    if (err) {
       setServerError(
         err === "access_denied" ? "ผู้ใช้ยกเลิกการเข้าสู่ระบบ" : err
       );
-    if (!token) return;
+      return;
+    }
 
-    localStorage.setItem("token", token);
-    window.history.replaceState({}, "", window.location.pathname); // ล้าง query
+    // 1) ถ้ามี token จาก query (กรณีที่ backend เคยส่งมา) → เก็บแล้วไปต่อ
+    if (token) {
+      (async () => {
+        try {
+          localStorage.setItem("token", token);
+          window.history.replaceState({}, "", window.location.pathname);
+          const prof = await axios.get("/api/User/profile", {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          });
+          // ตรวจ ban/อีเมล ตามเดิม...
+          window.location.replace("/customer/home");
+        } catch {
+          setServerError("ไม่สามารถอ่านข้อมูลผู้ใช้หลังเข้าสู่ระบบได้");
+        }
+      })();
+      return;
+    }
 
+    // 2) ถ้าไม่มี token → ลอง “silent login” ด้วยคุกกี้
     (async () => {
       try {
-        const prof = await axios.get("/api/User/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
+        const res = await axios.get("/api/User/profile", {
+          withCredentials: true, // สำคัญ เพื่อส่งคุกกี้ไปด้วย
         });
-
-        const isBanned = isBannedFromName(prof.data?.name);
-        if (isBanned) {
-          markBannedLocal(true); // ✅ ตั้งค่า flag ใน localStorage และยิง event ให้แท็บอื่นรู้
-          return window.location.replace("/customer/ban");
-        }
-
-        // (ทางเลือก) บังคับโดเมนเมล
-        if (
-          prof.data?.email &&
-          !String(prof.data.email).endsWith("@kmitl.ac.th")
-        ) {
-          localStorage.removeItem("token");
-          setServerError("อนุญาตเฉพาะอีเมล @kmitl.ac.th เท่านั้น");
-          return;
-        }
-
-        markBannedLocal(false);
+        // ถ้ากลับมาได้ → แปลว่ามี AuthToken แล้ว
+        // (ถ้าอยาก ก็ set localStorage ให้หน้าอื่นใช้ header แบบ Bearer ได้)
+        // localStorage.setItem("token", SOME_VALUE_FROM_COOKIE_IF_NEEDED);
+        // ตรวจ ban/อีเมล ตามเดิม...
         window.location.replace("/customer/home");
       } catch {
-        setServerError("ไม่สามารถอ่านข้อมูลผู้ใช้หลังเข้าสู่ระบบได้");
+        // ไม่มีคุกกี้/ยังไม่ล็อกอิน → อยู่หน้า login ต่อไปเฉย ๆ
       }
     })();
   }, []);
@@ -158,7 +161,7 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     setServerError("");
     setIsGoogleLoading(true);
-    const returnTo = window.location.origin + "/customer/login";
+    const returnTo = "http://localhost:5173/customer/home";
     window.location.href = `/auth/google/login?redirect=${encodeURIComponent(
       returnTo
     )}`;

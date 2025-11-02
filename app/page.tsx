@@ -1,11 +1,11 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function Home() {
-  return (
-    <div >
-      พิมพ์ที่ path เพื่อดูหน้าที่ต้องการ อิงจากโฟลเดอร์ เช่น localhost:3000/customer/cancel จะรัน page.tsx ในโฟลเดอร์ cancel
-       
-    </div>
-  );
+export default function RootRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/customer/login");
+  }, [router]);
+  return null;
 }

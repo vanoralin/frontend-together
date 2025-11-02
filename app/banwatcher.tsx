@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import axios from "axios";
 import {
@@ -9,59 +9,90 @@ import {
   readBannedLocal,
 } from "@/lib/ban";
 
-/** เฝ้าระวังสถานะแบนในสโคปที่กำหนด
- * @param redirectTo  หน้าแบนปลายทาง (เช่น "/customer/ban" หรือ "/driver/ban")
- * @param scopePrefix จำกัดสโคปการทำงาน (เช่น "/customer" หรือ "/driver")
- */
+type Props = {
+  /** หน้าแบนปลายทาง เช่น "/customer/ban" หรือ "/driver/ban" */
+  redirectTo: string;
+  /** จำกัดสโคปการทำงาน เช่น "/customer" หรือ "/driver" */
+  scopePrefix: string;
+  /** (ทางเลือก) รายการ path ที่ไม่อยากให้ BanWatcher ทำงาน */
+  excludePaths?: string[]; // default: ["/login", "/register", "/ban"]
+};
+
 export default function BanWatcher({
   redirectTo,
   scopePrefix,
-}: {
-  redirectTo: string;
-  scopePrefix: string; // "/customer" หรือ "/driver"
-}) {
+  excludePaths,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const redirecting = useRef(false);
 
+  // อยู่ในสโคปไหม
   const inScope =
     pathname === scopePrefix || pathname.startsWith(scopePrefix + "/");
+
+  // รายการเส้นทางที่ต้อง “งดทำงาน”
+  const excluded = useMemo(() => {
+    const base = ["/login", "/register", "/ban"];
+    const extra = excludePaths ?? [];
+    // ให้รองรับทั้ง "/customer/login" และ "/login" แบบ relative
+    const fulls = [...base, ...extra].map((p) =>
+      p.startsWith(scopePrefix)
+        ? p
+        : scopePrefix + (p.startsWith("/") ? p : "/" + p)
+    );
+    // ตรงหน้า ban ปลายทางก็ถือว่า exclude ด้วย
+    if (!fulls.includes(redirectTo)) fulls.push(redirectTo);
+    return fulls;
+  }, [excludePaths, redirectTo, scopePrefix]);
+
+  const isExcludedPage = excluded.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
 
   const onBanPage = pathname.startsWith(redirectTo);
 
   const gotoBan = () => {
-    if (redirecting.current || onBanPage) return;
+    if (redirecting.current || onBanPage || isExcludedPage) return;
     redirecting.current = true;
     router.replace(redirectTo);
   };
 
   useEffect(() => {
-    console.log("🟢 BanWatcher running on", pathname);
-    if (!inScope) return; // อยู่นอกสโคป ไม่ต้องทำงาน
+    // บันทึกดีบั๊กสั้น ๆ
+    console.log("🟢 BanWatcher:", {
+      path: pathname,
+      inScope,
+      isExcludedPage,
+      hasToken: !!localStorage.getItem("token"),
+    });
+
+    // อยู่นอกสโคปหรืออยู่หน้า login/register/ban → ไม่ทำงานเลย
+    if (!inScope || isExcludedPage) return;
+
     let stop = false;
 
-    // 0) โหลดครั้งแรก: ถ้ามี flag แล้ว ให้เด้งทันที
-    if (readBannedLocal()) gotoBan();
+    const hasToken = () => !!localStorage.getItem("token");
 
-    // 1) โฟกัสแท็บ: เช็กโปรไฟล์ (เฉพาะตอนมี token)
+    // 0) โหลดครั้งแรก: เด้งเฉพาะเมื่อ "มี token" และเคยถูก mark เป็นแบน
+    if (hasToken() && readBannedLocal()) gotoBan();
+
+    // 1) เช็กเมื่อแท็บโฟกัส (เฉพาะตอนมี token)
     const onFocus = async () => {
-      if (!localStorage.getItem("token")) return;
+      if (!hasToken()) return;
       try {
         const { ok, banned } = await checkBannedFromProfile();
         if (!ok) return;
-        markBannedLocal(banned); // ยิงอีเวนต์ ban:changed ภายในแท็บด้วย
+        markBannedLocal(banned);
         if (banned) gotoBan();
       } catch {}
     };
     window.addEventListener("focus", onFocus);
 
     // 2) โพลทุก ~45s (เฉพาะตอนแท็บแอคทีฟ และมี token)
-    async function tick() {
+    const tick = async () => {
       try {
-        if (
-          document.visibilityState === "visible" &&
-          localStorage.getItem("token")
-        ) {
+        if (document.visibilityState === "visible" && hasToken()) {
           const { ok, banned } = await checkBannedFromProfile();
           if (ok) {
             markBannedLocal(banned);
@@ -70,27 +101,44 @@ export default function BanWatcher({
         }
       } catch {}
       if (!stop) setTimeout(tick, 45000);
-    }
+    };
     tick();
 
-    // 3) sync ข้ามแท็บ (storage event จะยิงเฉพาะแท็บอื่น)
+    // 3) sync ข้ามแท็บ
     const onStorage = (e: StorageEvent) => {
       if (e.key === "is_banned" && readBannedLocal()) gotoBan();
+      if (e.key === "token" && !e.newValue) {
+        // token ถูกลบในแท็บอื่น → ยุติการเฝ้าระวัง (จะไม่ยิงโปรไฟล์ทิ้ง)
+      }
     };
     window.addEventListener("storage", onStorage);
 
-    // 4) เด้งทันทีในแท็บปัจจุบัน เมื่อ markBannedLocal() ถูกเรียก
+    // 4) เด้งทันทีในแท็บปัจจุบันเมื่อ markBannedLocal ถูกเรียก
     const onBanChanged = () => {
       if (readBannedLocal()) gotoBan();
     };
     window.addEventListener("ban:changed", onBanChanged);
 
-    // 5) ดัก error จากทุก API — ถ้าเริ่มโดนบล็อกก็เด้งทันที
+    // 5) Interceptor: ถ้า API ใด ๆ โดน 423/403 ให้เด้ง (แต่ “งด” จับ endpoint auth)
     const id = axios.interceptors.response.use(
       (res) => res,
       (err) => {
         const status = err?.response?.status;
-        if ((status === 423 || status === 403) && inScope && !onBanPage) {
+        const url: string | undefined = err?.config?.url;
+
+        // ถ้าเป็น endpoint เข้าสู่ระบบ/โปรไฟล์ที่ใช้ตอน login ก็ไม่ต้องเด้ง (กัน false positive)
+        const isAuthLike =
+          url?.includes("/auth/") ||
+          url?.includes("/User/login") ||
+          url?.includes("/User/google") ||
+          url?.includes("/google");
+
+        if (
+          !isAuthLike &&
+          (status === 423 || status === 403) &&
+          inScope &&
+          !onBanPage
+        ) {
           markBannedLocal(true);
           gotoBan();
         }
@@ -106,7 +154,7 @@ export default function BanWatcher({
       axios.interceptors.response.eject(id);
       redirecting.current = false;
     };
-  }, [inScope, onBanPage, pathname, redirectTo, router]);
+  }, [inScope, isExcludedPage, onBanPage, pathname, redirectTo, router]);
 
   return null;
 }
