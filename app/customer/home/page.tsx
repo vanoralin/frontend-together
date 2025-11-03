@@ -87,7 +87,7 @@ export function TripTodayCard() {
 
                 // ✅ กรองเฉพาะทริปที่ยังไม่ถึงเวลา + มีสถานะ available หรือ booked
                 const upcomingTrips = data.filter((t: any) => {
-                    const tripStatusOk = ["available", "booked"].includes(t.trip_status);
+                    const tripStatusOk = ["available", "booked", "in_progress"].includes(t.trip_status);
                     if (!tripStatusOk) return false;
 
                     let tripTime = new Date(t.scheduled_start_time).getTime();

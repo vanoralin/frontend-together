@@ -28,6 +28,9 @@ interface NavigationMapProps {
     currentPinIndex: number;
     onRouteUpdate?: (distance: number, duration: number) => void;
     onPinReached?: () => void;
+    pickupLocationId?: LocationType;
+    dropoffLocationId?: LocationType;
+    onDriverNearDestination?: (isNear: boolean) => void; // ✅ เพิ่ม callback
 }
 
 const pinIcon = new L.Icon({
@@ -244,6 +247,7 @@ export default function NavigationMap({
     currentPinIndex,
     onRouteUpdate,
     onPinReached,
+    onDriverNearDestination, // ✅ เพิ่ม
 }: NavigationMapProps) {
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
     const [driverPosition, setDriverPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -411,6 +415,48 @@ export default function NavigationMap({
         };
     }, [tripId, mode]);
 
+    const calculateDistance = (
+        lat1: number,
+        lng1: number,
+        lat2: number,
+        lng2: number
+    ): number => {
+        const R = 6371e3; // Earth radius in meters
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+
+        const a =
+            Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c; // Distance in meters
+    };
+
+    // ✅ เช็คว่าคนขับอยู่ใกล้ปลายทางหรือไม่
+    useEffect(() => {
+        if (mode !== 'customer' || !driverPosition || !onDriverNearDestination) return;
+
+        const destination = pins[pins.length - 1]; // ปลายทางสุดท้าย
+        if (!destination) return;
+
+        const distance = calculateDistance(
+            driverPosition.lat,
+            driverPosition.lng,
+            destination.lat,
+            destination.lng
+        );
+
+        const THRESHOLD = 50; // 50 เมตร
+        const isNear = distance <= THRESHOLD;
+
+        console.log(`📍 Distance to destination: ${distance.toFixed(2)}m, isNear: ${isNear}`);
+        onDriverNearDestination(isNear);
+
+    }, [driverPosition, pins, mode, onDriverNearDestination]);
+
     // Function to update real-time route info
     const updateRealTimeRoute = async (currentPos: { lat: number; lng: number }) => {
         if (!onRouteUpdate || currentPinIndex >= pins.length - 1) return;
@@ -441,7 +487,10 @@ export default function NavigationMap({
         }
 
         movementIntervalRef.current = setInterval(() => {
+            // ✅ เปลี่ยนเงื่อนไข: ตราบใดที่ Index ยังไม่เกินความยาว
             if (currentCoordIndex < routeCoordinates.length) {
+                const isLastCoord = currentCoordIndex === routeCoordinates.length - 1;
+
                 const coord = routeCoordinates[currentCoordIndex];
                 const newPos = { lat: coord.lat, lng: coord.lng };
 
@@ -449,7 +498,7 @@ export default function NavigationMap({
                 setDriverPosition(newPos);
                 latestPositionRef.current = newPos; // ✅ อัพเดท ref ทันที
 
-                console.log("🚗 Movement update:", newPos);
+                console.log("🚗 Movement update:", newPos, isLastCoord ? '(Last)' : '');
 
                 // อัพเดทระยะทางและเวลาที่เหลือ (ทุก 10 วินาที)
                 const now = Date.now();
@@ -458,18 +507,23 @@ export default function NavigationMap({
                     lastRouteUpdateRef.current = now;
                 }
 
-                setCurrentCoordIndex(prev => prev + 1);
-            } else {
-                console.log(`Reached pin ${currentPinIndex + 1}`);
-                setIsAtDestination(true);
-                if (onPinReached) {
-                    onPinReached();
+                if (isLastCoord) { // 👈 หากเป็นจุดสุดท้าย
+                    console.log(`Reached pin ${currentPinIndex + 1}`);
+                    setIsAtDestination(true);
+                    if (onPinReached) {
+                        onPinReached(); // 👈 เรียก onPinReached() ที่ตำแหน่งสุดท้าย
+                    }
+                    if (movementIntervalRef.current) {
+                        clearInterval(movementIntervalRef.current);
+                        movementIntervalRef.current = null;
+                    }
                 }
-                if (movementIntervalRef.current) {
-                    clearInterval(movementIntervalRef.current);
-                    movementIntervalRef.current = null;
+
+                // อัพเดท index ต่อเมื่อยังไม่ถึงจุดสุดท้าย หรือ เมื่อส่งแล้วจะหยุด
+                if (!isLastCoord) {
+                    setCurrentCoordIndex(prev => prev + 1);
                 }
-            }
+            } // ไม่ต้องมี else block แล้ว
         }, 2000); // เคลื่อนที่ทุก 2 วินาที
 
         return () => {
@@ -567,6 +621,18 @@ export default function NavigationMap({
                     }}
                 />
             )}
+
+            {mode === 'customer' && pins.length > 0 && (
+                <Marker position={[pins[0].lat, pins[0].lng]} icon={pinIcon}>
+                    <Tooltip permanent direction="top" offset={[0, -40]}>
+                        <div style={{ textAlign: 'center', fontSize: '12px' }}>
+                            <div style={{ color: '#16a34a', fontWeight: 'bold' }}>🟢 จุดเริ่มต้น </div>
+                            <div>{pins[0].name}</div>
+                        </div>
+                    </Tooltip>
+                </Marker>
+            )}
+
         </MapContainer>
     );
 }

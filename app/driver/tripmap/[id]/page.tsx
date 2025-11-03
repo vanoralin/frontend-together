@@ -235,7 +235,7 @@ export default function TripMapPage() {
                     <>
                         <div className="mb-3">
                             <div className="text-xs text-gray-500">
-                                หมุดที่ {currentPinIndex + 1}/{locations.length}
+                                หมุดที่ {currentPinIndex + 2}/{locations.length}
                             </div>
                         </div>
 
@@ -289,7 +289,7 @@ export default function TripMapPage() {
                             >
                                 {currentPinIndex + 1 >= locations.length - 1
                                     ? "เสร็จสิ้นการเดินทาง"
-                                    : "ถึงที่หมายแล้ว"}
+                                    : "มาถึงหมุดนี้แล้ว"}
                             </button>
                         </div>
 

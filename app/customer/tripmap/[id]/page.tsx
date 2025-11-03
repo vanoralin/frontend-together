@@ -27,7 +27,7 @@ interface BottomSheetProps {
 
 export function BottomSheet({ trip, type = "map", children, showtext, routeInfo }: BottomSheetProps) {
 
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
 
     const content = (
         <div className="p-4">
@@ -277,12 +277,12 @@ export default function TripMapPage() {
 
             <BottomSheet trip={trip} type="map" showtext={statusMessage} routeInfo={routeInfo}>
                 {/* ✅ แสดงข้อมูล route (optional) */}
-                {routeInfo && (
+                {/* {routeInfo && (
                     <div className="text-sm text-gray-600 mb-2">
                         ระยะทาง: {(routeInfo.distance / 1000).toFixed(1)} km |
                         เวลา: {(routeInfo.duration / 60).toFixed(0)} นาที
                     </div>
-                )}
+                )} */}
 
                 <button
                     className="w-full bg-theme-orange text-white py-2 rounded-xl mt-2 disabled:opacity-50"
