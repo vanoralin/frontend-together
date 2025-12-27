@@ -401,24 +401,38 @@ export default function RouteMap({
         const ws = new WebSocket(`ws://129.150.62.182:8888/ws/driver?trip_id=${tripId}`);
         wsRef.current = ws;
 
+        let interval: NodeJS.Timeout;
+
         ws.onopen = () => {
-            console.log("Driver WebSocket connected");
+            console.log("✅ Driver WebSocket connected");
+
+            // เริ่มส่งพิกัดซ้ำทุก 5 วิ (เปลี่ยนค่าได้เลย)
+            interval = setInterval(() => {
+                const data = {
+                    trip_id: tripId.toString(),
+                    lat: driverPos.lat,
+                    lng: driverPos.lng,
+                };
+
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(data));
+                    console.log("📡 ส่งพิกัด driver:", data);
+                }
+            }, 5000); // 🕒 ส่งทุก 5 วิ
         };
 
-        ws.onerror = (error) => {
-            console.error("Driver WebSocket error:", error);
-        };
+        ws.onerror = (err) => console.error("❌ WebSocket error:", err);
 
         ws.onclose = () => {
-            console.log("Driver WebSocket closed");
+            console.log("⚠️ Driver WebSocket closed");
+            clearInterval(interval);
         };
 
         return () => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.close();
-            }
+            clearInterval(interval);
+            if (ws.readyState === WebSocket.OPEN) ws.close();
         };
-    }, [tripId, isDriver]);
+    }, [tripId, isDriver, driverPos]);
 
     // Send location when driverPos changes
     useEffect(() => {

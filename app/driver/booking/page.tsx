@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import dynamic from "next/dynamic";
@@ -8,9 +8,11 @@ import { Plus, ChevronDown, Calendar as CalendarIcon2 } from "lucide-react";
 import NavBar from "@/app/driver/components/navbar";
 import CalendarComponent from "@/app/components/Calendar";
 import { BackButton2 } from "@/app/components/BackButton2";
-import type { MapMarker } from "@/app/components/MapComponent2";
-import MapComponent from "@/app/components/MapComponent";
 import { format } from "date-fns";
+import type { Map as LeafletMap } from "leaflet";
+
+/* ========= Map (SSR off) ========= */
+const MapSelectComponent = dynamic(() => import("@/app/components/MapSelectComponent"), { ssr: false });
 
 /* ========= Axios ========= */
 const api = axios.create({
@@ -19,17 +21,13 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-/* ========= dynamic import แผนที่ (ปิด SSR) ========= */
-const MapComponent2 = dynamic(() => import("@/app/components/MapComponent2"), {
-  ssr: false,
-});
-
 /* ========= Types/Utils ========= */
 type Loc = { id: number; name: string; lat: number; lng: number };
+type LocationType = Loc;
+
 const toISODate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/* 🔧 แปลงข้อมูล /locations → Loc (รองรับหลายชื่อฟิลด์) */
 function toLocArray(data: any[]): Loc[] {
   if (!Array.isArray(data)) return [];
   const out: Loc[] = [];
@@ -38,11 +36,7 @@ function toLocArray(data: any[]): Loc[] {
     const name = String(it.name ?? it.label ?? it.title ?? (Number.isFinite(id) ? `สถานที่ #${id}` : "สถานที่"));
     const lat = Number(it.lat ?? it.latitude ?? it.lat_deg ?? it.y);
     const lng = Number(it.lng ?? it.longitude ?? it.lon ?? it.long ?? it.x);
-    if (Number.isFinite(id) && Number.isFinite(lat) && Number.isFinite(lng)) {
-      out.push({ id, name, lat, lng });
-    } else {
-      console.warn("skip location: invalid fields", { it });
-    }
+    if (Number.isFinite(id) && Number.isFinite(lat) && Number.isFinite(lng)) out.push({ id, name, lat, lng });
   }
   return out;
 }
@@ -95,32 +89,6 @@ function LocationBox({
   );
 }
 
-/* ========= ระยะทาง ========= */
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const toRad = (x: number) => (x * Math.PI) / 180;
-  const R = 6371000;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-function nearestLocId(lat: number, lng: number, list: Loc[]) {
-  if (!list.length) return null;
-  let best = list[0];
-  let bestD = haversine(lat, lng, best.lat, best.lng);
-  for (const l of list) {
-    const d = haversine(lat, lng, l.lat, l.lng);
-    if (d < bestD) {
-      best = l;
-      bestD = d;
-    }
-  }
-  return best.id;
-}
-
 /* ========= Reusable UI ========= */
 function LocationRow({
   value,
@@ -154,6 +122,9 @@ function LocationRow({
 }
 
 /* --- VehiclePicker --- */
+type RawVehicle = Record<string, any>;
+type VehicleItem = { id: number; label: string; vehicle_type?: string; capacity: number | null };
+
 function VehiclePicker({
   items,
   selectedId,
@@ -200,6 +171,62 @@ function VehiclePicker({
       )}
       {sel?.capacity != null && <p className="text-xs text-[#6b7280] mt-1">ความจุสูงสุด: {sel.capacity} คน</p>}
     </div>
+  );
+}
+
+function vehicleToItem(v: RawVehicle): VehicleItem | null {
+  const id = Number(v.id ?? v.vehicle_id ?? v.vehicleId);
+  if (!Number.isFinite(id)) return null;
+  const capRaw =
+    v.seat_count ??
+    v.seats ??
+    v.capacity ??
+    v.max_seats ??
+    v.maxPassengers ??
+    v.max_passengers ??
+    v.available_seats;
+  const capacity = Number(capRaw);
+  const brand = v.brand || v.make || v.manufacturer;
+  const model = v.model || v.series;
+  const type = v.vehicle_type || v.type || v.category;
+  const plate = v.license_plate || v.plate || v.registration_no;
+
+  const parts: string[] = [];
+  if (plate) parts.push(String(plate));
+  if (brand || model) parts.push([brand, model].filter(Boolean).join(" "));
+  if (!plate && !brand && !model && type) parts.push(String(type));
+  if (Number.isFinite(capacity)) parts.push(`ที่นั่ง ${capacity}`);
+
+  return {
+    id,
+    label: parts.filter(Boolean).join(" • ") || `ยานพาหนะ #${id}`,
+    vehicle_type: type,
+    capacity: Number.isFinite(capacity) ? Number(capacity) : null,
+  };
+}
+
+const VEHICLE_TYPE_MAP: Record<string, string> = {
+  จักรยานยนต์: "motorcycle",
+  รถยนต์: "car",
+  รถยนต์ขนาดใหญ่: "suv",
+};
+
+async function fetchDriverVehicles(typeTh?: string): Promise<VehicleItem[]> {
+  const params = typeTh && VEHICLE_TYPE_MAP[typeTh] ? { vehicle_type: VEHICLE_TYPE_MAP[typeTh] } : undefined;
+  const r = await api.get<RawVehicle[]>("/driver/vehicles", { params });
+  if (!Array.isArray(r.data)) return [];
+  return r.data.map(vehicleToItem).filter((x): x is VehicleItem => !!x);
+}
+
+/* ========= Misc ========= */
+function pickApiMessage(err: any) {
+  const d = err?.response?.data;
+  if (!d) return err?.message || "เกิดข้อผิดพลาด";
+  return (
+    d.message ||
+    d.error ||
+    (Array.isArray(d.errors) && d.errors.map((e: any) => e.message || e.msg || e.field).join("\n")) ||
+    JSON.stringify(d)
   );
 }
 
@@ -254,9 +281,7 @@ function SimpleCalendar({
                 <button
                   key={i}
                   className={`p-2 rounded-lg hover:bg-blue-100 ${
-                    selectedDate.getDate() === i + 1
-                      ? "bg-[#B55C32] text-white font-light"
-                      : "text-gray-700 font-light"
+                    selectedDate.getDate() === i + 1 ? "bg-[#B55C32] text-white font-light" : "text-gray-700 font-light"
                   }`}
                   onClick={() => selectDate(i + 1)}
                 >
@@ -315,96 +340,15 @@ function TimePicker({
   );
 }
 
-/* ====== Vehicles (ดึงเฉพาะที่ลงทะเบียน + ความจุ) ====== */
-type RawVehicle = Record<string, any>;
-type VehicleItem = {
-  id: number;
-  label: string;
-  vehicle_type?: string;
-  capacity: number | null; // จำนวนที่นั่งสูงสุด
-};
-
-function vehicleToItem(v: RawVehicle): VehicleItem | null {
-  const id = Number(v.id ?? v.vehicle_id ?? v.vehicleId);
-  if (!Number.isFinite(id)) return null;
-
-  const capRaw =
-    v.seat_count ??
-    v.seats ??
-    v.capacity ??
-    v.max_seats ??
-    v.maxPassengers ??
-    v.max_passengers ??
-    v.available_seats;
-
-  const capacity = Number(capRaw);
-  const brand = v.brand || v.make || v.manufacturer;
-  const model = v.model || v.series;
-  const type = v.vehicle_type || v.type || v.category;
-  const plate = v.license_plate || v.plate || v.registration_no;
-
-  const parts: string[] = [];
-  if (plate) parts.push(String(plate));
-  if (brand || model) parts.push([brand, model].filter(Boolean).join(" "));
-  if (!plate && !brand && !model && type) parts.push(String(type));
-  if (Number.isFinite(capacity)) parts.push(`ที่นั่ง ${capacity}`);
-
-  return {
-    id,
-    label: parts.filter(Boolean).join(" • ") || `ยานพาหนะ #${id}`,
-    vehicle_type: type,
-    capacity: Number.isFinite(capacity) ? Number(capacity) : null,
-  };
-}
-
-const VEHICLE_TYPE_MAP: Record<string, string> = {
-  จักรยานยนต์: "motorcycle",
-  รถยนต์: "car",
-  รถยนต์ขนาดใหญ่: "suv",
-};
-
-async function fetchDriverVehicles(typeTh?: string): Promise<VehicleItem[]> {
-  const params = typeTh && VEHICLE_TYPE_MAP[typeTh] ? { vehicle_type: VEHICLE_TYPE_MAP[typeTh] } : undefined;
-  const r = await api.get<RawVehicle[]>("/driver/vehicles", { params });
-  if (!Array.isArray(r.data)) return [];
-  return r.data.map(vehicleToItem).filter((x): x is VehicleItem => !!x);
-}
-
-/* ================== Error helpers (ข้อ 1) ================== */
-function pickApiMessage(err: any) {
-  const d = err?.response?.data;
-  if (!d) return err?.message || "เกิดข้อผิดพลาด";
-  return (
-    d.message ||
-    d.error ||
-    (Array.isArray(d.errors) && d.errors.map((e: any) => e.message || e.msg || e.field).join("\n")) ||
-    JSON.stringify(d)
-  );
-}
-
-/* กันกดซ้ำ + จัดการ 401/403 (ข้อ 2,3) */
+/* ======================== MAIN ======================== */
 export default function CreateTripOnlyPickup() {
   const router = useRouter();
+  const mapRef = useRef<LeafletMap | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
-  async function safePostCreate(body: any) {
-    try {
-      setIsSubmitting(true);
-      await api.post("/trips/create", body);
-    } catch (e: any) {
-      if (e?.response?.status === 401 || e?.response?.status === 403) {
-        alert("กรุณาเข้าสู่ระบบใหม่");
-        router.push("/login");
-      }
-      throw e;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  /* หมุด fallback + โหลดจริงจาก API */
+  /* สถานที่ */
   const [locList, setLocList] = useState<Loc[]>([
     { id: 1, name: "ฝั่งตรงข้ามเกกี 4", lat: 13.727, lng: 100.532 },
     { id: 2, name: "หน้าตึก ECC", lat: 13.7367, lng: 100.5232 },
@@ -419,14 +363,16 @@ export default function CreateTripOnlyPickup() {
         const norm = toLocArray(res.data);
         if (norm.length > 0) setLocList(norm);
         else setErrorBanner("โหลดจุดรับไม่สำเร็จ ใช้รายการเริ่มต้นแทน");
-      } catch (e) {
+      } catch {
         setErrorBanner("โหลดจุดรับไม่สำเร็จ ใช้รายการเริ่มต้นแทน");
-        console.warn("โหลดสถานที่ไม่สำเร็จ:", pickApiMessage(e));
       }
     })();
   }, []);
 
-  /* เลือกจุดรับ (หลายจุด) */
+  // locations สำหรับ MapSelectComponent
+  const locations: LocationType[] = useMemo(() => locList, [locList]);
+
+  /* เลือกจุดรับหลายจุด (โหมดปกติ/แพ็กเกจ หน้า 1/3) */
   const [pickupIds, setPickupIds] = useState<number[]>([]);
   const pickupNames = useMemo(
     () => pickupIds.map((id) => locList.find((l) => l.id === id)?.name || "").filter(Boolean),
@@ -437,75 +383,60 @@ export default function CreateTripOnlyPickup() {
   const togglePickupId = (id: number) =>
     setPickupIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
-  /* เลือกจุดรับ/ส่ง (แพ็กเกจ) */
-  const [pickupId, setPickupId] = useState<number | null>(null);
+  /* แพ็กเกจ: จุดส่งเดี่ยว */
   const [dropoffId, setDropoffId] = useState<number | null>(null);
-  const pickupLabel = useMemo(() => (pickupId ? locList.find((l) => l.id === pickupId)?.name || "" : ""), [pickupId, locList]);
-  const dropoffLabel = useMemo(() => (dropoffId ? locList.find((l) => l.id === dropoffId)?.name || "" : ""), [dropoffId, locList]);
-
-  /* markers/center */
-  const markers: MapMarker[] = useMemo(
-    () => locList.map((l) => ({ id: l.id, position: { lat: l.lat, lng: l.lng }, label: l.name })),
-    [locList]
-  );
-  const defaultCenter = { lat: 13.736717, lng: 100.523186 };
-  const mapCenter = useMemo(() => {
-    const p = pickupId ? locList.find((l) => l.id === pickupId) : undefined;
-    const d = dropoffId ? locList.find((l) => l.id === dropoffId) : undefined;
-    return (p ?? d) ? { lat: (p ?? d)!.lat, lng: (p ?? d)!.lng } : defaultCenter;
-  }, [pickupId, dropoffId, locList]);
 
   /* UI อื่น ๆ */
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState("12:00");
 
-  // รถที่ลงทะเบียน + ความจุ
   const [vehicleItems, setVehicleItems] = useState<VehicleItem[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
-
-  // จำนวนคนนั่ง (จะถูก clamp ด้วย capacity ของรถ)
   const [passengerCount, setPassengerCount] = useState(2);
-
-  // สำหรับขาประจำ
   const [selected, setSelected] = useState<Date[]>([]);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [selectedStartTime, setSelectedStartTime] = useState("08:00");
   const [openTime, setOpenTime] = useState(false);
-  const [page, setPage] = useState<"type" | "create" | "map" | "package" | "package1" | "package2" | "confirm">("type");
+  const [page, setPage] =
+    useState<"type" | "create" | "map" | "package" | "package1" | "package2" | "confirm">("type");
   const [query, setQuery] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [mapMode, setMapMode] = useState<"pickup" | "dropoff">("pickup");
 
-  /* โหลดรถของคนขับ */
+  /* โหลดรถ */
   useEffect(() => {
     (async () => {
       try {
-        const items = await fetchDriverVehicles(); // ทั้งหมด
+        const items = await fetchDriverVehicles();
         setVehicleItems(items);
         setSelectedVehicleId(items[0]?.id ?? null);
-      } catch (e) {
+      } catch {
         setVehicleItems([]);
         setSelectedVehicleId(null);
         setErrorBanner("โหลดยานพาหนะไม่สำเร็จ");
       }
     })();
   }, []);
-
-  /* clamp จำนวนคนตามความจุเมื่อรถเปลี่ยนหรือ capacity เปลี่ยน */
-  const selectedVehicle = useMemo(() => vehicleItems.find((v) => v.id === selectedVehicleId) || null, [vehicleItems, selectedVehicleId]);
+  const selectedVehicle = useMemo(
+    () => vehicleItems.find((v) => v.id === selectedVehicleId) || null,
+    [vehicleItems, selectedVehicleId]
+  );
   useEffect(() => {
     if (selectedVehicle?.capacity != null) {
       setPassengerCount((prev) => Math.max(1, Math.min(prev, selectedVehicle.capacity!)));
     }
   }, [selectedVehicleId, selectedVehicle?.capacity]);
 
-  /* อัปเดตช่วงวันที่แสดง */
+  /* วันที่โชว์ช่วง */
   useEffect(() => {
     if (selected.length > 0) {
       const s = [...selected].sort((a, b) => a.getTime() - b.getTime());
       const th = (d: Date) =>
-        `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear() + 543}`;
+        `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}/${d.getFullYear() + 543}`;
       setStartDate(th(s[0]));
       setEndDate(th(s[s.length - 1]));
     } else {
@@ -524,81 +455,79 @@ export default function CreateTripOnlyPickup() {
     return () => window.removeEventListener("click", close);
   }, [page]);
 
-  function selectNearest(lat: number, lng: number, mode: "pickup" | "dropoff") {
-    if (!locList.length) return;
-    let best = locList[0];
-    let bestD = haversine(lat, lng, best.lat, best.lng);
-    for (const l of locList) {
-      const d = haversine(lat, lng, l.lat, l.lng);
-      if (d < bestD) {
-        best = l;
-        bestD = d;
-      }
-    }
-    if (mode === "pickup") setPickupId(best.id);
-    else setDropoffId(best.id);
-  }
-
-  /* API helpers */
+  /* Helpers */
   function toApiDateTime(date: Date, hhmm: string) {
     const [hh, mm] = hhmm.split(":");
     const d = new Date(date);
     d.setHours(Number(hh), Number(mm), 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
-    // +07:00 (สมมติ timezone ไทย)
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00+07:00`;
+    // +07:00 สำหรับไทย
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+      d.getHours()
+    )}:${pad(d.getMinutes())}:00+07:00`;
   }
-
   function assertCapacityOrThrow() {
     const cap = selectedVehicle?.capacity;
     if (cap != null && passengerCount > cap) {
       throw new Error(`จำนวนคนนั่ง (${passengerCount}) เกินความจุที่นั่งของยานพาหนะ (${cap})`);
     }
   }
-  
   const getSelectedVehicleType = () => selectedVehicle?.vehicle_type || null;
 
-  /* Create one-time */
+  async function safePostCreate(body: any) {
+    try {
+      setIsSubmitting(true);
+      await api.post("/trips/create", body);
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 403) {
+        alert("กรุณาเข้าสู่ระบบใหม่");
+        router.push("/login");
+      }
+      throw e;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function createOneTimeTrip() {
     if (!selectedVehicleId) throw new Error("กรุณาเลือกยานพาหนะที่ลงทะเบียน");
     if (!pickupIds.length) throw new Error("กรุณาเลือกจุดรับอย่างน้อย 1 จุด");
     assertCapacityOrThrow();
-
     const vtype = getSelectedVehicleType();
     if (!vtype) throw new Error("ยานพาหนะที่เลือกไม่มีประเภท (vehicle_type) โปรดแก้ข้อมูลรถ");
-
     const body = {
       available_seats: passengerCount,
       location_ids: pickupIds,
       path_name: "เส้นทางของฉัน",
       scheduled_start_time: toApiDateTime(selectedDate, selectedTime),
       vehicle_id: selectedVehicleId,
-      vehicle_type: vtype,              
+      vehicle_type: vtype,
     };
     await safePostCreate(body);
   }
 
-  /* Create package */
   async function createPackageTrip() {
     if (!selectedVehicleId) throw new Error("กรุณาเลือกยานพาหนะที่ลงทะเบียน");
-    if (pickupId == null || dropoffId == null) throw new Error("ยังไม่เลือกจุดรับ/ส่ง");
+    if (pickupIds.length === 0 || dropoffId == null) throw new Error("ยังไม่เลือกจุดรับ/ส่ง");
     if (selected.length === 0) throw new Error("ยังไม่เลือกวันที่");
     assertCapacityOrThrow();
-
     const vtype = getSelectedVehicleType();
     if (!vtype) throw new Error("ยานพาหนะที่เลือกไม่มีประเภท (vehicle_type) โปรดแก้ข้อมูลรถ");
 
-    const locationIds = [pickupId, dropoffId];
+    const locationIdsBase = (pid: number) => [pid, dropoffId!];
+
     const payloads = selected
       .sort((a, b) => a.getTime() - b.getTime())
-      .map((d, idx) => ({
-        available_seats: passengerCount,
-        location_ids: locationIds,
-        path_name: `แพ็กเกจ-${toISODate(d)}-${idx + 1}`,
-        scheduled_start_time: toApiDateTime(d, selectedStartTime),
-        vehicle_id: selectedVehicleId,
-        vehicle_type: vtype,           
-      }));
+      .flatMap((d) =>
+        pickupIds.map((pid, idx) => ({
+          available_seats: passengerCount,
+          location_ids: locationIdsBase(pid),
+          path_name: `แพ็กเกจ-${toISODate(d)}-${idx + 1}`,
+          scheduled_start_time: toApiDateTime(d, selectedStartTime),
+          vehicle_id: selectedVehicleId,
+          vehicle_type: vtype,
+        }))
+      );
 
     const results: { ok: boolean; msg?: string }[] = [];
     for (const b of payloads) {
@@ -614,7 +543,10 @@ export default function CreateTripOnlyPickup() {
     if (fail > 0) {
       alert(
         `สร้างสำเร็จ ${ok} รายการ, ล้มเหลว ${fail} รายการ\n` +
-          results.map((r, i) => (r.ok ? `` : `#${i + 1}: ${r.msg}`)).filter(Boolean).join("\n")
+          results
+            .map((r, i) => (r.ok ? `` : `#${i + 1}: ${r.msg}`))
+            .filter(Boolean)
+            .join("\n")
       );
       if (ok === 0) throw new Error("ไม่มีรายการที่สำเร็จ");
     }
@@ -633,7 +565,9 @@ export default function CreateTripOnlyPickup() {
       )}
       <div className="flex flex-col mt-20 items-start w-80">
         <h1 className="text-4xl font-semibold text-[#191919] mb-2">สร้างทริป</h1>
-        <p className="text-base font-regular text-[#191919] leading-relaxed">เพื่อออกเดินทางไปยังที่ที่คุณต้องการได้ง่าย ๆ</p>
+        <p className="text-base font-regular text-[#191919] leading-relaxed">
+          เพื่อออกเดินทางไปยังที่ที่คุณต้องการได้ง่าย ๆ
+        </p>
       </div>
       <div className="w-full px-6 mt-8 space-y-5">
         <button
@@ -646,12 +580,14 @@ export default function CreateTripOnlyPickup() {
           </div>
         </button>
         <button
-          className="w-full bg-[#C5D4E8] rounded-2xl p-6 flex items-center justify_between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
+          className="w-full bg-[#C5D4E8] rounded-2xl p-6 flex items_center justify-between shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 active:shadow-md"
           onClick={() => setPage("package")}
         >
           <div className="text-left">
             <h2 className="text-xl font-semibold text-[#191919] mb-1">สร้างทริปแบบขาประจำ</h2>
-            <p className="text-sm font-regular text-[#191919] leading-relaxed">เลือกวันและเวลาที่ต้องการเดินทางเป็นประจำ</p>
+            <p className="text-sm font-regular text-[#191919] leading-relaxed">
+              เลือกวันและเวลาที่ต้องการเดินทางเป็นประจำ
+            </p>
           </div>
         </button>
       </div>
@@ -661,6 +597,7 @@ export default function CreateTripOnlyPickup() {
     </div>
   );
 
+  /* ---------- หน้าสร้างทริปปกติ ---------- */
   const renderCreatePage = () => {
     const SHOW_INLINE = 3;
     const tooMany = pickupNames.length > SHOW_INLINE;
@@ -668,7 +605,7 @@ export default function CreateTripOnlyPickup() {
 
     return (
       <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col">
-        <div className="w-full flex items_center justify-start px-6 mt-6">
+        <div className="w-full flex items-center justify-start px-6 mt-6">
           <BackButton2 onBack={() => setPage("type")} />
         </div>
         <div className="flex flex-col items-center px-6 mb-10 mt-6">
@@ -678,25 +615,34 @@ export default function CreateTripOnlyPickup() {
         {/* จุดรับหลายจุด */}
         <div className="mx-4 mb-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-xl font-regular text-center mb-6 text-[#191919]">เลือกจุดรับส่ง (เพิ่มได้หลายจุด)</h2>
+            <h2 className="text-xl font-regular text-center mb-6 text-[#191919]">
+              เลือกจุดรับส่ง (เพิ่มได้หลายจุด)
+            </h2>
             <div className="space-y-3 relative font-light">
-              {pickupNames.slice(0, SHOW_INLINE).map((name, idx) => (
+              {pickupNames.slice(0, 3).map((name, idx) => (
                 <LocationRow
                   key={`${name}-${idx}`}
                   value={name}
-                  showLine={idx < Math.min(SHOW_INLINE, pickupNames.length) - 1}
+                  showLine={idx < Math.min(3, pickupNames.length) - 1}
                   onRemove={() => removePickupAt(idx)}
                 />
               ))}
+
               {tooMany && (
                 <details className="bg-[#8B8B8B]/10 rounded-2xl">
                   <summary className="list-none cursor-pointer px-4 py-3 rounded-2xl flex items-center justify-between">
-                    <span className="text-[#191919] font-regular">จุดรับทั้งหมด ({pickupNames.length})</span>
+                    <span className="text-[#191919] font-regular">
+                      จุดรับทั้งหมด ({pickupNames.length})
+                    </span>
                     <ChevronDown className="w-4 h-4" />
                   </summary>
                   <div className="px-4 pb-4 space-y-3">
-                    {pickupNames.slice(SHOW_INLINE).map((name, i) => (
-                      <LocationRow key={`${name}-more-${i}`} value={name} onRemove={() => removePickupAt(SHOW_INLINE + i)} />
+                    {pickupNames.slice(3).map((name, i) => (
+                      <LocationRow
+                        key={`${name}-more-${i}`}
+                        value={name}
+                        onRemove={() => removePickupAt(3 + i)}
+                      />
                     ))}
                   </div>
                 </details>
@@ -732,12 +678,20 @@ export default function CreateTripOnlyPickup() {
             <div className="pt-2">
               <span className="text-[#191919] font-light">ยานพาหนะ</span>
               <div className="mt-2">
-                <VehiclePicker items={vehicleItems} selectedId={selectedVehicleId} setSelectedId={setSelectedVehicleId} />
+                <VehiclePicker
+                  items={vehicleItems}
+                  selectedId={selectedVehicleId}
+                  setSelectedId={setSelectedVehicleId}
+                />
               </div>
-              {vehicleItems.length === 0 && <p className="text-xs text-red-600 mt-2">ยังไม่มีรถที่ลงทะเบียน – โปรดเพิ่มรถก่อนจองทริป</p>}
+              {vehicleItems.length === 0 && (
+                <p className="text-xs text-red-600 mt-2">
+                  ยังไม่มีรถที่ลงทะเบียน – โปรดเพิ่มรถก่อนจองทริป
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify_between pt-2">
               <span className="text-[#191919] font-light">จำนวนคนนั่ง</span>
               <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
                 <ProfileIcon />
@@ -766,15 +720,14 @@ export default function CreateTripOnlyPickup() {
             )}
           </div>
 
-          <div className="mt-4 flex justify_center">
+          <div className="mt-4 flex justify-center">
             <button
-              className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
+              className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text_black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
               onClick={async () => {
                 try {
                   await createOneTimeTrip();
                   router.push("/driver/home?created=1");
                 } catch (e: any) {
-                  console.error("Create trip error:", e?.response?.data || e);
                   alert(pickApiMessage(e));
                 }
               }}
@@ -793,17 +746,16 @@ export default function CreateTripOnlyPickup() {
     );
   };
 
+  /* ---------- หน้าแผนที่ ---------- */
   const renderMapPage = () => {
     const filtered = query.trim()
-      ? markers.filter((m) => (m.label ?? "").toLowerCase().includes(query.trim().toLowerCase()))
-      : markers;
-
-    const markersWithSelected = filtered.map(m => ({
-      ...m,
-      selected: pickupIds.includes(Number(m.id)),
-    }));
+      ? locations.filter((m) => (m.name ?? "").toLowerCase().includes(query.trim().toLowerCase()))
+      : locations;
 
     const onPick = (id: number | string) => togglePickupId(Number(id));
+    const flyTo = (loc: LocationType) => {
+      mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
+    };
 
     return (
       <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px] relative">
@@ -813,9 +765,8 @@ export default function CreateTripOnlyPickup() {
           </div>
 
           <div className="w-full max-w-md h-[700px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative bg-white mt-20">
-            {/* Overlay ค้นหา + แท็กที่เลือก */}
+            {/* Overlay ค้นหา + รายการ */}
             <div className="absolute top-5 left-3 right-3 z-[1200] pointer-events-auto">
-              {/* ช่องค้นหา */}
               <div className="flex items-center bg-white/95 rounded-full px-4 py-2 shadow">
                 <img src="/icon_search.svg" alt="search" className="w-4 h-4 mr-2" />
                 <input
@@ -826,15 +777,21 @@ export default function CreateTripOnlyPickup() {
                 />
               </div>
 
-              {/* แท็กแสดงจุดที่เลือกแล้ว */}
               {pickupIds.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {pickupIds.map((id) => {
                     const n = locList.find((l) => l.id === id)?.name ?? `ID ${id}`;
                     return (
-                      <span key={id} className="inline-flex items-center bg-white rounded-full border px-3 py-1 text-xs shadow">
+                      <span
+                        key={id}
+                        className="inline-flex items-center bg_white rounded-full border px-3 py-1 text-xs shadow"
+                      >
                         {n}
-                        <button className="ml-2 text-gray-500 hover:text-red-600" onClick={() => removePickupById(id)} aria-label="remove-pick">
+                        <button
+                          className="ml-2 text-gray-500 hover:text-red-600"
+                          onClick={() => removePickupById(id)}
+                          aria-label="remove-pick"
+                        >
                           ×
                         </button>
                       </span>
@@ -843,14 +800,12 @@ export default function CreateTripOnlyPickup() {
                 </div>
               )}
 
-              {/* แถบสรุป + ปุ่มกลับ */}
-              <div className="mt-2 flex items-center justify-between">
-                <div className="absolute top-135 left-1 bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
+              <div className="mt-2">
+                <div className="inline-block bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
                   เลือกแล้ว: <span className="font-medium">{pickupIds.length}</span> จุดรับ
                 </div>
               </div>
 
-              {/* รายการค้นหา */}
               {query.trim() && (
                 <div className="mt-2 max-h-52 overflow-auto bg-white rounded-xl shadow border">
                   {filtered.length === 0 ? (
@@ -861,13 +816,12 @@ export default function CreateTripOnlyPickup() {
                       return (
                         <button
                           key={String(m.id)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
-                          onClick={() => onPick(m.id)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify_between"
+                          onClick={() => {
+                            onPick(m.id);
+                            flyTo(m);
+                          }}
                         >
-                          <span>{m.label}</span>
-                          <span className={`text-xs ${isSel ? "text-green-600" : "text-gray-400"}`}>
-                            {isSel ? "เลือกแล้ว" : "แตะเพื่อเลือก"}
-                          </span>
                         </button>
                       );
                     })
@@ -876,22 +830,23 @@ export default function CreateTripOnlyPickup() {
               )}
             </div>
 
-            {/* แผนที่ */}
-            <MapComponent2
-              center={mapCenter}
-              zoom={15}
-              markers={markersWithSelected} 
-              onMapClick={(lat: number, lng: number) => {
-                const id = nearestLocId(lat, lng, locList);
-                if (id != null) togglePickupId(id); 
+            {/* แผนที่ (Leaflet) */}
+            <MapSelectComponent
+              locations={locations}
+              mapRef={mapRef}
+              onMarkerSelect={(loc) => {
+                if (!loc) return;
+                togglePickupId(Number(loc.id));
               }}
-              onMarkerClick={(id: number | string) => onPick(id)} 
             />
 
             {/* แถบล่าง */}
             <div className="absolute bottom-0 left-0 right-0 bg-white/95 p-3 space-y-2 border-t">
               <div className="text-sm text-[#191919]">แตะหมุดเพื่อเลือก/ยกเลิก “จุดรับ”</div>
-              <button className="w-full mt-1 bg-[#B55C32] text-white font-light py-2.5 rounded-2xl shadow hover:bg-[#944724]" onClick={() => setPage("create")}>
+              <button
+                className="w-full mt-1 bg-[#B55C32] text-white font-light py-2.5 rounded-2xl shadow hover:bg-[#944724]"
+                onClick={() => setPage("create")}
+              >
                 ใช้จุดรับที่เลือกแล้ว
               </button>
             </div>
@@ -901,6 +856,7 @@ export default function CreateTripOnlyPickup() {
     );
   };
 
+  /* ---------- หน้าแพ็กเกจ ---------- */
   const renderPackagePage = () => (
     <div className="min-h-screen w/full flex flex-col justify-between bg-gradient-to-b from-[#FFFFFF] to-[#C5D4E8]">
       <div>
@@ -931,72 +887,102 @@ export default function CreateTripOnlyPickup() {
     </div>
   );
 
-  const renderPackage1Page = () => (
-    <div className="bg-[#C5D4E8] min-h-screen w/full flex flex_col items-center pb-[140px]">
-      <div className="w-full flex flex-col items-center px-6 mt-2">
-        <div className="w-full max-w-md flex items-center mt-2">
-          <BackButton2 onBack={() => setPage("package")} />
-        </div>
-        <div className="flex-1 text-center py-6">
-          <h1 className="text-lg text-black font-light">การสร้างทริปขาประจำ หน้า 1/3</h1>
-          <p className="text-xl font-regular text-black">เลือกจุดรับ-ส่ง</p>
-        </div>
+  /* ---------- หน้าแพ็กเกจ 1/3: เลือกจุดรับส่ง + แผนที่ ---------- */
+  const renderPackage1Page = () => {
+    const SHOW_INLINE = 3;
+    const tooMany = pickupNames.length > SHOW_INLINE;
 
-        <div className="w-full max-w-md bg-white font-light rounded-2xl p-4 shadow-md shadow-black/50 mb-3">
-          <div className="flex flex-col gap-3 relative">
-            <LocationBox value={pickupLabel} onClear={() => setPickupId(null)} showLine />
-            <LocationBox value={dropoffLabel} onClear={() => setDropoffId(null)} />
+    return (
+      <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-[140px]">
+        <div className="w-full flex flex-col items-center px-6 mt-2">
+          <div className="w-full max-w-md flex items-center mt-2">
+            <BackButton2 onBack={() => setPage("package")} />
           </div>
-        </div>
-
-        <div className="w-full max-w-md flex gap-3 mb-3">
-          <button
-            className={`flex-1 rounded-full px-4 py-2 border ${mapMode === "pickup" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"}`}
-            onClick={() => setMapMode("pickup")}
-          >
-            เลือกจุดรับ
-          </button>
-          <button
-            className={`flex-1 rounded-full px-4 py-2 border ${mapMode === "dropoff" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"}`}
-            onClick={() => setMapMode("dropoff")}
-          >
-            เลือกจุดส่ง
-          </button>
-        </div>
-
-        <div className="w-full max-w-md h-[450px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative bg-white">
-          <MapComponent2
-            center={mapCenter}
-            zoom={15}
-            markers={markers}
-            onMapClick={(lat: number, lng: number) => selectNearest(lat, lng, mapMode)}
-            onMarkerClick={(id: number | string) => {
-              if (mapMode === "pickup") setPickupId(Number(id));
-              else setDropoffId(Number(id));
-            }}
-          />
-          <div className="absolute top-3 left-3 bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
-            คลิกเพื่อเลือก: {mapMode === "pickup" ? "จุดรับ" : "จุดส่ง"}
+          <div className="flex-1 text-center py-6">
+            <h1 className="text-lg text-black font-light">การสร้างทริปขาประจำ หน้า 1/3</h1>
+            <p className="text-xl font-regular text-black">เลือกจุดรับ-ส่ง</p>
           </div>
-        </div>
 
-        <div className="mt-4 w-full max-w-md">
-          <button
-            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
-            onClick={() => {
-              const ids = [pickupId, dropoffId].filter((v): v is number => typeof v === "number");
-              setPickupIds([...new Set(ids)]);
-              setPage("package2");
-            }}
-            disabled={!(typeof pickupId === "number" && typeof dropoffId === "number")}
-          >
-            ขั้นตอนถัดไป
-          </button>
+          <div className="mx-4 mb-6 w-full max-w-md">
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-regular text-center mb-6 text-[#191919]">
+                เลือกจุดรับส่ง (เพิ่มได้หลายจุด)
+              </h2>
+
+              <div className="space-y-3 relative font-light">
+                {pickupNames.slice(0, SHOW_INLINE).map((name, idx) => (
+                  <LocationRow
+                    key={`${name}-${idx}`}
+                    value={name}
+                    showLine={idx < Math.min(SHOW_INLINE, pickupNames.length) - 1}
+                    onRemove={() => removePickupAt(idx)}
+                  />
+                ))}
+
+                {tooMany && (
+                  <details className="bg-[#8B8B8B]/10 rounded-2xl">
+                    <summary className="list-none cursor-pointer px-4 py-3 rounded-2xl flex items-center justify-between">
+                      <span className="text-[#191919] font-regular">
+                        จุดรับทั้งหมด ({pickupNames.length})
+                      </span>
+                      <ChevronDown className="w-4 h-4" />
+                    </summary>
+                    <div className="px-4 pb-4 space-y-3">
+                      {pickupNames.slice(SHOW_INLINE).map((name, i) => (
+                        <LocationRow
+                          key={`${name}-more-${i}`}
+                          value={name}
+                          onRemove={() => removePickupAt(SHOW_INLINE + i)}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                )}
+
+                <div className="mt-3 flex items-center space-x-2 text-sm text-gray-600 bg-gray-100 rounded-full px-4 py-2">
+                  <img src="/location.png" className="w-4 h-4" />
+                  <span>แตะหมุดบนแผนที่ด้านล่างเพื่อเลือกจุดรับ/ส่ง</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* แผนที่ */}
+          <div className="w-full max-w-md h-[450px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative bg-white">
+            <MapSelectComponent
+              locations={locations}
+              mapRef={mapRef}
+              onMarkerSelect={(loc) => {
+                if (!loc) return;
+
+                if (dropoffId == null) {
+                  setDropoffId(Number(loc.id));
+                } else {
+                  togglePickupId(Number(loc.id));
+                }
+              }}
+            />
+
+            <div className="absolute top-3 left-3 bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
+              {dropoffId == null ? "เลือกจุดรับส่ง" : "เลือกจุดรับ (เพิ่มได้หลายจุด)"}
+            </div>
+          </div>
+
+          <div className="mt-4 w-full max-w-md">
+            <button
+              className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
+              onClick={() => setPage("package2")}
+              disabled={pickupIds.length === 0 || dropoffId == null}
+            >
+              ขั้นตอนถัดไป
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
+  /* ---------- หน้าแพ็กเกจ 2/3---------- */
   const renderPackage2Page = () => {
     const timeOptions = [
       "05:00","05:30","06:00","06:30","07:00","07:30","08:00","08:30","09:00","09:30",
@@ -1006,7 +992,7 @@ export default function CreateTripOnlyPickup() {
     const cap = selectedVehicle?.capacity ?? Infinity;
 
     return (
-      <div className="bg-[#C5D4E8] min-h-screen w/full flex flex-col items-center pb-20 px-1.5">
+      <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-20 px-1.5">
         <div className="flex flex-col items-center mt-8 w-full max-w-3xl px-4 mx-auto">
           <div className="w-full flex items-center mb-4">
             <BackButton2 onBack={() => setPage("package1")} />
@@ -1014,19 +1000,25 @@ export default function CreateTripOnlyPickup() {
 
           <div className="text-center mt-1 mb-6">
             <h1 className="text-lg font-light text-black">การสร้างทริปขาประจำ หน้า 2/3</h1>
-            <h1 className="text-xl font-regular text_black">เลือกวันที่และเวลาที่ต้องการ</h1>
+            <h1 className="text-xl font-regular text-black">เลือกวันที่และเวลาที่ต้องการ</h1>
           </div>
 
           <div className="flex items-center gap-4 mb-6">
             <p className="text-sm font-light text-black">ตั้งแต่</p>
-            <div className="px-3 py-2 bg-white rounded-2xl shadow text-sm font-light shadow-md shadow-black/50">{startDate ?? "--/--/----"}</div>
-            <p className="text-sm font-light text-black">ถึง</p>
-            <div className="px-3 py-2 bg-white rounded-2xl shadow text-sm font-light shadow-md shadow-black/50">{endDate ?? "--/--/----"}</div>
+            <div className="px-3 py-2 bg-white rounded-2xl shadow text-sm font-light shadow-md shadow-black/50">
+              {startDate ?? "--/--/----"}
+            </div>
+            <p className="text-sm font-light text_black">ถึง</p>
+            <div className="px-3 py-2 bg-white rounded-2xl shadow text-sm font-light shadow-md shadow_black/50">
+              {endDate ?? "--/--/----"}
+            </div>
           </div>
 
           <div className="font-light w-full bg-white rounded-2xl shadow p-4 mb-6 shadow-md shadow-black/50">
             <CalendarComponent selected={selected} setSelected={setSelected} />
-            <p className="text-l font-light text-center text-[#B55C32]">จิ้มที่วันที่เพื่อเลือก - จิ้มอีกครั้งเพื่อยกเลิก</p>
+            <p className="text-l font-light text-center text-[#B55C32]">
+              จิ้มที่วันที่เพื่อเลือก - จิ้มอีกครั้งเพื่อยกเลิก
+            </p>
           </div>
 
           <div className="w-full bg-white rounded-2xl shadow p-6 mb-6 text-center shadow-md shadow-black/50">
@@ -1040,16 +1032,25 @@ export default function CreateTripOnlyPickup() {
               <p className="text-black font-light mb-2">เวลาออกเดินทาง</p>
 
               <div className="relative inline-block select-none" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center bg-[#8B8B8B]/10 px-3 py-2 rounded-full cursor-pointer border border-[#ddd]" onClick={() => setOpenTime((v) => !v)}>
+                <div
+                  className="flex items-center bg-[#8B8B8B]/10 px-3 py-2 rounded-full cursor-pointer border border-[#ddd]"
+                  onClick={() => setOpenTime((v) => !v)}
+                >
                   <ClockIcon />
-                  <span className="ml-2 text-[#191919] font-light text-base">{selectedStartTime}</span>
+                  <span className="ml-2 text-[#191919] font-light text-base">
+                    {selectedStartTime}
+                  </span>
                 </div>
                 {openTime && (
                   <div className="absolute left-0 top-full mt-2 bg-white border rounded-l shadow-xl max-h-48 overflow-y-auto z-50 w-32">
                     {timeOptions.map((t) => (
                       <div
                         key={t}
-                        className={`px-3 py-2 cursor-pointer text-sm ${t === selectedStartTime ? "bg-[#B55C32] text-white font-light" : "hover:bg-[#E6A88A] text-[#191919]font-light"}`}
+                        className={`px-3 py-2 cursor-pointer text-sm ${
+                          t === selectedStartTime
+                            ? "bg-[#B55C32] text-white font-light"
+                            : "hover:bg-[#E6A88A] text-[#191919] font-light"
+                        }`}
                         onClick={() => {
                           setSelectedStartTime(t);
                           setOpenTime(false);
@@ -1065,9 +1066,17 @@ export default function CreateTripOnlyPickup() {
               <div className="pt-4 w-full">
                 <span className="text-[#191919] font-light">ยานพาหนะ</span>
                 <div className="mt-2">
-                  <VehiclePicker items={vehicleItems} selectedId={selectedVehicleId} setSelectedId={setSelectedVehicleId} />
+                  <VehiclePicker
+                    items={vehicleItems}
+                    selectedId={selectedVehicleId}
+                    setSelectedId={setSelectedVehicleId}
+                  />
                 </div>
-                {vehicleItems.length === 0 && <p className="text-xs text-red-600 mt-2">ยังไม่มีรถที่ลงทะเบียน – โปรดเพิ่มรถก่อนจองทริป</p>}
+                {vehicleItems.length === 0 && (
+                  <p className="text-xs text-red-600 mt-2">
+                    ยังไม่มีรถที่ลงทะเบียน – โปรดเพิ่มรถก่อนจองทริป
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-center gap-3 pt-4">
@@ -1085,7 +1094,7 @@ export default function CreateTripOnlyPickup() {
                       <img src="/arrow-up.png" alt="up" className="h-3 w-3" />
                     </button>
                     <button
-                      className="h-4 w-4 p-0 flex items-center justify-center"
+                      className="h-4 w-4 p-0 flex items_center justify-center"
                       onClick={() => setPassengerCount((n) => Math.max(1, n - 1))}
                       aria-label="decrease"
                     >
@@ -1114,16 +1123,24 @@ export default function CreateTripOnlyPickup() {
     );
   };
 
+  /* ---------- หน้าแพ็กเกจ 3/3: Confirm ---------- */
   const renderConfirmPage = () => {
     const sel = selectedVehicle;
     const selLabel = sel?.label || "—";
     const cap = sel?.capacity ?? Infinity;
 
+    const pickupItems = pickupIds
+      .map((id) => locList.find((l) => l.id === id)?.name)
+      .filter((n): n is string => Boolean(n));
+
+    const dropoffName = locList.find((l) => l.id === (dropoffId ?? -1))?.name || "-";
+
     return (
-      <div className="bg-[#C5D4E8] min-h-screen w/full flex flex-col items-center pb-20 px-6">
+      <div className="bg-[#C5D4E8] min-h-screen w-full flex flex-col items-center pb-20 px-6">
         <div className="w-full max-w-md flex items-center mt-4">
           <BackButton2 onBack={() => setPage("package2")} />
         </div>
+
         <div className="flex-1 text-center mt-4 py-5">
           <h1 className="text-lg text-black font-light">การสร้างทริปขาประจำ หน้า 3/3</h1>
           <p className="text-xl font-normal text-black mt-2">ยืนยันการสร้าง</p>
@@ -1131,12 +1148,30 @@ export default function CreateTripOnlyPickup() {
         </div>
 
         <div className="w-full max-w-md bg-white font-light rounded-2xl p-4 shadow-md shadow-black/50 mb-4">
-          <div className="flex flex-col gap-4 relative">
-            <LocationBox value={pickupLabel} showLine />
-            <LocationBox value={dropoffLabel} />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[#191919]">จุดรับทั้งหมด</span>
+            <span className="text-[#6b7280] text-sm">{pickupItems.length} จุด</span>
+          </div>
+
+          <div className="flex flex-col gap-3 relative">
+            {pickupItems.length === 0 ? (
+              <LocationBox value="-" />
+            ) : (
+              pickupItems.map((name, idx) => (
+                <LocationBox
+                  key={`${name}-${idx}`}
+                  value={name}
+                  showLine={idx < pickupItems.length - 1 || true}
+                />
+              ))
+            )}
+
+            {/* จุดส่ง (ต่อท้าย) */}
+            <LocationBox value={dropoffName} />
           </div>
         </div>
 
+        {/* ปฏิทินแสดงวันที่ที่เลือก */}
         <div className="w-full max-w-md bg-white rounded-2xl p-4 shadow-md shadow-black/50 mb-6 font-light">
           <div className="pointer-events-none select-none">
             <CalendarComponent selected={selected} setSelected={() => {}} />
@@ -1144,6 +1179,7 @@ export default function CreateTripOnlyPickup() {
           <p className="text-sm text-center text-[#B55C32] mt-2">วันที่ที่เลือกจะถูกสร้างตามนี้</p>
         </div>
 
+        {/* สรุปจำนวนวัน/เวลา/รถ */}
         <div className="w-full max-w-md bg-white rounded-2xl p-6 mb-6 text-center shadow-md shadow-black/50 font-light">
           <p className="text-black mb-2">คุณเลือกไปแล้ว</p>
           <div className="flex justify-center items-center gap-2 text-[#B55C32] text-2xl">
@@ -1151,33 +1187,35 @@ export default function CreateTripOnlyPickup() {
             {selected.length} วัน
           </div>
           <div className="mt-4 text-sm text-[#191919] space-y-1">
-            <div>
-              เวลาออกเดินทาง: <span className="font-medium">{selectedStartTime}</span>
-            </div>
-            <div>
-              ยานพาหนะ: <span className="font-medium">{selLabel}</span>
-            </div>
-            <div>
-              จำนวนคนนั่ง: <span className="font-medium">{passengerCount}</span> (สูงสุด {cap === Infinity ? "-" : cap})
-            </div>
+            <div>เวลาออกเดินทาง: <span className="font-medium">{selectedStartTime}</span></div>
+            <div>ยานพาหนะ: <span className="font-medium">{selLabel}</span></div>
+            <div>จำนวนคนนั่ง: <span className="font-medium">{passengerCount}</span> (สูงสุด {cap === Infinity ? "-" : cap})</div>
           </div>
         </div>
 
+        {/* ปุ่มยืนยัน */}
         <button
           onClick={() => setShowPopup(true)}
           className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
-          disabled={isSubmitting || !(typeof pickupId === "number" && typeof dropoffId === "number" && selected.length > 0 && selectedVehicleId)}
+          disabled={
+            isSubmitting ||
+            !(pickupIds.length > 0 && typeof dropoffId === "number" && selected.length > 0 && selectedVehicleId)
+          }
         >
           {isSubmitting ? "กำลังสร้าง..." : "ยืนยัน"}
         </button>
 
+        {/* Popup ยืนยัน */}
         {showPopup && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center overflow-y-auto max-h-[90vh]">
               <p className="text-[#191919] text-m font-semibold mb-2">เมื่อสร้างแล้วจะไม่สามารถแก้ไขได้</p>
               <p className="text-[#191919] text-sm font-light mb-4">แน่ใจหรือไม่ว่าต้องการทำรายการนี้</p>
               <div className="flex justify-between mt-5">
-                <button onClick={() => setShowPopup(false)} className="flex-1 bg-white border border-[#B55C32] text-[#191919] py-2 rounded-3xl mr-2">
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="flex-1 bg-white border border-[#B55C32] text-[#191919] py-2 rounded-3xl mr-2"
+                >
                   ยกเลิก
                 </button>
                 <button
@@ -1191,7 +1229,6 @@ export default function CreateTripOnlyPickup() {
                       await createPackageTrip();
                       router.push("/driver/home?created=1");
                     } catch (e: any) {
-                      console.error("Create package error:", e?.response?.data || e);
                       alert(pickApiMessage(e));
                     }
                   }}
@@ -1220,4 +1257,3 @@ export default function CreateTripOnlyPickup() {
     </>
   );
 }
-

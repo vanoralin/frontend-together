@@ -1,13 +1,13 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef} from "react";
 import { useRouter } from "next/navigation";
 import { FaMotorcycle, FaCar } from "react-icons/fa";
 import CalendarComponent from "@/app/components/Calendar";
-import MapComponent2 from "@/app/components/MapComponent2";
-import type { MapMarker } from "@/app/components/MapComponent2";
 import axios from "axios";
 import { BackButton2 } from "@/app/components/BackButton2";
 import { ChevronDown } from "lucide-react";
+import dynamic from "next/dynamic";
+import L from "leaflet";
 
 /* ================== Axios (ผ่านพร็อกซี /api) ================== */
 const api = axios.create({
@@ -15,6 +15,12 @@ const api = axios.create({
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
+
+/* ==================  MapSelectComponent ================== */
+const MapSelectComponent = dynamic(
+  () => import("@/app/components/MapSelectComponent"),
+  { ssr: false }
+);
 
 /* ================== Types ================== */
 type UserProfile = { id: number; name: string; email: string; role: string; balance: number };
@@ -219,6 +225,7 @@ function TimePicker({
 /* ================== Main Component ================== */
 export default function BookingMain() {
   const router = useRouter();
+  const mapRef = useRef<L.Map | null>(null);
 
   type PageType =
     | "type"
@@ -386,17 +393,6 @@ export default function BookingMain() {
     else setDropoffId(best.id);
   }
 
-  /* -------- Markers/Center -------- */
-  const markers = useMemo<MapMarker[]>(
-    () => locs.map((l) => ({ id: l.id, position: { lat: l.lat, lng: l.lng }, label: l.name })),
-    [locs]
-  );
-  const mapCenter = useMemo(() => {
-    const p = typeof pickupId === "number" ? locs.find((l) => l.id === pickupId) : null;
-    const d = typeof dropoffId === "number" ? locs.find((l) => l.id === dropoffId) : null;
-    return (p ?? d) ?? { lat: 13.736717, lng: 100.523186 };
-  }, [pickupId, dropoffId, locs]);
-
   /* -------- Actions: estimate + book (one-time) -------- */
   const doEstimate = async () => {
     setErr("");
@@ -440,14 +436,12 @@ export default function BookingMain() {
 
       setShowPopup(false);
 
-      // รีเฟรชยอดเงินหลังตัดเงินสำเร็จ
       try {
         const p = await api.get<UserProfile>("/User/profile");
         setMe(p.data);
       } catch {/* ignore */}
 
       setOkTitle("จองสำเร็จ");
-      setOkMsg(tid ? `${msg}\nTrip ID: ${tid}` : msg);
       setShowOk(true);
     } catch (e: any) {
       const code = e?.response?.status;
@@ -490,13 +484,13 @@ export default function BookingMain() {
 
       const payload = {
         time,
-        Dates, // ชื่อคีย์ตามที่กำหนด (D ใหญ่)
+        Dates, 
         pickup_location_id: pickupId,
         dropoff_location_id: dropoffId,
         vehicle_type,
       };
 
-      await api.post("/daily-packages/request", payload, {
+      await api.post("/daily-packages/requests", payload, {
         headers: { "Idempotency-Key": `pkg-${rid()}` },
       });
 
@@ -611,14 +605,15 @@ export default function BookingMain() {
 
         {/* แผนที่ */}
         <div className="w-full max-w-md h-[450px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative">
-          <MapComponent2
-            center={mapCenter}
-            zoom={15}
-            markers={markers}
-            onMapClick={(lat, lng) => selectNearest(lat, lng, mapMode)}
-            onMarkerClick={(id) => {
-              if (mapMode === "pickup") setPickupId(Number(id));
-              else setDropoffId(Number(id));
+          <MapSelectComponent
+            locations={locs}
+            mapRef={mapRef}
+            onMarkerSelect={(loc) => {
+              // loc: { id, name, lat, lng } จาก MapSelectComponent
+              if (!loc) return;
+              if (mapMode === "pickup") setPickupId(Number(loc.id));
+              else setDropoffId(Number(loc.id));
+              mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
             }}
           />
           <div className="absolute top-3 left-3 bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
@@ -1154,14 +1149,14 @@ export default function BookingMain() {
 
         {/* แผนที่ */}
         <div className="w-full max-w-md h-[450px] border-[1px] border-[#8B8B8B] rounded-2xl overflow-hidden relative">
-          <MapComponent2
-            center={mapCenter}
-            zoom={15}
-            markers={markers}
-            onMapClick={(lat, lng) => selectNearest(lat, lng, mapMode)}
-            onMarkerClick={(id) => {
-              if (mapMode === "pickup") setPickupId(Number(id));
-              else setDropoffId(Number(id));
+          <MapSelectComponent
+            locations={locs}
+            mapRef={mapRef}
+            onMarkerSelect={(loc) => {
+              if (!loc) return;
+              if (mapMode === "pickup") setPickupId(Number(loc.id));
+              else setDropoffId(Number(loc.id));
+              mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
             }}
           />
           <div className="absolute top-3 left-3 bg-black/70 text-white text-xs px-3 py-1 rounded-full">
@@ -1304,39 +1299,79 @@ export default function BookingMain() {
   /* ---------- หน้าแพ็กเกจ 3/3: ยืนยัน + ยิง LOOP /trips/book (READ-ONLY calendar & vehicle) ---------- */
   const renderPackage3Page = () => (
     <div className="bg-[#C5DEDA] min-h-screen w-full flex flex-col items-center pb-[140px]">
-      {/* ... เนื้อหาอื่นเหมือนเดิม ... */}
-      <div className="w-full max-w-md">
-        <button
-          onClick={() => setShowPopup(true)}
-          className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
-          disabled={!selectedPackage || !selectedDates.length || typeof pickupId !== "number" || typeof dropoffId !== "number"}
-        >
-          ยืนยันและจ่ายค่าเดินทาง
-        </button>
-      </div>
+      <div className="w-full flex flex-col items-center px-6 mt-10">
+        <div className="w-full max-w-md flex items-center mt-2">
+          <BackButton2 onBack={() => setPage("package2")} />
+        </div>
+        <div className="text-center mt-1 mb-5">
+          <h1 className="text-lg text-black font-light">การจองทริปขาประจำ หน้า 3/3</h1>
+          <p className="text-xl font-regular text-black">ยืนยันการจอง</p>
+          <p className="text-xl font-light text-[#B55C32] mt-2">กรุณาตรวจสอบรายการเดินทาง</p>
+        </div>
 
-      {showPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg w-[80%] max-w-[350px] p-6 text-center">
-            {/* ... กล่องยืนยัน ... */}
-            <div className="flex justify-between mt-5">
-              <button
-                onClick={() => setShowPopup(false)}
-                className="flex-1 bg-white border border-[#B5B5B5] text-[#191919] py-2 rounded-3xl mr-2"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={doRequestPackage}
-                className="flex-1 bg-[#E6A88A] border border-[#B55C32] text-[#191919] py-2 rounded-3xl ml-2"
-                disabled={loading}
-              >
-                {loading ? "กำลังทำรายการ..." : "ตกลง"}
-              </button>
+        <div className="w-full max-w-md bg-[#ffffff] font-light rounded-2xl p-4 shadow-md shadow-black/50 mb-4">
+          <div className="flex flex-col gap-4 relative">
+            <LocationBox value={pickupLabel} showLine />
+            <LocationBox value={dropoffLabel} />
+          </div>
+        </div>
+
+        {/* ปฏิทิน READ-ONLY */}
+        <div className="font-light w-full bg-white rounded-2xl shadow p-4 mb-6 shadow-md shadow-black/50">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-black font-light">วันที่ที่เลือกไว้</p>
+          </div>
+          <div className="pointer-events-none select-none">
+            <CalendarComponent selected={selectedDates} setSelected={() => { /* read-only */ }} />
+          </div>
+        </div>
+
+        {/* สรุป + ยานพาหนะ READ-ONLY + จำนวนคนนั่ง */}
+        <div className="w-full max-w-md bg-white rounded-2xl p-6 mb-6 text-center shadow-md shadow-black/50 font-light">
+          <p className="text-black font-light mb-2">คุณเลือกไปแล้ว</p>
+          <div className="flex justify-center items-center gap-2 text-[#B55C32] text-2xl font-light">
+            {selectedDates.length} วัน
+          </div>
+          <div className="pt-4 w-full space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[#191919] font-light">ยานพาหนะ</span>
+              <span className="text-[#191919] font-light">{selectedVehicle}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[#191919] font-light">จำนวนคนนั่ง</span>
+              <span className="text-[#191919] font-light">{passengerCount}</span>
             </div>
           </div>
         </div>
-      )}
+
+        <div className="w-full max-w-md bg-white rounded-2xl p-4 shadow-md shadow-black/50 mb-5 flex justify-between items-center">
+          <div>
+            <p className="text-[#191919] text-base font-light mb-2">ค่าแพ็คเกจ</p>
+            <div className="flex items-center gap-2">
+              <img src="/coin.svg" alt="coin" className="w-8 h-8 object-contain" />
+              <p className="text-[#191919] text-xl font-light">
+                {pkgPrice ? `${pkgPrice} บาท` : "กรุณาเลือกแพ็กเกจ"}
+              </p>
+            </div>
+          </div>
+          <div className="text-right self-start">
+            <p className="text-[#8b8b8b] text-sm font-light">ยอดในกระเป๋าเงิน</p>
+            <div className="flex items-center justify-end gap-1">
+              <img src="/coin.svg" alt="coin" className="w-4 h-4 object-contain" />
+              <p className="text-[#8b8b8b] text-base font-light">{me ? `${me.balance} บาท` : "-"}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-md">
+          <button
+            onClick={() => setShowPopup(true)}
+            className="w-full bg-[#E6A88A] border-2 border-[#B55C32] text-black font-light py-3 rounded-3xl hover:bg-[#d9956f] transition-colors duration-200 disabled:opacity-50"
+            disabled={!selectedPackage || !selectedDates.length || typeof pickupId !== "number" || typeof dropoffId !== "number"}
+          >
+            ยืนยันและจ่ายค่าเดินทาง
+          </button>
+        </div>
 
         {showPopup && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1349,7 +1384,7 @@ export default function BookingMain() {
                 </div>
               </div>
               <p className="text-[#191919] text-m font-regular mb-4">
-                เมื่อจองแล้วจะไม่สามารถแก้ไขได้<br />และเงินในกระเป๋าจะถูกหักตามการจองแต่ละวัน
+                เมื่อยืนยันแล้วจะไม่สามารถแก้ไขได้<br />และเงินในกระเป๋าจะ<strong>ถูกหักทันที</strong>
               </p>
               <p className="text-[#191919] text-sm font-light mb-4">แน่ใจหรือไม่ว่าต้องการทำรายการจองนี้</p>
               <div className="flex justify-between mt-5">
@@ -1429,6 +1464,7 @@ export default function BookingMain() {
           </div>
         )}
       </div>
+    </div>
   );
 
   return (
