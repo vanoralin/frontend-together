@@ -5,7 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { BackButton } from "@/app/components/share_component";
 import { PinName } from "@/app/components/trip_components";
 import NavigationMap from "@/app/components/NavigationMap";
+import dynamic from "next/dynamic";
 
+
+const MyLocationMap = dynamic(
+    () => import("@/app/components/MyLocationMap"),
+    { ssr: false }
+);
 interface LocationType {
     id?: number;
     name: string;
@@ -130,9 +136,13 @@ export default function TripMapPage() {
             <div className="flex-1 relative">
                 {!started ? (
                     // Before starting - แสดงแผนที่แบบธรรมดา
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                        <p className="text-gray-500">พร้อมเริ่มต้นการเดินทาง</p>
+                    // <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    //     <p className="text-gray-500">พร้อมเริ่มต้นการเดินทาง</p>
+                    // </div>
+                    <div className="flex-1 relative h-full">
+                        <MyLocationMap />
                     </div>
+
                 ) : (
                     // After starting - ใช้ NavigationMap
                     <NavigationMap
