@@ -6,7 +6,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { LocationType } from "../../components/MapSelectComponent";
 import { LocationShowBox, TripEstimateBox } from "../../components/trip_components";
-import { Header, BackButton } from "@/app/components/share_component";
+import { Header, BackButton, Popup } from "@/app/components/share_component";
 import L from "leaflet";
 
 const MapSelectComponent = dynamic(
@@ -20,7 +20,7 @@ interface LocationSearchBarProps {
     locations: LocationType[];
     value: string;
     onChange: (val: string) => void;
-    onSelect: (loc: LocationType | null) => boolean; 
+    onSelect: (loc: LocationType | null) => boolean;
     mapRef: React.RefObject<L.Map | null>;
 }
 
@@ -35,7 +35,7 @@ function LocationSearchBar({ label, locations, value, onChange, onSelect, mapRef
 
     const handleSelect = (loc: LocationType) => {
         const success = onSelect(loc);
-        if (!success) return;         
+        if (!success) return;
         setShowDropdown(false);
         mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
     };
@@ -43,7 +43,7 @@ function LocationSearchBar({ label, locations, value, onChange, onSelect, mapRef
 
     const handleClear = () => {
         onChange('');
-        onSelect(null); 
+        onSelect(null);
     };
 
     return (
@@ -101,6 +101,8 @@ export default function DriverPage() {
 
     const [showDetail, setShowDetail] = useState(false);
     const [selectedVehicle, setSelectedVehicle] = useState("รถยนต์");
+
+    const [showConfirmPopup, setShowPopup] = useState(false);
 
     const mapRef = useRef<L.Map | null>(null);
 
@@ -165,13 +167,19 @@ export default function DriverPage() {
                 headers: { "Content-Type": "application/json" },
             });
             console.log("Response:", res.data);
-            alert("สร้างทริปสำเร็จ!");
-            router.push("/customer/home");
+            setShowPopup(true);
+            //alert("สร้างทริปสำเร็จ!");
+
         } catch (err: any) {
             console.error("Error:", err.response?.data || err.message);
             alert("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
         }
     };
+
+    const handlePopup = () => {
+        setShowPopup(false);
+        router.push("/customer/home");
+    }
 
     // หน้าเลือกจุด
     if (!showDetail) {
@@ -193,7 +201,7 @@ export default function DriverPage() {
                         <LocationSearchBar
                             label="ค้นหาจุดลงรถ"
                             locations={locations}
-                            value={dropoffSearch}      
+                            value={dropoffSearch}
                             onChange={setDropoffSearch}
                             onSelect={(loc) => handleSelectLocation(loc, "dropoff")}
                             mapRef={mapRef}
@@ -214,6 +222,7 @@ export default function DriverPage() {
                                     if (!pickup) handleSelectLocation(loc, "pickup");
                                     else if (!dropoff) handleSelectLocation(loc, "dropoff");
                                 }}
+                                page={'instant'}
                             />
                         )}
                     </div>
@@ -232,8 +241,8 @@ export default function DriverPage() {
     // หน้า detail
     return (
         <div className="bg-[#C5DEDA] min-h-screen w-full flex flex-col items-center pb-20 px-6 gap-4">
-                <BackButton onClick={() => setShowDetail(false)}/>
-                <h1 className="text-2xl font-medium text-center pt-12">หารถด่วน</h1>
+            <BackButton onClick={() => setShowDetail(false)} />
+            <h1 className="text-2xl font-medium text-center pt-12">หารถด่วน</h1>
 
             <div className="bg-white shadow-md rounded-2xl p-4 space-y-3 mt-6 w-full max-w-md">
                 <LocationShowBox value={pickup?.name || ""} />
@@ -307,6 +316,24 @@ export default function DriverPage() {
                     เรียกรถเลย
                 </button>
             </div>
+
+            {showConfirmPopup && (
+                <Popup
+                    title="เรียกรถสำเร็จ"
+                    description="เรากำลังหารถให้คุณ .."
+                    image={<img src="/home_car.png" className="w-30 h-auto" />}
+                    onClose={() => setShowPopup(false)}
+                    actions={[
+                        {
+                            label: "ตกลง",
+                            onClick: () => {
+                                handlePopup()
+                            },
+                            variant: "primary",
+                        },
+                    ]}
+                />
+            )}
 
 
         </div>

@@ -30,7 +30,7 @@ interface NavigationMapProps {
     onPinReached?: () => void;
     pickupLocationId?: LocationType;
     dropoffLocationId?: LocationType;
-    onDriverNearDestination?: (isNear: boolean) => void; // ✅ เพิ่ม callback
+    onDriverNearDestination?: (isNear: boolean) => void; //callback
 }
 
 const pinIcon = new L.Icon({
@@ -247,7 +247,7 @@ export default function NavigationMap({
     currentPinIndex,
     onRouteUpdate,
     onPinReached,
-    onDriverNearDestination, // ✅ เพิ่ม
+    onDriverNearDestination,
 }: NavigationMapProps) {
     const [routeSegments, setRouteSegments] = useState<RouteSegment[]>([]);
     const [driverPosition, setDriverPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -263,7 +263,7 @@ export default function NavigationMap({
     const [isAtDestination, setIsAtDestination] = useState(false);
 
 
-    // ✅ เพิ่ม ref เก็บตำแหน่งล่าสุด (อิสระจาก state)
+    //ref เก็บตำแหน่งล่าสุด (อิสระจาก state)
     const latestPositionRef = useRef<{ lat: number; lng: number } | null>(null);
 
     // สร้าง route segments ทั้งหมดตั้งแต่แรก
@@ -302,7 +302,7 @@ export default function NavigationMap({
         const targetPoints = Math.max(10, Math.min(50, Math.floor(distanceKm * 3)));
         const skipInterval = Math.max(1, Math.floor(coords.length / targetPoints));
 
-        // ✅ กรองจุดให้น้อยลง แต่รับประกันว่ามีจุดสุดท้ายเสมอ
+        // กรองจุดให้น้อยลง แต่รับประกันว่ามีจุดสุดท้ายเสมอ
         const filteredCoords = coords.filter((_, idx) => idx % skipInterval === 0);
         if (coords.length > 0 && filteredCoords[filteredCoords.length - 1] !== coords[coords.length - 1]) {
             filteredCoords.push(coords[coords.length - 1]);
@@ -317,20 +317,21 @@ export default function NavigationMap({
         console.log(`Set route for pin ${currentPinIndex} -> ${currentPinIndex + 1}: ${filteredCoords.length} points (distance: ${distanceKm.toFixed(2)} km)`);
     }, [currentPinIndex, routeSegments]);
 
-    // ✅ WebSocket Setup + Heartbeat (อิสระจาก movement)
+    // ===============WebSocket Setup + Heartbeat (อิสระจาก movement)==============================
     useEffect(() => {
         if (mode !== 'driver' || !tripId) return;
 
+        // --Driver Websocket
         const ws = new WebSocket(`ws://129.150.62.182:8888/ws/driver?trip_id=${tripId}`);
         wsRef.current = ws;
 
         ws.onopen = () => {
             console.log("Driver WebSocket connected");
 
-            // ✅ Heartbeat อิสระ - ส่งทุก 5 วินาที ไม่ว่าอะไร
+            //Heartbeat อิสระ -> ส่งทุกq ... วินาที ไม่ให้ server ปิด
             wsHeartbeatRef.current = setInterval(() => {
                 if (ws.readyState === WebSocket.OPEN) {
-                    // ✅ ใช้ latestPositionRef แทน state
+                    //ใช้ latestPositionRef แทน state
                     const currentPos = latestPositionRef.current ||
                         (pins[currentPinIndex] ? { lat: pins[currentPinIndex].lat, lng: pins[currentPinIndex].lng } : null);
 
@@ -346,7 +347,7 @@ export default function NavigationMap({
                         console.warn("⚠️ No position to send");
                     }
                 }
-            }, 2000); // ทุก 5 วินาที
+            }, 2000); //ทุก 5 วินาที
         };
 
         ws.onerror = (error) => console.error("Driver WebSocket error:", error);
@@ -368,9 +369,9 @@ export default function NavigationMap({
                 ws.close();
             }
         };
-    }, [tripId, mode, pins, currentPinIndex]); // ✅ ไม่ depend on driverPosition
+    }, [tripId, mode, pins, currentPinIndex]);
 
-    // Customer mode: รับตำแหน่งจาก WebSocket
+    // --Customer Socket
     useEffect(() => {
         if (mode !== 'customer' || !tripId) return;
 
@@ -390,7 +391,7 @@ export default function NavigationMap({
                     console.log(`📍 Driver position updated → lat=${data.lat}, lng=${data.lng}`);
                     const newPos = { lat: data.lat, lng: data.lng };
                     setDriverPosition(newPos);
-                    latestPositionRef.current = newPos; // ✅ อัพเดท ref ด้วย
+                    latestPositionRef.current = newPos; //อัพเดท ref ด้วย
                 } else {
                     console.warn("⚠️ Received message does not contain lat/lng keys:", data);
                 }
@@ -449,7 +450,7 @@ export default function NavigationMap({
             destination.lng
         );
 
-        const THRESHOLD = 50; // 50 เมตร
+        const THRESHOLD = 500; // 50 เมตร
         const isNear = distance <= THRESHOLD;
 
         console.log(`📍 Distance to destination: ${distance.toFixed(2)}m, isNear: ${isNear}`);
@@ -502,16 +503,16 @@ export default function NavigationMap({
 
                 // อัพเดทระยะทางและเวลาที่เหลือ (ทุก 10 วินาที)
                 const now = Date.now();
-                if (now - lastRouteUpdateRef.current > 5000) {
+                if (now - lastRouteUpdateRef.current > 500) {
                     updateRealTimeRoute(newPos);
                     lastRouteUpdateRef.current = now;
                 }
 
-                if (isLastCoord) { // 👈 หากเป็นจุดสุดท้าย
+                if (isLastCoord) { //หากเป็นจุดสุดท้าย
                     console.log(`Reached pin ${currentPinIndex + 1}`);
                     setIsAtDestination(true);
                     if (onPinReached) {
-                        onPinReached(); // 👈 เรียก onPinReached() ที่ตำแหน่งสุดท้าย
+                        onPinReached(); //เรียก onPinReached() ที่ตำแหน่งสุดท้าย
                     }
                     if (movementIntervalRef.current) {
                         clearInterval(movementIntervalRef.current);
@@ -551,7 +552,7 @@ export default function NavigationMap({
             const startPin = pins[currentPinIndex] || pins[0];
             const startPos = { lat: startPin.lat, lng: startPin.lng };
             setDriverPosition(startPos);
-            latestPositionRef.current = startPos; // ✅ ตั้งค่า ref ด้วย
+            latestPositionRef.current = startPos;
         }
     }, [pins, currentPinIndex, mode]);
 
@@ -582,15 +583,15 @@ export default function NavigationMap({
 
             {driverPosition && <MapCenter position={[driverPosition.lat, driverPosition.lng]} />}
 
-            {/* ✅ แสดงเฉพาะหมุดปลายทาง (หมุดที่กำลังจะไป) */}
+            {/* แสดงเฉพาะหมุดปลายทาง (หมุดที่กำลังจะไป) */}
             {currentDestination && (
                 <Marker position={[currentDestination.lat, currentDestination.lng]} icon={pinIcon}>
                     <Tooltip permanent direction="top" offset={[0, -40]}>
                         <div style={{ textAlign: 'center', fontSize: '12px' }}>
                             {currentPinIndex + 1 === pins.length - 1 ? (
-                                <div style={{ color: '#dc2626', fontWeight: 'bold' }}>🔴 ปลายทาง</div>
+                                <div className="text-theme-orange font-bold">ปลายทาง</div>
                             ) : (
-                                <div style={{ color: '#f59e0b', fontWeight: 'bold' }}>📍 จุดถัดไป</div>
+                                <div className="text-theme-orange font-bold">จุดถัดไป</div>
                             )}
                             <div>{currentDestination.name}</div>
                         </div>
@@ -598,7 +599,7 @@ export default function NavigationMap({
                 </Marker>
             )}
 
-            {/* ✅ แสดงตำแหน่งคนขับ */}
+            {/* แสดงตำแหน่งคนขับ */}
             {driverPosition && (
                 <Marker position={[driverPosition.lat, driverPosition.lng]} icon={driverIcon()}>
                     <Tooltip permanent direction="top" offset={[0, -10]}>
@@ -626,7 +627,7 @@ export default function NavigationMap({
                 <Marker position={[pins[0].lat, pins[0].lng]} icon={pinIcon}>
                     <Tooltip permanent direction="top" offset={[0, -40]}>
                         <div style={{ textAlign: 'center', fontSize: '12px' }}>
-                            <div style={{ color: '#16a34a', fontWeight: 'bold' }}>🟢 จุดเริ่มต้น </div>
+                            <div className="text-theme-orange font-bold">จุดรับ </div>
                             <div>{pins[0].name}</div>
                         </div>
                     </Tooltip>

@@ -43,7 +43,7 @@ export default function ReservationList() {
         setAccepting(true);
         try {
             await axios.post(`/api/instant-trips/${reservation.id}/accept`);
-            alert('รับงานเรียบร้อยแล้ว');
+            //alert('รับงานเรียบร้อยแล้ว');
             setReservations(prev => prev.filter(r => r.id !== reservation.id));
             setSelectedReservation(null);
         } catch (err) {

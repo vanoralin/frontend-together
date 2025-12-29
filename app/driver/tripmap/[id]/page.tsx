@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BackButton } from "@/app/components/share_component";
-import { PinName } from "@/app/components/trip_components";
+import { BackButton, Popup } from "@/app/components/share_component";
+import { LocationShowBox, PinName, PinPath } from "@/app/components/trip_components";
 import NavigationMap from "@/app/components/NavigationMap";
 import dynamic from "next/dynamic";
-
 
 const MyLocationMap = dynamic(
     () => import("@/app/components/MyLocationMap"),
@@ -80,29 +79,36 @@ export default function TripMapPage() {
         }
     };
 
-    const goNext = () => {
+    useEffect(() => {
+        if (!showCompletePopup) return;
+        if (countdown <= 0) {
+            router.push("/driver/home");
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setCountdown((prev) => prev - 1);
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [countdown, showCompletePopup, router]);
+
+    const goNext = () => { //ไปหมุดถัดไป
         if (!trip) return;
 
         if (currentPinIndex + 1 < trip.path.locations.length - 1) {
-            // ไปหมุดถัดไป
             setCurrentPinIndex(prev => prev + 1);
         } else {
-            // หมุดสุดท้าย - จบทริป
-            setShowCompletePopup(true);
-            setCountdown(3);
-
-            const timer = setInterval(() => {
-                setCountdown((prev) => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        router.push("/driver/home");
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
+            //หมุดสุดท้าย - จบทริป
+            finishTrip();
         }
     };
+
+    const finishTrip = () => {
+        setShowCompletePopup(true);
+        setCountdown(3);
+    };
+
 
     if (!trip) return <p>กำลังโหลดข้อมูลทริป...</p>;
 
@@ -131,7 +137,7 @@ export default function TripMapPage() {
 
     return (
         <div className="flex flex-col h-screen">
-            {!started && <BackButton />}
+            {/* {!started && <BackButton />} */}
 
             <div className="flex-1 relative">
                 {!started ? (
@@ -140,7 +146,8 @@ export default function TripMapPage() {
                     //     <p className="text-gray-500">พร้อมเริ่มต้นการเดินทาง</p>
                     // </div>
                     <div className="flex-1 relative h-full">
-                        <MyLocationMap />
+                        <MyLocationMap locations={locations} />
+
                     </div>
 
                 ) : (
@@ -155,7 +162,6 @@ export default function TripMapPage() {
                         }}
                         onPinReached={() => {
                             console.log("Reached pin!");
-                            // ไม่ต้องทำอะไร - รอให้ driver กดปุ่ม
                         }}
                     />
                 )}
@@ -163,11 +169,12 @@ export default function TripMapPage() {
 
             <div className="bg-white w-full max-w-[390px] mx-auto p-4 z-50 shadow-lg rounded-t-xl">
                 {!started ? (
-                    // ก่อนเริ่มทริป
+                    // +++1.ก่อนเริ่มทริป 
                     <div className="flex flex-col">
                         <div className="mb-4">
                             <h2 className="font-semibold text-lg mb-2">จุดออกเดินทาง</h2>
-                            <PinName location={currentLocation.name} />
+                            {/* <PinName location={currentLocation.name} /> */}
+                            <LocationShowBox value={currentLocation.name} />
 
                             {currentHasAction && (
                                 <div className="mt-2 space-y-1">
@@ -199,32 +206,33 @@ export default function TripMapPage() {
 
                         {nextLocation && (
                             <>
-                                <div className="mb-4 bg-blue-50 rounded-lg p-3">
+                                <div className="mb-4 rounded-lg bg-gray-200 p-3">
                                     <h2 className="text-lg mb-2 font-semibold">จุดหมาย</h2>
                                     <PinName location={nextLocation.name} />
+                                    {/* <LocationShowBox value={nextLocation.name} /> */}
 
                                     {nextHasAction && (
                                         <div className="mt-2 space-y-1">
                                             {nextPickupCount > 0 && (
-                                                <div className="flex items-center gap-2 text-sm text-green-700">
+                                                <div className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded">
                                                     <img
                                                         src="/icon_nav_profile.svg"
                                                         alt="pickup"
                                                         className="w-4 h-4"
                                                         style={{ filter: "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)" }}
                                                     />
-                                                    <span>รับ: {nextPickupCount} คน</span>
+                                                    <span className="text-green-700">รับผู้โดยสาร: {nextPickupCount} คน</span>
                                                 </div>
                                             )}
                                             {nextDropoffCount > 0 && (
-                                                <div className="flex items-center gap-2 text-sm text-red-700">
+                                                <div className="flex items-center gap-2 text-sm p-2  rounded ">
                                                     <img
                                                         src="/icon_nav_profile.svg"
                                                         alt="dropoff"
                                                         className="w-4 h-4"
                                                         style={{ filter: "brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%)" }}
                                                     />
-                                                    <span>ส่ง: {nextDropoffCount} คน</span>
+                                                    <span className="text-red-700">ส่งผู้โดยสาร: {nextDropoffCount} คน</span>
                                                 </div>
                                             )}
                                         </div>
@@ -233,7 +241,7 @@ export default function TripMapPage() {
 
                                 <button
                                     onClick={startTrip}
-                                    className="w-full px-6 py-3 rounded-lg text-white bg-theme-orange hover:bg-orange-600 transition-colors"
+                                    className="w-full px-6 py-3 rounded-lg text-white bg-theme-orange hover:bg-theme-second-orange transition-colors"
                                 >
                                     เริ่มต้นการเดินทาง
                                 </button>
@@ -241,43 +249,79 @@ export default function TripMapPage() {
                         )}
                     </div>
                 ) : (
-                    // หลังเริ่มทริป
+                    //+++2.หลังเริ่มทริป++++
                     <>
                         <div className="mb-3">
-                            <div className="text-xs text-gray-500">
-                                หมุดที่ {currentPinIndex + 2}/{locations.length}
+                            <div className="inline-flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                <span>จุดเดินทางที่</span>
+                                <span className="font-medium text-gray-700">
+                                    {currentPinIndex + 2}/{locations.length}
+                                </span>
                             </div>
                         </div>
 
                         {nextLocation && routeInfo && (
-                            <div className="text-gray-600 bg-gray-50 p-3 rounded">
-                                <h2 className="font-semibold text-lg mb-2 text-theme-black">
-                                    {`จุดหมายถัดไป (${(routeInfo.distance / 1000).toFixed(1)} km | ${(routeInfo.duration / 60).toFixed(0)} นาที)`}
-                                </h2>
-                                <PinName location={nextLocation.name} />
+                            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm space-y-3">
 
+                                {/* Location name */}
+                                <div className="flex items-start gap-3">
+                                    <img src="/icon_pin.svg" alt="" className="h-6 mt-1" />
+                                    <div>
+                                        <h2 className="text-lg font-bold text-theme-black leading-tight">
+                                            {nextLocation.name}
+                                        </h2>
+                                        <div className="text-sm text-gray-600 mt-1">
+                                            {(routeInfo.distance / 1000).toFixed(1)} กม •{" "}
+                                            {(routeInfo.duration / 60).toFixed(0)} นาที
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* รับส่ง */}
                                 {nextHasAction && (
-                                    <div className="mt-2 space-y-2">
+                                    <div className="pt-3 space-y-2">
+
+                                        {/* Pickup */}
                                         {nextPickupCount > 0 && (
-                                            <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+                                            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
                                                 <img
                                                     src="/icon_nav_profile.svg"
                                                     alt="pickup"
                                                     className="w-5 h-5"
-                                                    style={{ filter: "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)" }}
+                                                    style={{
+                                                        filter:
+                                                            "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%)",
+                                                    }}
                                                 />
-                                                <span className="text-green-700 font-medium">รับผู้โดยสาร: {nextPickupCount} คน</span>
+                                                <div className="text-green-700 font-medium">
+                                                    รับผู้โดยสาร{" "}
+                                                    <span className="font-bold">
+                                                        {nextPickupCount}
+                                                    </span>{" "}
+                                                    คน
+                                                </div>
                                             </div>
                                         )}
+
+                                        {/* Dropoff */}
                                         {nextDropoffCount > 0 && (
-                                            <div className="flex items-center gap-2 p-2 bg-red-50 rounded-lg">
+                                            <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
                                                 <img
                                                     src="/icon_nav_profile.svg"
                                                     alt="dropoff"
                                                     className="w-5 h-5"
-                                                    style={{ filter: "brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%)" }}
+                                                    style={{
+                                                        filter:
+                                                            "brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%)",
+                                                    }}
                                                 />
-                                                <span className="text-red-700 font-medium">ส่งผู้โดยสาร: {nextDropoffCount} คน</span>
+                                                <div className="text-red-700 font-medium">
+                                                    ส่งผู้โดยสาร{" "}
+                                                    <span className="font-bold">
+                                                        {nextDropoffCount}
+                                                    </span>{" "}
+                                                    คน
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -289,11 +333,11 @@ export default function TripMapPage() {
                             <button
                                 onClick={goNext}
                                 disabled={!isButtonEnabled}
-                                className={`px-6 py-3 rounded-lg text-white font-medium transition-colors
+                                className={`flex-1 py-3 rounded-lg text-white font-medium transition-colors
                                     ${isButtonEnabled
                                         ? (currentPinIndex + 1 >= locations.length - 1
-                                            ? "bg-green-500 hover:bg-green-600"
-                                            : "bg-theme-orange hover:bg-orange-600")
+                                            ? "bg-theme-orange hover:bg-theme-second-orange"
+                                            : "bg-theme-second-orange hover:bg-theme-light-gray")
                                         : "bg-gray-300 cursor-not-allowed"}
                                 `}
                             >
@@ -304,12 +348,14 @@ export default function TripMapPage() {
                         </div>
 
                         {showCompletePopup && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-                                <div className="bg-white rounded-lg p-6 shadow-lg text-center">
-                                    <h2 className="text-xl font-semibold mb-2">เสร็จสิ้นการเดินทาง</h2>
-                                    <p className="text-gray-600">กำลังนำคุณกลับไปหน้าหลักใน {countdown} วินาที...</p>
-                                </div>
-                            </div>
+                            <Popup
+                                title="การเดินทางเสร็จสิ้น"
+                                image={<img src="/home_car.png" />}
+                                description={`กำลังนำคุณกลับไปหน้าหลักใน ${countdown} วินาที...`}
+                                actions={[]}
+                                onClose={() => { }}
+                            />
+
                         )}
                     </>
                 )}

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState, useRef} from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { FaMotorcycle, FaCar } from "react-icons/fa";
 import CalendarComponent from "@/app/components/Calendar";
@@ -93,9 +93,9 @@ function VehiclePicker({
   disabled?: boolean;
 }) {
   const [show, setShow] = useState(false);
-  const vehicles = ["จักรยานยนต์","รถยนต์","รถยนต์ขนาดใหญ่"];
+  const vehicles = ["จักรยานยนต์", "รถยนต์", "รถยนต์ขนาดใหญ่"];
 
-  const Wrapper: React.FC<{children: React.ReactNode}> = ({children}) =>
+  const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     disabled ? <div className="pointer-events-none select-none">{children}</div> : <>{children}</>;
 
   return (
@@ -114,9 +114,8 @@ function VehiclePicker({
             {vehicles.map(v => (
               <button
                 key={v}
-                className={`w-full text-left font-light px-4 py-2 hover:bg-blue-100 ${
-                  selectedVehicle === v ? "bg-blue-500 text-white" : "text-gray-700 "
-                }`}
+                className={`w-full text-left font-light px-4 py-2 hover:bg-blue-100 ${selectedVehicle === v ? "bg-blue-500 text-white" : "text-gray-700 "
+                  }`}
                 onClick={() => {
                   setSelectedVehicle(v);
                   setShow(false);
@@ -205,9 +204,8 @@ function TimePicker({
           {times.map((t) => (
             <button
               key={t}
-              className={`w-full text-left px-4 py-2 hover:bg-[#E6A88A] ${
-                selectedTime === t ? "bg-[#B55C32] text-white" : "text-gray-700"
-              }`}
+              className={`w-full text-left px-4 py-2 hover:bg-[#E6A88A] ${selectedTime === t ? "bg-[#B55C32] text-white" : "text-gray-700"
+                }`}
               onClick={() => {
                 setSelectedTime(t);
                 setOpen(false);
@@ -377,8 +375,8 @@ export default function BookingMain() {
   };
   const getThaiMonthName = (month: number) =>
     [
-      "มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
-      "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม",
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
     ][month];
 
   /* -------- เลือกจากแผนที่: หา location ที่ใกล้ที่สุด -------- */
@@ -439,7 +437,7 @@ export default function BookingMain() {
       try {
         const p = await api.get<UserProfile>("/User/profile");
         setMe(p.data);
-      } catch {/* ignore */}
+      } catch {/* ignore */ }
 
       setOkTitle("จองสำเร็จ");
       setShowOk(true);
@@ -484,7 +482,7 @@ export default function BookingMain() {
 
       const payload = {
         time,
-        Dates, 
+        Dates,
         pickup_location_id: pickupId,
         dropoff_location_id: dropoffId,
         vehicle_type,
@@ -498,7 +496,7 @@ export default function BookingMain() {
       try {
         const p = await api.get<UserProfile>("/User/profile");
         setMe(p.data);
-      } catch {/* ignore */}
+      } catch {/* ignore */ }
 
       setShowPopup(false);
       setOkTitle("ซื้อแพ็กเกจสำเร็จ");
@@ -586,17 +584,15 @@ export default function BookingMain() {
         {/* ปุ่มสลับโหมดคลิก */}
         <div className="w-full max-w-md flex gap-3 mb-3">
           <button
-            className={`flex-1 rounded-full px-4 py-2 border ${
-              mapMode === "pickup" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
-            }`}
+            className={`flex-1 rounded-full px-4 py-2 border ${mapMode === "pickup" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
+              }`}
             onClick={() => setMapMode("pickup")}
           >
             เลือกจุดรับ
           </button>
           <button
-            className={`flex-1 rounded-full px-4 py-2 border ${
-              mapMode === "dropoff" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
-            }`}
+            className={`flex-1 rounded-full px-4 py-2 border ${mapMode === "dropoff" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
+              }`}
             onClick={() => setMapMode("dropoff")}
           >
             เลือกจุดส่ง
@@ -615,6 +611,7 @@ export default function BookingMain() {
               else setDropoffId(Number(loc.id));
               mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
             }}
+            page={null}
           />
           <div className="absolute top-3 left-3 bg-black/70 text-white font-light text-xs px-3 py-1 rounded-full">
             คลิกเพื่อเลือก: {mapMode === "pickup" ? "จุดรับ" : "จุดส่ง"}
@@ -689,9 +686,8 @@ export default function BookingMain() {
                   {generateCalendarDays().map((day) => (
                     <div
                       key={day.date.toString()}
-                      className={`p-1 rounded cursor-pointer ${
-                        day.isSelected ? "bg-[#b55c32] text-white" : ""
-                      } ${day.isCurrentMonth ? "" : "text-gray-400"}`}
+                      className={`p-1 rounded cursor-pointer ${day.isSelected ? "bg-[#b55c32] text-white" : ""
+                        } ${day.isCurrentMonth ? "" : "text-gray-400"}`}
                       onClick={() => {
                         setSelectedDate(day.dateString);
                         setShowDatePicker(false);
@@ -764,19 +760,17 @@ export default function BookingMain() {
                 <button
                   key={v}
                   onClick={() => !disabled && setSelectedVehicle(v as any)}
-                  className={`w-full flex justify-between items-center bg-[#FFFFFF] px-4 py-2 rounded-full font-light ${
-                    disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
-                  }`}
+                  className={`w-full flex justify-between items-center bg-[#FFFFFF] px-4 py-2 rounded-full font-light ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedVehicle === v ? "border-[#b55c32] bg-[#b55c32]" : "border-gray-400 bg-white"
-                      }`}
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedVehicle === v ? "border-[#b55c32] bg-[#b55c32]" : "border-gray-400 bg-white"
+                        }`}
                     >
                       {selectedVehicle === v && (
                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none">
-                          <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </div>
@@ -786,7 +780,7 @@ export default function BookingMain() {
                   </div>
                   <span className="text-[#8b8b8b] text-sm font-light flex items-center gap-1">
                     {v === "จักรยานยนต์" ? "1" : v === "รถยนต์ขนาดใหญ่" ? "1–6" : "1–4"}
-                    <img src="/icon_nav_profile.svg" alt="profile" className="w-4 h-4 object-contain" style={{ filter: "brightness(0) invert(50%)" }}/>
+                    <img src="/icon_nav_profile.svg" alt="profile" className="w-4 h-4 object-contain" style={{ filter: "brightness(0) invert(50%)" }} />
                   </span>
                 </button>
               );
@@ -895,7 +889,7 @@ export default function BookingMain() {
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center border-[#B55C32] bg-[#B55C32]">
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <span className="text-[#B55C32] font-light">{selectedVehicle}</span>
@@ -1046,7 +1040,7 @@ export default function BookingMain() {
       <div className="flex flex-col items-center text-center mt-16 px-10 py-10">
         <h1 className="text-5xl font-regular text-[#191919] mb-4">จองทริปแบบ ขาประจำ</h1>
         <img src="/home_package.png" alt="Home Package" className="w-30 h-20 mb-6" />
-        <p className="text-base font-light text-[#191919]">จ่าย 1 ครั้ง เดินทางกี่ครั้งก็ได้<br/>ภายใน 4 สัปดาห์</p>
+        <p className="text-base font-light text-[#191919]">จ่าย 1 ครั้ง เดินทางกี่ครั้งก็ได้<br />ภายใน 4 สัปดาห์</p>
       </div>
       <div className="flex flex-col gap-6 -mt-2">
         <div className="flex flex-col gap-6 mt-6">
@@ -1059,7 +1053,7 @@ export default function BookingMain() {
               <div key={v} className="flex items-center justify-center gap-1">
                 <div onClick={() => setSelectedPackage(v as any)} className="cursor-pointer mx-6 -mr-1">
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center border-[#B55C32] ${selected ? "bg-[#B55C32]" : "bg-white"}`}>
-                    {selected && (<svg className="w-3 h-3" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>)}
+                    {selected && (<svg className="w-3 h-3" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>)}
                   </div>
                 </div>
                 <div onClick={() => setSelectedPackage(v as any)} className={`bg-white rounded-xl shadow-md px-6 py-4 w-[280px] mx-auto flex flex-col items-center text-center cursor-pointer transition-all duration-200 ${selected ? "border-2 border-[#B55C32]" : "border border-transparent"}`}>
@@ -1130,17 +1124,15 @@ export default function BookingMain() {
         {/* ปุ่มสลับโหมดคลิก */}
         <div className="w-full max-w-md flex gap-3 mb-3">
           <button
-            className={`flex-1 rounded-full px-4 py-2 border ${
-              mapMode === "pickup" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
-            }`}
+            className={`flex-1 rounded-full px-4 py-2 border ${mapMode === "pickup" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
+              }`}
             onClick={() => setMapMode("pickup")}
           >
             เลือกจุดรับ
           </button>
           <button
-            className={`flex-1 rounded-full px-4 py-2 border ${
-              mapMode === "dropoff" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
-            }`}
+            className={`flex-1 rounded-full px-4 py-2 border ${mapMode === "dropoff" ? "bg-[#B55C32] text-white font-light border-[#B55C32]" : "bg-white text-[#191919] font-light border-[#8B8B8B]"
+              }`}
             onClick={() => setMapMode("dropoff")}
           >
             เลือกจุดส่ง
@@ -1158,6 +1150,7 @@ export default function BookingMain() {
               else setDropoffId(Number(loc.id));
               mapRef.current?.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
             }}
+            page={null}
           />
           <div className="absolute top-3 left-3 bg-black/70 text-white text-xs px-3 py-1 rounded-full">
             คลิกเพื่อเลือก: {mapMode === "pickup" ? "จุดรับ" : "จุดส่ง"}
@@ -1264,7 +1257,7 @@ export default function BookingMain() {
             </div>
           </div>
         </div>
-      
+
         {/* ค่าแพ็คเกจ (อัปเดตตามประเภทแพ็กเกจ) */}
         <div className="w-full max-w-md bg-white rounded-2xl p-4 shadow-md shadow-black/50 mb-5 flex justify-between items-center">
           <div>

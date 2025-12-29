@@ -6,7 +6,11 @@ import Navbar from "../components/navbar";
 import axios from "axios";
 import L, { Map as LeafletMap } from "leaflet";
 
-const MapComponent = dynamic(() => import("../../components/MapComponent"), { ssr: false });
+// const MapComponent = dynamic(() => import("../../components/MapComponent"), { ssr: false });
+const MapSelectComponent = dynamic(
+    () => import("../../components/MapSelectComponent"),
+    { ssr: false }
+);
 
 export default function TripMapPage() {
     const [start, setStart] = useState("");
@@ -14,11 +18,8 @@ export default function TripMapPage() {
     const [loading, setLoading] = useState(true);
     const [showDropdown, setShowDropdown] = useState(false);
 
-    // 🔹 ref map
     const mapRef = useRef<LeafletMap | null>(null);
 
-    // ดึงข้อมูล
-    // กำหนด type ของ location
     interface Location {
         id?: number;
         name: string;
@@ -30,7 +31,6 @@ export default function TripMapPage() {
     useEffect(() => {
         const fetchLocations = async () => {
             try {
-                // บอก Axios ว่า data จะเป็น Location[]
                 const res = await axios.get<Location[]>("/api/locations");
                 setLocations(res.data);
             } catch (err) {
@@ -49,7 +49,7 @@ export default function TripMapPage() {
 
     const dropdownLocations = start ? filteredLocations : [];
 
-    // 🔹 ฟังก์ชันเลื่อนไป marker
+    //ฟังก์ชันเลื่อนไป marker
     const flyToLocation = (loc: { lat: number; lng: number }) => {
         if (mapRef.current) {
             mapRef.current.flyTo([loc.lat, loc.lng], 16, { duration: 1.2 }); // zoom=16, duration=1.2s
@@ -57,7 +57,7 @@ export default function TripMapPage() {
     };
 
     return (
-        <div className="relative w-full h-screen bg-theme-customer">
+        <div className="relative w-full h-screen bg-theme-driver">
             <div className="fixed top-10 z-10 w-80 px-4 py-2">
                 <div className="relative">
                     <LocationSearchInput
@@ -93,7 +93,7 @@ export default function TripMapPage() {
                     <p className="text-gray-600 text-lg">กำลังโหลดแผนที่...</p>
                 </div>
             ) : (
-                <MapComponent locations={dropdownLocations.length ? dropdownLocations : locations} mapRef={mapRef} />
+                <MapSelectComponent locations={dropdownLocations.length ? dropdownLocations : locations} mapRef={mapRef} page={'map'} />
             )}
 
             <Navbar />

@@ -1,9 +1,9 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export interface LocationType {
     id?: number;
@@ -16,8 +16,9 @@ export interface LocationType {
 interface MapComponentProps {
     locations?: LocationType[];
     mapRef?: React.RefObject<L.Map | null>;
-    onMarkerSelect?: (loc: LocationType) => void; // 🔹 รองรับ callback
+    onMarkerSelect?: (loc: LocationType) => void; //callback ตอนกด Marker
     showTooltipZoom?: number; // ระดับซูมที่จะเริ่มแสดงชื่อ marker
+    page: 'map' | 'instant' | null;
 }
 
 const customIcon = new L.Icon({
@@ -27,10 +28,39 @@ const customIcon = new L.Icon({
     popupAnchor: [0, -38],
 });
 
+const userLocationIcon = new L.Icon({
+    iconUrl: "/icon_my_location.svg",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+});
+
 function ZoomWatcher({ setZoom }: { setZoom: (zoom: number) => void }) {
     useMapEvents({
         zoomend: (e) => setZoom(e.target.getZoom()),
     });
+    return null;
+}
+
+function UserLocationWatcher({
+    setUserLocation,
+}: {
+    setUserLocation: (pos: L.LatLngTuple) => void;
+}) {
+    const map = useMapEvents({
+        locationfound(e) {
+            setUserLocation([e.latlng.lat, e.latlng.lng]);
+        },
+    });
+
+    // ขอ location ตอน component mount
+    useEffect(() => {
+        map.locate({
+            watch: true,
+            enableHighAccuracy: true,
+            setView: false,
+        });
+    }, [map]);
+
     return null;
 }
 
@@ -39,9 +69,13 @@ export default function MapComponent({
     mapRef,
     onMarkerSelect,
     showTooltipZoom = 15,
+    page
 }: MapComponentProps) {
+    //destructure ออกมาเปน type MapComponentProps
     const internalRef = useRef<L.Map | null>(null);
     const [zoom, setZoom] = useState(15);
+
+    const [userLocation, setUserLocation] = useState<L.LatLngTuple | null>(null);
 
     if (!locations.length) {
         return (
@@ -59,6 +93,13 @@ export default function MapComponent({
         onMarkerSelect?.(loc);
     };
 
+    const handleGoToMyLocation = () => {
+        if (!userLocation) return;
+
+        const map = mapRef?.current ?? internalRef.current;
+        map?.flyTo(userLocation, 17, { duration: 0.8 });
+    };
+
     return (
         <div className="w-full h-full rounded-2xl z-0 overflow-hidden shadow-lg">
             <MapContainer
@@ -69,11 +110,29 @@ export default function MapComponent({
                 attributionControl={false}
                 ref={mapRef ?? internalRef}
             >
+
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/">OSM</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <ZoomWatcher setZoom={setZoom} />
+
+                <UserLocationWatcher setUserLocation={setUserLocation} />
+
+                {userLocation && (
+                    <>
+                        <Circle
+                            center={userLocation}
+                            radius={50}
+                            pathOptions={{ color: "#2563eb", fillOpacity: 0.15 }}
+                        />
+                        <Circle
+                            center={userLocation}
+                            radius={4}
+                            pathOptions={{ color: "#2563eb", fillOpacity: 1 }}
+                        />
+                    </>
+                )}
 
                 {validLocations.map((loc) => (
                     <Marker
@@ -95,6 +154,29 @@ export default function MapComponent({
                         )}
                     </Marker>
                 ))}
+
+                {page === 'map' ? (
+                    <button
+                        onClick={handleGoToMyLocation}
+                        className="absolute top-40 right-4 z-[1000]
+      bg-white rounded-full shadow-lg
+      px-4 py-2 text-sm font-medium
+      hover:bg-gray-100 transition"
+                    >
+                        <img src="/icon_my_location.svg" alt="" />
+                    </button>
+                ) : page === "instant" ? (
+                    <button
+                        onClick={handleGoToMyLocation}
+                        className="absolute bottom-40 right-4 z-[1000]
+      bg-white rounded-full shadow-lg
+      px-4 py-2 text-sm font-medium
+      hover:bg-gray-100 transition"
+                    >
+                        <img src="/icon_my_location.svg" alt="" />
+                    </button>
+                ) : null}
+
             </MapContainer>
         </div>
     );

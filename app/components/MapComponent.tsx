@@ -1,9 +1,10 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
 
 // 🔹 กำหนด type สำหรับ location
 export interface LocationType {
@@ -35,9 +36,34 @@ function ZoomWatcher({ setZoom }: { setZoom: (zoom: number) => void }) {
   return null;
 }
 
+function UserLocationWatcher({
+  setUserLocation,
+}: {
+  setUserLocation: (pos: L.LatLngTuple) => void;
+}) {
+  const map = useMapEvents({
+    locationfound(e) {
+      setUserLocation([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+
+  // ขอ location ตอน component mount
+  useEffect(() => {
+    map.locate({
+      watch: true,
+      enableHighAccuracy: true,
+      setView: false,
+    });
+  }, [map]);
+
+  return null;
+}
+
 // 🔹 main map
 export default function MapComponent({ locations = [], mapRef }: MapComponentProps) {
   const [zoom, setZoom] = useState(15);
+
+  const [userLocation, setUserLocation] = useState<L.LatLngTuple | null>(null);
 
   if (!locations.length) {
     return (
@@ -55,6 +81,13 @@ export default function MapComponent({ locations = [], mapRef }: MapComponentPro
   const initialZoom = 15;
   const zoomToShowName = 16; // ระดับซูมที่จะเริ่มแสดงชื่อ
 
+  const handleGoToMyLocation = () => {
+    if (!userLocation) return;
+
+    const map = mapRef?.current;
+    map?.flyTo(userLocation, 17, { duration: 0.8 });
+  };
+
   return (
     <div className="w-full h-full rounded-2xl z-0 overflow-hidden shadow-lg">
       <MapContainer
@@ -63,7 +96,7 @@ export default function MapComponent({ locations = [], mapRef }: MapComponentPro
         scrollWheelZoom={true}
         className="w-full h-full"
         attributionControl={false}
-        ref={mapRef} // 🔹 ref map
+        ref={mapRef} //ref map
       >
 
         <TileLayer
@@ -71,10 +104,24 @@ export default function MapComponent({ locations = [], mapRef }: MapComponentPro
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* 🔹 ติดตามระดับซูม */}
         <ZoomWatcher setZoom={setZoom} />
 
-        {/* 🔹 วาด Marker ทั้งหมด */}
+        <UserLocationWatcher setUserLocation={setUserLocation} />
+
+        {userLocation && (
+          <>
+            <Circle
+              center={userLocation}
+              radius={50}
+              pathOptions={{ color: "#2563eb", fillOpacity: 0.15 }}
+            />
+            <Circle
+              center={userLocation}
+              radius={4}
+              pathOptions={{ color: "#2563eb", fillOpacity: 1 }}
+            />
+          </>
+        )}
         {validLocations.map((loc) => (
           <Marker
             key={loc.id ?? `${loc.lat}-${loc.lng}`}
@@ -95,6 +142,16 @@ export default function MapComponent({ locations = [], mapRef }: MapComponentPro
             )}
           </Marker>
         ))}
+
+        <button
+          onClick={handleGoToMyLocation}
+          className="absolute top-40 right-4 z-[1000]
+               bg-white rounded-full shadow-lg
+               px-4 py-2 text-sm font-medium
+               hover:bg-gray-100 transition"
+        >
+          <img src="/icon_my_location.svg" alt="" />
+        </button>
       </MapContainer>
     </div>
   );

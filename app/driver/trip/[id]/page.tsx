@@ -327,7 +327,7 @@ export default function ViewTripPage({ params }: PageProps) {
             )}
 
             <button
-                className="w-full bg-theme-second-orange text-theme-black border-2 py-2 rounded-xl mt-4 text-lg"
+                className="w-full bg-theme-orange text-white py-2 rounded-xl mt-4 text-lg hover:bg-theme-second-orange"
                 onClick={() => handleAction("start")}
             >
                 เริ่มต้นการเดินทาง
@@ -336,7 +336,7 @@ export default function ViewTripPage({ params }: PageProps) {
             <div className="space-y-4 mt-2">
                 {/* ปุ่มยกเลิกทริป */}
                 <button
-                    className="w-full bg-white text-theme-orange border-2 py-2 rounded-xl mt-2"
+                    className="w-full bg-theme-light-gray text-theme-gray py-2 rounded-xl mt-2 hover:text-red-700"
                     onClick={() => handleAction("cancel")}
                 >
                     ยกเลิกทริป
